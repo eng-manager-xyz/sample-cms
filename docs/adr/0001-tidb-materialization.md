@@ -1,6 +1,6 @@
 # ADR 0001: Application-owned immutable materialization on TiDB
 
-- Status: **Proposed; final five-phase verification required before acceptance**
+- Status: **Accepted**
 - Date: 2026-08-29
 - Linear issue: [AUT-532](https://linear.app/harwood/issue/AUT-532/translate-prototype-findings-into-a-tidbauteur-materialization-adr)
 - Evidence ledger: [Prototype benchmark report](../benchmarks.md)
@@ -50,9 +50,9 @@ Adopt a hybrid of the Linear options:
 7. Keep deterministic interpolation compatible with structural manifest sharing. Whether the hot
    serving row also stores a fully expanded payload is an evidence-gated optimization.
 
-This is a proposed production direction, not an approved scale claim. `AUT-532` cannot be marked Done
-until the committed one-million envelope and final five-phase result in `docs/benchmarks.md` have
-been reviewed and referenced in this decision.
+This is the accepted production direction from the prototype, not a production scale or SLO claim.
+The committed one-million envelope and successful five-phase result in `docs/benchmarks.md` support
+the boundary; the named TiDB proof spikes remain prerequisites for production implementation.
 
 ## Decision drivers
 
@@ -467,5 +467,6 @@ These are named blockers, not implied guarantees:
 The architecture, ERD, index/partition proposal, publication sequence, invalidation matrix, migration
 map, failure contract, and proof spikes are present. Bounded and one-million dense/sparse/structural,
 query-plan, storage-shape, atomic-failure, rollback, and selector-free serving evidence is executable.
-The one-million envelope has been reviewed and introduced no resource blocker. Final acceptance now
-depends only on the complete five-phase gate; after it passes, change this ADR status to Accepted.
+The one-million envelope introduced no local resource blocker, and the complete five-phase gate
+passed from clean commit `e9070af00c48677ad17bd1b5e02d09cf3d61ef7f` on 2026-08-29. The ADR is
+accepted with its TiDB proof spikes and production-assumption limits intact.

@@ -374,6 +374,26 @@ ADR can weigh expanded one-query reads against shared structures honestly.
 
 ## Final five-phase result
 
-The final gate has not yet been recorded. Run `bun run five-phase-pass` from the committed evidence
-tree, then replace this sentence with its dated result, package totals, build/Fallow/browser evidence,
-and the Linear closure record. AUT-530, AUT-532, and AUT-514 remain open until that succeeds.
+`bun run five-phase-pass` passed on 2026-08-29 from clean evidence commit
+`e9070af00c48677ad17bd1b5e02d09cf3d61ef7f`.
+
+| Phase | Result | Owning Linear work |
+| --- | --- | --- |
+| 1 — shell and SQLite baseline | Frozen install unchanged; boundaries and 71-skill/115-file import digest passed; reset and deterministic schema-v6 seed passed. | AUT-515–AUT-519 |
+| 2 — relational foundation | Database suite and populated v1→v6 upgrade passed; health/integrity/foreign-key checks passed. | AUT-516–AUT-519 |
+| 3 — selector, resolution, publication | Selector corpus, domain resolution, service CRUD, atomic publication, rollback, and fixed selector-free serving passed. | AUT-520–AUT-525 |
+| 4 — HUD and scenarios | TanStack HUD tests, fresh bounded proof, evidence verification, and client/SSR/Nitro production build passed. | AUT-526–AUT-530 |
+| 5 — cross-workspace audit | Committed bounded and one-million ledgers verified; boundaries, Biome, TypeScript, all tests, build, and Fallow passed. | AUT-530–AUT-532 |
+
+The workspace total was 102 tests and 1,070 assertions: database 8/57, domain 62/750, service
+10/120, scenarios 6/97, and CMS UI/router 16/46. Fallow reported zero issues across unused files,
+exports, dependencies, cycles, unresolved imports, boundary/policy violations, and stale
+suppressions.
+
+Production-browser smoke against the built server rendered `/`, `/templates/stores`, and
+`/publications/stores` with live SQLite schema v6. The instance table advanced from rows 1–8 to
+9–16 of 1,000,000 through its bounded server-function page; the live/missing-document fixture
+reported HTTP 503 without selector SQL; the browser console contained zero warnings or errors.
+
+Linear closure is performed only after this evidence is committed and reverified. The handoff and
+issue comments link back to this report for AUT-515 through AUT-532.
