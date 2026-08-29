@@ -1,0 +1,1887 @@
+{
+  "evidenceVersion": 1,
+  "run": {
+    "startedAt": "2026-08-29T20:45:53.121Z",
+    "finishedAt": "2026-08-29T21:01:03.943Z",
+    "elapsedMilliseconds": 910819.17275,
+    "invocation": [
+      "bun",
+      "run",
+      "scripts/run-scenario-evidence.ts",
+      "--output",
+      "docs/evidence/store-1m.json",
+      "--database",
+      ".data/store-1m.sqlite",
+      "--pages",
+      "1000000",
+      "--samples",
+      "250",
+      "--cases",
+      "200",
+      "--seed",
+      "1592639710"
+    ],
+    "gitCommit": "69dbe6f8611f258eab542d78da3d64ad45e7f86b",
+    "workingTreeBeforeRun": "",
+    "bunLockSha256": "57a562d35325b0d7292809b6e3404ee555e50be50a5c048a947d7aea2357e76d",
+    "packageManagerPin": "bun@1.3.14",
+    "databasePath": ".data/store-1m.sqlite",
+    "databaseFileBytes": 3205939200,
+    "progressCheckpoints": [
+      {
+        "phase": "seed",
+        "completed": 100000,
+        "total": 1000000
+      },
+      {
+        "phase": "seed",
+        "completed": 200000,
+        "total": 1000000
+      },
+      {
+        "phase": "seed",
+        "completed": 300000,
+        "total": 1000000
+      },
+      {
+        "phase": "seed",
+        "completed": 400000,
+        "total": 1000000
+      },
+      {
+        "phase": "seed",
+        "completed": 500000,
+        "total": 1000000
+      },
+      {
+        "phase": "seed",
+        "completed": 600000,
+        "total": 1000000
+      },
+      {
+        "phase": "seed",
+        "completed": 700000,
+        "total": 1000000
+      },
+      {
+        "phase": "seed",
+        "completed": 800000,
+        "total": 1000000
+      },
+      {
+        "phase": "seed",
+        "completed": 900000,
+        "total": 1000000
+      },
+      {
+        "phase": "seed",
+        "completed": 1000000,
+        "total": 1000000
+      },
+      {
+        "phase": "compile",
+        "completed": 100000,
+        "total": 1000002
+      },
+      {
+        "phase": "compile",
+        "completed": 200000,
+        "total": 1000002
+      },
+      {
+        "phase": "compile",
+        "completed": 300000,
+        "total": 1000002
+      },
+      {
+        "phase": "compile",
+        "completed": 400000,
+        "total": 1000002
+      },
+      {
+        "phase": "compile",
+        "completed": 500000,
+        "total": 1000002
+      },
+      {
+        "phase": "compile",
+        "completed": 600000,
+        "total": 1000002
+      },
+      {
+        "phase": "compile",
+        "completed": 700000,
+        "total": 1000002
+      },
+      {
+        "phase": "compile",
+        "completed": 800000,
+        "total": 1000002
+      },
+      {
+        "phase": "compile",
+        "completed": 900000,
+        "total": 1000002
+      },
+      {
+        "phase": "compile",
+        "completed": 1000000,
+        "total": 1000002
+      },
+      {
+        "phase": "compile",
+        "completed": 1000002,
+        "total": 1000002
+      },
+      {
+        "phase": "write",
+        "completed": 100000,
+        "total": 1000002
+      },
+      {
+        "phase": "write",
+        "completed": 200000,
+        "total": 1000002
+      },
+      {
+        "phase": "write",
+        "completed": 300000,
+        "total": 1000002
+      },
+      {
+        "phase": "write",
+        "completed": 400000,
+        "total": 1000002
+      },
+      {
+        "phase": "write",
+        "completed": 500000,
+        "total": 1000002
+      },
+      {
+        "phase": "write",
+        "completed": 600000,
+        "total": 1000002
+      },
+      {
+        "phase": "write",
+        "completed": 700000,
+        "total": 1000002
+      },
+      {
+        "phase": "write",
+        "completed": 800000,
+        "total": 1000002
+      },
+      {
+        "phase": "write",
+        "completed": 900000,
+        "total": 1000002
+      },
+      {
+        "phase": "write",
+        "completed": 1000000,
+        "total": 1000002
+      },
+      {
+        "phase": "write",
+        "completed": 1000002,
+        "total": 1000002
+      },
+      {
+        "phase": "republish_compile",
+        "completed": 100000,
+        "total": 1000002
+      },
+      {
+        "phase": "republish_compile",
+        "completed": 200000,
+        "total": 1000002
+      },
+      {
+        "phase": "republish_compile",
+        "completed": 300000,
+        "total": 1000002
+      },
+      {
+        "phase": "republish_compile",
+        "completed": 400000,
+        "total": 1000002
+      },
+      {
+        "phase": "republish_compile",
+        "completed": 500000,
+        "total": 1000002
+      },
+      {
+        "phase": "republish_compile",
+        "completed": 600000,
+        "total": 1000002
+      },
+      {
+        "phase": "republish_compile",
+        "completed": 700000,
+        "total": 1000002
+      },
+      {
+        "phase": "republish_compile",
+        "completed": 800000,
+        "total": 1000002
+      },
+      {
+        "phase": "republish_compile",
+        "completed": 900000,
+        "total": 1000002
+      },
+      {
+        "phase": "republish_compile",
+        "completed": 1000000,
+        "total": 1000002
+      },
+      {
+        "phase": "republish_compile",
+        "completed": 1000002,
+        "total": 1000002
+      }
+    ],
+    "host": {
+      "platform": "darwin",
+      "release": "24.6.0",
+      "architecture": "arm64",
+      "cpuModel": "Apple M4 Max",
+      "logicalCpuCount": 16,
+      "physicalMemoryBytes": 51539607552,
+      "diskFreeBytesBeforeReportWrite": 100155117568
+    },
+    "process": {
+      "userCpuMicroseconds": 803170481,
+      "systemCpuMicroseconds": 106940220,
+      "maxRssBytes": 592068608
+    }
+  },
+  "scenarioReport": {
+    "reportVersion": 1,
+    "generatedAt": "2026-08-29T21:01:03.943Z",
+    "issues": ["AUT-527", "AUT-528", "AUT-529", "AUT-530"],
+    "environment": {
+      "platform": "darwin",
+      "architecture": "arm64",
+      "bunVersion": "1.3.11",
+      "sqliteVersion": "3.43.2"
+    },
+    "timings": [
+      {
+        "name": "dense-eligible-vehicles",
+        "elapsedMilliseconds": 29.093083
+      },
+      {
+        "name": "store",
+        "elapsedMilliseconds": 910484.18625
+      },
+      {
+        "name": "structural-replacement",
+        "elapsedMilliseconds": 6.430417000000006
+      },
+      {
+        "name": "generated-determinism",
+        "elapsedMilliseconds": 141.48825
+      },
+      {
+        "name": "cms-service-integration",
+        "elapsedMilliseconds": 148.78962499997579
+      }
+    ],
+    "denseEligibleVehicles": {
+      "issueId": "AUT-527",
+      "templateId": "eligible-vehicles",
+      "pageCount": 24,
+      "variantCount": 17,
+      "variantMatchCount": 100,
+      "exactVariantCount": 4,
+      "exactOverridePageCount": 4,
+      "exactOverridesEveryPlacement": true,
+      "publicationHash": "39bf8224eee6acfaf8ed28cf2d1a7d1295683b6f2b279a530728f12feaf85f93",
+      "publicationMetrics": {
+        "pageCount": 24,
+        "uniqueManifestCount": 24,
+        "reusedPageCount": 0,
+        "manifestReuseRatio": 1,
+        "deduplicatedPageRatio": 0,
+        "expandedPlacementCount": 168,
+        "storedPlacementCount": 168,
+        "savedPlacementCount": 0,
+        "savedPlacementRatio": 0,
+        "expandedManifestBytes": 22024,
+        "storedManifestBytes": 22024,
+        "savedManifestBytes": 0,
+        "manifestReuse": [
+          {
+            "manifestId": "manifest:0411fc5dfd6d399998d029462a367f74a060b86354631d07c9828b38d4a0f33d",
+            "pageCount": 1
+          },
+          {
+            "manifestId": "manifest:0a13d6570139221cef6eac5fd9673936e210e374e7ac0c3434d41d3ff172cb8f",
+            "pageCount": 1
+          },
+          {
+            "manifestId": "manifest:0ba97221cb2c4553b9203db5861db7da99312d4b25fa4cefccc580d6326d0be8",
+            "pageCount": 1
+          },
+          {
+            "manifestId": "manifest:14e189d4ea0d86bfb460dec72586d9adeec72e35a1400c7469ad59aee8efcddf",
+            "pageCount": 1
+          },
+          {
+            "manifestId": "manifest:2002c61e760e6b05667de8202f4cc172bb17052a9bf02c0cd8255a04b3a9d33a",
+            "pageCount": 1
+          },
+          {
+            "manifestId": "manifest:204cbf5ab9f155b532975346301b01c867264a3f9446bc10ac49996db532c498",
+            "pageCount": 1
+          },
+          {
+            "manifestId": "manifest:2615b0891b602ba8424adff82074d94bd77a8f35f76fbc1a2cedc1cdc5f14d8f",
+            "pageCount": 1
+          },
+          {
+            "manifestId": "manifest:2b812d8c618e059e9938334b15dfb41b4212c8ae5d1cf94167924ed8432d9c4c",
+            "pageCount": 1
+          },
+          {
+            "manifestId": "manifest:3efee68e69aae6ee14200b566cf70ebe96d4dcf4468beb384d769b6c1f7dea6d",
+            "pageCount": 1
+          },
+          {
+            "manifestId": "manifest:426d44043b3252d9585604d2344222b50445e2b4a751dddaf7c50bc97ff453cf",
+            "pageCount": 1
+          },
+          {
+            "manifestId": "manifest:45879c61acb5a2735777e5c8153f8847b9a6e93d7a6fbe71342ba9cd638511b1",
+            "pageCount": 1
+          },
+          {
+            "manifestId": "manifest:578418a02aeff98343a2b33978f81c2db95cd31fc88e9ed18e87b5b53fb95df0",
+            "pageCount": 1
+          },
+          {
+            "manifestId": "manifest:5d5e8c0fafaf727da261a3771e691d47898d83a7a374ccd28f2c24d0c8e70b84",
+            "pageCount": 1
+          },
+          {
+            "manifestId": "manifest:629d8cd4aef3ec4543caa5ed09e6198882a0e85149686831e36a6d311462f15b",
+            "pageCount": 1
+          },
+          {
+            "manifestId": "manifest:751228239f0157ea694d0ed991d83c5feccab62151cb589124fd8056b783fa12",
+            "pageCount": 1
+          },
+          {
+            "manifestId": "manifest:94a17bc8bf4f822fc528ded70e9599364b9cccb6f98381bb81ad0586b0e9617d",
+            "pageCount": 1
+          },
+          {
+            "manifestId": "manifest:a32306d76d57885cf2dc0db496e0b457e541a28f15791d8ffdf6e6909ceb8391",
+            "pageCount": 1
+          },
+          {
+            "manifestId": "manifest:bfbb830fa5c0aaff34dc7c758bd38b343a99be6fc31ec9bf9c7495f7fc049b7c",
+            "pageCount": 1
+          },
+          {
+            "manifestId": "manifest:c13e8e05bcf8f4fcf9329ca3cc13629407010a3e5a9105c2ad36a16a351cac7b",
+            "pageCount": 1
+          },
+          {
+            "manifestId": "manifest:c6e41e22eec8ee186890315bbebf893f50c117575b12688b3f74d2ba0ddb9a06",
+            "pageCount": 1
+          },
+          {
+            "manifestId": "manifest:d5f5acff853dd239c728d585e0bc8299c401e5ebff8b70914fd56dfa19d740eb",
+            "pageCount": 1
+          },
+          {
+            "manifestId": "manifest:e710b59cd8d0c481aaa2231c8167baff27b350bc6ffc978aff3d7105e5f188e8",
+            "pageCount": 1
+          },
+          {
+            "manifestId": "manifest:f274b2fc917a4b45d417e21888c49413b7b865a4f08d90b2d77e7f9267bab152",
+            "pageCount": 1
+          },
+          {
+            "manifestId": "manifest:ffd52fec43821cdcfb3868ad9bcc664a674dcafe30d421a2579f6937813c29c1",
+            "pageCount": 1
+          }
+        ]
+      },
+      "publicationElapsedMilliseconds": 13.513083000000002,
+      "publicationSerializedBytes": 38047,
+      "broadGolden": {
+        "pageId": "eligible:en-US:NY:delivery",
+        "contentHash": "e8b9a054b29641387a197e3f84da7c08f99d852a15b73e6742167d42e9207b8a",
+        "matchedVariantIds": [
+          "eligible-country:US",
+          "eligible-language:en",
+          "eligible-state:NY",
+          "eligible-purpose:delivery"
+        ],
+        "placements": [
+          {
+            "placementKey": "navigation",
+            "blockVersionId": "eligible-language:en:navigation:v1",
+            "blockType": "navigation",
+            "contentSourceId": "eligible-language:en",
+            "orderSourceId": "default:eligible-vehicles"
+          },
+          {
+            "placementKey": "primary-hero",
+            "blockVersionId": "eligible-purpose:delivery:hero:v1",
+            "blockType": "purpose-hero",
+            "contentSourceId": "eligible-purpose:delivery",
+            "orderSourceId": "default:eligible-vehicles"
+          },
+          {
+            "placementKey": "eligibility-summary",
+            "blockVersionId": "eligible-state:NY:eligibility-summary:v1",
+            "blockType": "eligibility-summary",
+            "contentSourceId": "eligible-state:NY",
+            "orderSourceId": "default:eligible-vehicles"
+          },
+          {
+            "placementKey": "vehicle-list",
+            "blockVersionId": "eligible-purpose:delivery:vehicles:v1",
+            "blockType": "vehicle-list",
+            "contentSourceId": "eligible-purpose:delivery",
+            "orderSourceId": "default:eligible-vehicles"
+          },
+          {
+            "placementKey": "legal-notice",
+            "blockVersionId": "eligible-state:NY:legal-notice:v1",
+            "blockType": "legal-notice",
+            "contentSourceId": "eligible-state:NY",
+            "orderSourceId": "default:eligible-vehicles"
+          },
+          {
+            "placementKey": "cta",
+            "blockVersionId": "eligible-purpose:delivery:cta:v1",
+            "blockType": "cta",
+            "contentSourceId": "eligible-purpose:delivery",
+            "orderSourceId": "default:eligible-vehicles"
+          },
+          {
+            "placementKey": "footer",
+            "blockVersionId": "eligible-language:en:footer:v1",
+            "blockType": "footer",
+            "contentSourceId": "eligible-language:en",
+            "orderSourceId": "default:eligible-vehicles"
+          }
+        ]
+      },
+      "exactGolden": {
+        "pageId": "eligible:en-US:CA:premium",
+        "contentHash": "20ee28dccad22f59fdc4ea09a564f33beed846789d4dd7fe32061daadf49d792",
+        "matchedVariantIds": [
+          "eligible-country:US",
+          "eligible-language:en",
+          "eligible-state:CA",
+          "eligible-purpose:premium",
+          "eligible-exact:eligible:en-US:CA:premium"
+        ],
+        "placements": [
+          {
+            "placementKey": "navigation",
+            "blockVersionId": "eligible-exact:eligible:en-US:CA:premium:navigation:v1",
+            "blockType": "navigation",
+            "contentSourceId": "eligible-exact:eligible:en-US:CA:premium",
+            "orderSourceId": "eligible-exact:eligible:en-US:CA:premium"
+          },
+          {
+            "placementKey": "primary-hero",
+            "blockVersionId": "eligible-exact:eligible:en-US:CA:premium:primary-hero:v1",
+            "blockType": "primary-hero",
+            "contentSourceId": "eligible-exact:eligible:en-US:CA:premium",
+            "orderSourceId": "eligible-exact:eligible:en-US:CA:premium"
+          },
+          {
+            "placementKey": "eligibility-summary",
+            "blockVersionId": "eligible-exact:eligible:en-US:CA:premium:eligibility-summary:v1",
+            "blockType": "eligibility-summary",
+            "contentSourceId": "eligible-exact:eligible:en-US:CA:premium",
+            "orderSourceId": "eligible-exact:eligible:en-US:CA:premium"
+          },
+          {
+            "placementKey": "vehicle-list",
+            "blockVersionId": "eligible-exact:eligible:en-US:CA:premium:vehicle-list:v1",
+            "blockType": "exact-vehicle-grid",
+            "contentSourceId": "eligible-exact:eligible:en-US:CA:premium",
+            "orderSourceId": "eligible-exact:eligible:en-US:CA:premium"
+          },
+          {
+            "placementKey": "legal-notice",
+            "blockVersionId": "eligible-exact:eligible:en-US:CA:premium:legal-notice:v1",
+            "blockType": "legal-notice",
+            "contentSourceId": "eligible-exact:eligible:en-US:CA:premium",
+            "orderSourceId": "eligible-exact:eligible:en-US:CA:premium"
+          },
+          {
+            "placementKey": "cta",
+            "blockVersionId": "eligible-exact:eligible:en-US:CA:premium:cta:v1",
+            "blockType": "cta",
+            "contentSourceId": "eligible-exact:eligible:en-US:CA:premium",
+            "orderSourceId": "eligible-exact:eligible:en-US:CA:premium"
+          },
+          {
+            "placementKey": "footer",
+            "blockVersionId": "eligible-exact:eligible:en-US:CA:premium:footer:v1",
+            "blockType": "footer",
+            "contentSourceId": "eligible-exact:eligible:en-US:CA:premium",
+            "orderSourceId": "eligible-exact:eligible:en-US:CA:premium"
+          }
+        ]
+      },
+      "conflict": {
+        "rejected": true,
+        "code": "PRIORITY_CONFLICT",
+        "priority": 60,
+        "placementKey": "legal-notice",
+        "variantIds": ["eligible-conflict:a", "eligible-conflict:b"]
+      },
+      "limitations": [
+        "Metrics describe this deterministic 24-page in-memory domain fixture, not production traffic or TiDB.",
+        "Dense manifests are reported as measured; no reuse is inferred beyond equal structural hashes.",
+        "runPersistedDenseEligibleVehiclesProof separately verifies SQLite publication, provenance, indexed selectors, and conflict atomicity."
+      ]
+    },
+    "store": {
+      "issueId": "AUT-528",
+      "requestedScalePageCount": 1000000,
+      "actualPageCount": 1000002,
+      "seed": {
+        "requestedPageCount": 1000000,
+        "insertedPageCount": 1000000,
+        "existingPageCountBeforeSeed": 0,
+        "reusedExistingSeed": false,
+        "seedIdentityHash": "db6a7fbaf290e4d386de6d5bccbcd19c927e0830aba78586d3f04ba415c22ec0",
+        "elapsedMilliseconds": 62804.598709000005
+      },
+      "seedReplay": {
+        "requestedPageCount": 1000000,
+        "insertedPageCount": 0,
+        "existingPageCountBeforeSeed": 1000000,
+        "reusedExistingSeed": true,
+        "seedIdentityHash": "db6a7fbaf290e4d386de6d5bccbcd19c927e0830aba78586d3f04ba415c22ec0",
+        "elapsedMilliseconds": 66.20933299999888,
+        "pageCountUnchanged": true,
+        "tagMembershipCountUnchanged": true
+      },
+      "databaseHealth": {
+        "healthy": true,
+        "schemaVersion": 6,
+        "integrity": "ok",
+        "foreignKeyViolationCount": 0,
+        "problems": [],
+        "tableCounts": {
+          "templates": 1,
+          "template_slots": 4,
+          "page_instances": 1000002,
+          "page_slot_values": 4000008,
+          "tags": 5,
+          "page_tags": 1300004,
+          "route_ingestions": 2,
+          "route_audit_log": 2,
+          "variants": 5,
+          "variant_revisions": 5,
+          "block_types": 4,
+          "block_lineages": 4,
+          "block_versions": 8,
+          "variant_operations": 12,
+          "publications": 2,
+          "document_manifests": 5,
+          "document_manifest_items": 20,
+          "published_page_documents": 1000004,
+          "current_publications": 1
+        }
+      },
+      "rawCounts": {
+        "templatePageCount": 1000002,
+        "scalePageCount": 1000000,
+        "slotValueCount": 4000008,
+        "tagMembershipCount": 1300004,
+        "publicationCount": 2,
+        "publishedPageDocumentCount": 1000004,
+        "manifestCount": 5,
+        "manifestItemCount": 20
+      },
+      "databaseStorage": {
+        "pageCount": 782700,
+        "pageSizeBytes": 4096,
+        "freelistPageCount": 0,
+        "allocatedBytes": 3205939200
+      },
+      "membershipCounts": {
+        "chainStore": 500001,
+        "fastFood": 200001,
+        "mcdonalds": 50001,
+        "burgerKing": 50000,
+        "independent": 500001,
+        "genericFastFoodChain": 100000,
+        "chainNonFastFood": 300000
+      },
+      "canonicalLookupPlan": {
+        "steps": [
+          "SEARCH templates USING INDEX templates_domain_pattern_unique (domain=?)",
+          "SEARCH pages USING INDEX page_instances_template_canonical_unique (template_id=? AND canonical_url=?)"
+        ],
+        "usesIndex": true
+      },
+      "tagLookupPlan": {
+        "steps": [
+          "SEARCH pt USING COVERING INDEX page_tags_selector_idx (template_id=? AND tag_id=?)",
+          "SEARCH p USING COVERING INDEX page_instances_id_template_unique (id=? AND template_id=?)",
+          "USE TEMP B-TREE FOR ORDER BY"
+        ],
+        "usesIndex": true
+      },
+      "benchmark": {
+        "scalePageCount": 1000000,
+        "canonicalLookupP50Milliseconds": 0.006916999933309853,
+        "canonicalLookupP95Milliseconds": 0.008167000021785498,
+        "tagMembershipCountMilliseconds": 509.17324999999255,
+        "mcdonaldsPageCount": 50001,
+        "burgerKingPageCount": 50000,
+        "genericFastFoodPageCount": 100000
+      },
+      "representativePublication": {
+        "hash": "6df83fa96b25b7c873e4ad6d610d023c008d65666bf7d93d8c1f6aed5e703828",
+        "manifests": [
+          {
+            "id": "manifest:60eb38da695e1ac181273a2f08091b1b0a4bc7466cba90aa966ac229bac79e00",
+            "hash": "60eb38da695e1ac181273a2f08091b1b0a4bc7466cba90aa966ac229bac79e00",
+            "templateId": "tpl-store",
+            "placements": [
+              {
+                "placementKey": "navigation",
+                "order": 0,
+                "blockType": "navigation",
+                "blockVersionId": "block-store-navigation-v1"
+              },
+              {
+                "placementKey": "primary-hero",
+                "order": 1,
+                "blockType": "hero",
+                "blockVersionId": "block-store-hero-v1"
+              },
+              {
+                "placementKey": "category-promo",
+                "order": 2,
+                "blockType": "promo",
+                "blockVersionId": "block-store-promo-v2-fast"
+              },
+              {
+                "placementKey": "footer",
+                "order": 3,
+                "blockType": "footer",
+                "blockVersionId": "block-store-footer-v2-chain"
+              }
+            ]
+          },
+          {
+            "id": "manifest:6b331ba452d0d8cbf31849cf1cccde44cc895dba1aab8adf6007d5d2ed33d7fb",
+            "hash": "6b331ba452d0d8cbf31849cf1cccde44cc895dba1aab8adf6007d5d2ed33d7fb",
+            "templateId": "tpl-store",
+            "placements": [
+              {
+                "placementKey": "navigation",
+                "order": 0,
+                "blockType": "navigation",
+                "blockVersionId": "block-store-navigation-v1"
+              },
+              {
+                "placementKey": "primary-hero",
+                "order": 1,
+                "blockType": "hero",
+                "blockVersionId": "block-store-hero-v1"
+              },
+              {
+                "placementKey": "category-promo",
+                "order": 2,
+                "blockType": "promo",
+                "blockVersionId": "block-store-promo-v1"
+              },
+              {
+                "placementKey": "footer",
+                "order": 3,
+                "blockType": "footer",
+                "blockVersionId": "block-store-footer-v1"
+              }
+            ]
+          },
+          {
+            "id": "manifest:956dfa448b705db6620338977c53757f4de367c166fbc3fc97599be220b7e1b9",
+            "hash": "956dfa448b705db6620338977c53757f4de367c166fbc3fc97599be220b7e1b9",
+            "templateId": "tpl-store",
+            "placements": [
+              {
+                "placementKey": "navigation",
+                "order": 0,
+                "blockType": "navigation",
+                "blockVersionId": "block-store-navigation-v1"
+              },
+              {
+                "placementKey": "primary-hero",
+                "order": 1,
+                "blockType": "hero",
+                "blockVersionId": "block-store-hero-v1"
+              },
+              {
+                "placementKey": "category-promo",
+                "order": 2,
+                "blockType": "promo",
+                "blockVersionId": "block-store-promo-v1"
+              },
+              {
+                "placementKey": "footer",
+                "order": 3,
+                "blockType": "footer",
+                "blockVersionId": "block-store-footer-v2-chain"
+              }
+            ]
+          },
+          {
+            "id": "manifest:b780c6483337deeb617396f4e402d313ee9911f769b950965e4fee38a62bfea4",
+            "hash": "b780c6483337deeb617396f4e402d313ee9911f769b950965e4fee38a62bfea4",
+            "templateId": "tpl-store",
+            "placements": [
+              {
+                "placementKey": "navigation",
+                "order": 0,
+                "blockType": "navigation",
+                "blockVersionId": "block-store-navigation-v1"
+              },
+              {
+                "placementKey": "primary-hero",
+                "order": 1,
+                "blockType": "hero",
+                "blockVersionId": "block-store-hero-v3-bk"
+              },
+              {
+                "placementKey": "category-promo",
+                "order": 2,
+                "blockType": "promo",
+                "blockVersionId": "block-store-promo-v2-fast"
+              },
+              {
+                "placementKey": "footer",
+                "order": 3,
+                "blockType": "footer",
+                "blockVersionId": "block-store-footer-v2-chain"
+              }
+            ]
+          },
+          {
+            "id": "manifest:f891dc773861c35dd60e18cb153d4fb36e8b9434eedef7c90c8a81225caaa733",
+            "hash": "f891dc773861c35dd60e18cb153d4fb36e8b9434eedef7c90c8a81225caaa733",
+            "templateId": "tpl-store",
+            "placements": [
+              {
+                "placementKey": "navigation",
+                "order": 0,
+                "blockType": "navigation",
+                "blockVersionId": "block-store-navigation-v1"
+              },
+              {
+                "placementKey": "primary-hero",
+                "order": 1,
+                "blockType": "hero",
+                "blockVersionId": "block-store-hero-v2-mcd"
+              },
+              {
+                "placementKey": "category-promo",
+                "order": 2,
+                "blockType": "promo",
+                "blockVersionId": "block-store-promo-v2-fast"
+              },
+              {
+                "placementKey": "footer",
+                "order": 3,
+                "blockType": "footer",
+                "blockVersionId": "block-store-footer-v2-chain"
+              }
+            ]
+          }
+        ],
+        "pages": [
+          {
+            "pageId": "store-class:burger-king",
+            "canonicalUrl": "/en-US/store/class-burger-king",
+            "templateId": "tpl-store",
+            "manifestId": "manifest:b780c6483337deeb617396f4e402d313ee9911f769b950965e4fee38a62bfea4",
+            "manifestHash": "b780c6483337deeb617396f4e402d313ee9911f769b950965e4fee38a62bfea4",
+            "effectiveDocumentHash": "ca6b69f54a155c1f7aeacfa6fe9ca14da16494df619615bef393bef9fd82b0ee"
+          },
+          {
+            "pageId": "store-class:chain-non-fast-food",
+            "canonicalUrl": "/en-US/store/class-chain",
+            "templateId": "tpl-store",
+            "manifestId": "manifest:956dfa448b705db6620338977c53757f4de367c166fbc3fc97599be220b7e1b9",
+            "manifestHash": "956dfa448b705db6620338977c53757f4de367c166fbc3fc97599be220b7e1b9",
+            "effectiveDocumentHash": "a51dfb8a4fd9f4c49f171895ccd76827a9b18b2d0f4a1d7e0b7fc9c243521b00"
+          },
+          {
+            "pageId": "store-class:generic-fast-food-chain",
+            "canonicalUrl": "/en-US/store/class-fast-food",
+            "templateId": "tpl-store",
+            "manifestId": "manifest:60eb38da695e1ac181273a2f08091b1b0a4bc7466cba90aa966ac229bac79e00",
+            "manifestHash": "60eb38da695e1ac181273a2f08091b1b0a4bc7466cba90aa966ac229bac79e00",
+            "effectiveDocumentHash": "8f09b77e96084e158037771fe9649510cdf6ced878aad6c5fa434e4eecf91ead"
+          },
+          {
+            "pageId": "store-class:independent",
+            "canonicalUrl": "/en-US/store/class-independent",
+            "templateId": "tpl-store",
+            "manifestId": "manifest:6b331ba452d0d8cbf31849cf1cccde44cc895dba1aab8adf6007d5d2ed33d7fb",
+            "manifestHash": "6b331ba452d0d8cbf31849cf1cccde44cc895dba1aab8adf6007d5d2ed33d7fb",
+            "effectiveDocumentHash": "09f19d0064d67edd989b5285b8db1ecb635a34cbd14486f6a968fdb0918e4c22"
+          },
+          {
+            "pageId": "store-class:mcdonalds",
+            "canonicalUrl": "/en-US/store/class-mcdonalds",
+            "templateId": "tpl-store",
+            "manifestId": "manifest:f891dc773861c35dd60e18cb153d4fb36e8b9434eedef7c90c8a81225caaa733",
+            "manifestHash": "f891dc773861c35dd60e18cb153d4fb36e8b9434eedef7c90c8a81225caaa733",
+            "effectiveDocumentHash": "85abed51409b0e585576d6cd3e5fc59119fe869e82bc77ebb17d2761c400b103"
+          }
+        ],
+        "metrics": {
+          "pageCount": 5,
+          "uniqueManifestCount": 5,
+          "reusedPageCount": 0,
+          "manifestReuseRatio": 1,
+          "deduplicatedPageRatio": 0,
+          "expandedPlacementCount": 20,
+          "storedPlacementCount": 20,
+          "savedPlacementCount": 0,
+          "savedPlacementRatio": 0,
+          "expandedManifestBytes": 2311,
+          "storedManifestBytes": 2311,
+          "savedManifestBytes": 0,
+          "manifestReuse": [
+            {
+              "manifestId": "manifest:60eb38da695e1ac181273a2f08091b1b0a4bc7466cba90aa966ac229bac79e00",
+              "pageCount": 1
+            },
+            {
+              "manifestId": "manifest:6b331ba452d0d8cbf31849cf1cccde44cc895dba1aab8adf6007d5d2ed33d7fb",
+              "pageCount": 1
+            },
+            {
+              "manifestId": "manifest:956dfa448b705db6620338977c53757f4de367c166fbc3fc97599be220b7e1b9",
+              "pageCount": 1
+            },
+            {
+              "manifestId": "manifest:b780c6483337deeb617396f4e402d313ee9911f769b950965e4fee38a62bfea4",
+              "pageCount": 1
+            },
+            {
+              "manifestId": "manifest:f891dc773861c35dd60e18cb153d4fb36e8b9434eedef7c90c8a81225caaa733",
+              "pageCount": 1
+            }
+          ]
+        }
+      },
+      "classGoldens": [
+        {
+          "classId": "independent",
+          "contentHash": "09f19d0064d67edd989b5285b8db1ecb635a34cbd14486f6a968fdb0918e4c22",
+          "manifestHash": "6b331ba452d0d8cbf31849cf1cccde44cc895dba1aab8adf6007d5d2ed33d7fb",
+          "matchedVariantIds": [],
+          "blockVersionIds": [
+            "block-store-navigation-v1",
+            "block-store-hero-v1",
+            "block-store-promo-v1",
+            "block-store-footer-v1"
+          ],
+          "renderedHero": {
+            "headline": "I am Neighborhood Kitchen — Oakland"
+          }
+        },
+        {
+          "classId": "chain-non-fast-food",
+          "contentHash": "a51dfb8a4fd9f4c49f171895ccd76827a9b18b2d0f4a1d7e0b7fc9c243521b00",
+          "manifestHash": "956dfa448b705db6620338977c53757f4de367c166fbc3fc97599be220b7e1b9",
+          "matchedVariantIds": ["variant-store-chain"],
+          "blockVersionIds": [
+            "block-store-navigation-v1",
+            "block-store-hero-v1",
+            "block-store-promo-v1",
+            "block-store-footer-v2-chain"
+          ],
+          "renderedHero": {
+            "headline": "I am Market Hall — San Jose"
+          }
+        },
+        {
+          "classId": "generic-fast-food-chain",
+          "contentHash": "8f09b77e96084e158037771fe9649510cdf6ced878aad6c5fa434e4eecf91ead",
+          "manifestHash": "60eb38da695e1ac181273a2f08091b1b0a4bc7466cba90aa966ac229bac79e00",
+          "matchedVariantIds": ["variant-store-chain", "variant-store-fast-food"],
+          "blockVersionIds": [
+            "block-store-navigation-v1",
+            "block-store-hero-v1",
+            "block-store-promo-v2-fast",
+            "block-store-footer-v2-chain"
+          ],
+          "renderedHero": {
+            "headline": "I am Quick Bites — Berkeley"
+          }
+        },
+        {
+          "classId": "mcdonalds",
+          "contentHash": "85abed51409b0e585576d6cd3e5fc59119fe869e82bc77ebb17d2761c400b103",
+          "manifestHash": "f891dc773861c35dd60e18cb153d4fb36e8b9434eedef7c90c8a81225caaa733",
+          "matchedVariantIds": [
+            "variant-store-chain",
+            "variant-store-fast-food",
+            "variant-store-mcdonalds"
+          ],
+          "blockVersionIds": [
+            "block-store-navigation-v1",
+            "block-store-hero-v2-mcd",
+            "block-store-promo-v2-fast",
+            "block-store-footer-v2-chain"
+          ],
+          "renderedHero": {
+            "headline": "Buy now McDonald's Market — San Francisco"
+          }
+        },
+        {
+          "classId": "burger-king",
+          "contentHash": "ca6b69f54a155c1f7aeacfa6fe9ca14da16494df619615bef393bef9fd82b0ee",
+          "manifestHash": "b780c6483337deeb617396f4e402d313ee9911f769b950965e4fee38a62bfea4",
+          "matchedVariantIds": [
+            "variant-store-chain",
+            "variant-store-fast-food",
+            "variant-store-burger-king"
+          ],
+          "blockVersionIds": [
+            "block-store-navigation-v1",
+            "block-store-hero-v3-bk",
+            "block-store-promo-v2-fast",
+            "block-store-footer-v2-chain"
+          ],
+          "renderedHero": {
+            "headline": "Buy today Burger King Downtown — San Francisco"
+          }
+        }
+      ],
+      "persistedClassGoldens": [
+        {
+          "classId": "mcdonalds",
+          "pageId": "page-store-scale-0",
+          "tags": ["brand=mcdonalds", "category=fast_food", "store_type=chain_store"],
+          "contentHash": "85abed51409b0e585576d6cd3e5fc59119fe869e82bc77ebb17d2761c400b103",
+          "matchedVariantRevisionIds": [
+            "revision-store-chain-1",
+            "revision-store-fast-food-1",
+            "revision-store-mcdonalds-1"
+          ],
+          "blockVersionIds": [
+            "block-store-navigation-v1",
+            "block-store-hero-v2-mcd",
+            "block-store-promo-v2-fast",
+            "block-store-footer-v2-chain"
+          ]
+        },
+        {
+          "classId": "independent",
+          "pageId": "page-store-scale-1",
+          "tags": ["store_type=independent"],
+          "contentHash": "09f19d0064d67edd989b5285b8db1ecb635a34cbd14486f6a968fdb0918e4c22",
+          "matchedVariantRevisionIds": [],
+          "blockVersionIds": [
+            "block-store-navigation-v1",
+            "block-store-hero-v1",
+            "block-store-promo-v1",
+            "block-store-footer-v1"
+          ]
+        },
+        {
+          "classId": "generic-fast-food-chain",
+          "pageId": "page-store-scale-2",
+          "tags": ["category=fast_food", "store_type=chain_store"],
+          "contentHash": "8f09b77e96084e158037771fe9649510cdf6ced878aad6c5fa434e4eecf91ead",
+          "matchedVariantRevisionIds": ["revision-store-chain-1", "revision-store-fast-food-1"],
+          "blockVersionIds": [
+            "block-store-navigation-v1",
+            "block-store-hero-v1",
+            "block-store-promo-v2-fast",
+            "block-store-footer-v2-chain"
+          ]
+        },
+        {
+          "classId": "chain-non-fast-food",
+          "pageId": "page-store-scale-4",
+          "tags": ["store_type=chain_store"],
+          "contentHash": "a51dfb8a4fd9f4c49f171895ccd76827a9b18b2d0f4a1d7e0b7fc9c243521b00",
+          "matchedVariantRevisionIds": ["revision-store-chain-1"],
+          "blockVersionIds": [
+            "block-store-navigation-v1",
+            "block-store-hero-v1",
+            "block-store-promo-v1",
+            "block-store-footer-v2-chain"
+          ]
+        },
+        {
+          "classId": "burger-king",
+          "pageId": "page-store-scale-10",
+          "tags": ["brand=burger_king", "category=fast_food", "store_type=chain_store"],
+          "contentHash": "ca6b69f54a155c1f7aeacfa6fe9ca14da16494df619615bef393bef9fd82b0ee",
+          "matchedVariantRevisionIds": [
+            "revision-store-chain-1",
+            "revision-store-fast-food-1",
+            "revision-store-burger-king-1"
+          ],
+          "blockVersionIds": [
+            "block-store-navigation-v1",
+            "block-store-hero-v3-bk",
+            "block-store-promo-v2-fast",
+            "block-store-footer-v2-chain"
+          ]
+        }
+      ],
+      "completeFiveClassCoverage": true,
+      "selectorDemonstrations": [
+        {
+          "variantId": "variant-store-chain",
+          "variantRevisionId": "revision-store-chain-1",
+          "selector": "store_type = 'chain_store'",
+          "priority": 10,
+          "matchCount": 500001,
+          "samplePages": [
+            {
+              "pageId": "page-store-1001",
+              "canonicalUrl": "/en-US/store/1001"
+            },
+            {
+              "pageId": "page-store-scale-0",
+              "canonicalUrl": "/en-US/store/2000000"
+            },
+            {
+              "pageId": "page-store-scale-2",
+              "canonicalUrl": "/en-US/store/2000002"
+            },
+            {
+              "pageId": "page-store-scale-4",
+              "canonicalUrl": "/en-US/store/2000004"
+            },
+            {
+              "pageId": "page-store-scale-6",
+              "canonicalUrl": "/en-US/store/2000006"
+            }
+          ],
+          "sampleTruncated": true,
+          "previewElapsedMilliseconds": 773.9270000000106,
+          "planSteps": [
+            "SEARCH p USING INDEX page_instances_template_canonical_unique (template_id=?)",
+            "CORRELATED SCALAR SUBQUERY 1",
+            "SEARCH t USING INDEX tags_template_namespace_value_unique (template_id=? AND namespace=? AND value=?)",
+            "SEARCH pt USING COVERING INDEX page_tags_selector_idx (template_id=? AND tag_id=? AND page_instance_id=?)"
+          ],
+          "planUsesIndex": true,
+          "affectedPlacementKeys": ["footer"],
+          "estimatedAffectedPlacementRows": 500001,
+          "pairwiseOverlaps": [
+            {
+              "variantId": "variant-store-fast-food",
+              "matchCount": 200001,
+              "conflictingPlacementKeys": []
+            },
+            {
+              "variantId": "variant-store-burger-king",
+              "matchCount": 50000,
+              "conflictingPlacementKeys": []
+            },
+            {
+              "variantId": "variant-store-mcdonalds",
+              "matchCount": 50001,
+              "conflictingPlacementKeys": []
+            }
+          ]
+        },
+        {
+          "variantId": "variant-store-fast-food",
+          "variantRevisionId": "revision-store-fast-food-1",
+          "selector": "category = 'fast_food'",
+          "priority": 20,
+          "matchCount": 200001,
+          "samplePages": [
+            {
+              "pageId": "page-store-1001",
+              "canonicalUrl": "/en-US/store/1001"
+            },
+            {
+              "pageId": "page-store-scale-0",
+              "canonicalUrl": "/en-US/store/2000000"
+            },
+            {
+              "pageId": "page-store-scale-2",
+              "canonicalUrl": "/en-US/store/2000002"
+            },
+            {
+              "pageId": "page-store-scale-10",
+              "canonicalUrl": "/en-US/store/2000010"
+            },
+            {
+              "pageId": "page-store-scale-12",
+              "canonicalUrl": "/en-US/store/2000012"
+            }
+          ],
+          "sampleTruncated": true,
+          "previewElapsedMilliseconds": 760.8358750000043,
+          "planSteps": [
+            "SEARCH p USING INDEX page_instances_template_canonical_unique (template_id=?)",
+            "CORRELATED SCALAR SUBQUERY 1",
+            "SEARCH t USING INDEX tags_template_namespace_value_unique (template_id=? AND namespace=? AND value=?)",
+            "SEARCH pt USING COVERING INDEX page_tags_selector_idx (template_id=? AND tag_id=? AND page_instance_id=?)"
+          ],
+          "planUsesIndex": true,
+          "affectedPlacementKeys": ["category-promo"],
+          "estimatedAffectedPlacementRows": 200001,
+          "pairwiseOverlaps": [
+            {
+              "variantId": "variant-store-chain",
+              "matchCount": 200001,
+              "conflictingPlacementKeys": []
+            },
+            {
+              "variantId": "variant-store-burger-king",
+              "matchCount": 50000,
+              "conflictingPlacementKeys": []
+            },
+            {
+              "variantId": "variant-store-mcdonalds",
+              "matchCount": 50001,
+              "conflictingPlacementKeys": []
+            }
+          ]
+        },
+        {
+          "variantId": "variant-store-burger-king",
+          "variantRevisionId": "revision-store-burger-king-1",
+          "selector": "brand = 'burger_king'",
+          "priority": 30,
+          "matchCount": 50000,
+          "samplePages": [
+            {
+              "pageId": "page-store-scale-10",
+              "canonicalUrl": "/en-US/store/2000010"
+            },
+            {
+              "pageId": "page-store-scale-30",
+              "canonicalUrl": "/en-US/store/2000030"
+            },
+            {
+              "pageId": "page-store-scale-50",
+              "canonicalUrl": "/en-US/store/2000050"
+            },
+            {
+              "pageId": "page-store-scale-70",
+              "canonicalUrl": "/en-US/store/2000070"
+            },
+            {
+              "pageId": "page-store-scale-90",
+              "canonicalUrl": "/en-US/store/2000090"
+            }
+          ],
+          "sampleTruncated": true,
+          "previewElapsedMilliseconds": 712.812957999995,
+          "planSteps": [
+            "SEARCH p USING INDEX page_instances_template_canonical_unique (template_id=?)",
+            "CORRELATED SCALAR SUBQUERY 1",
+            "SEARCH t USING INDEX tags_template_namespace_value_unique (template_id=? AND namespace=? AND value=?)",
+            "SEARCH pt USING COVERING INDEX page_tags_selector_idx (template_id=? AND tag_id=? AND page_instance_id=?)"
+          ],
+          "planUsesIndex": true,
+          "affectedPlacementKeys": ["primary-hero"],
+          "estimatedAffectedPlacementRows": 50000,
+          "pairwiseOverlaps": [
+            {
+              "variantId": "variant-store-chain",
+              "matchCount": 50000,
+              "conflictingPlacementKeys": []
+            },
+            {
+              "variantId": "variant-store-fast-food",
+              "matchCount": 50000,
+              "conflictingPlacementKeys": []
+            },
+            {
+              "variantId": "variant-store-mcdonalds",
+              "matchCount": 0,
+              "conflictingPlacementKeys": ["primary-hero"]
+            }
+          ]
+        },
+        {
+          "variantId": "variant-store-mcdonalds",
+          "variantRevisionId": "revision-store-mcdonalds-1",
+          "selector": "brand = 'mcdonalds'",
+          "priority": 30,
+          "matchCount": 50001,
+          "samplePages": [
+            {
+              "pageId": "page-store-1001",
+              "canonicalUrl": "/en-US/store/1001"
+            },
+            {
+              "pageId": "page-store-scale-0",
+              "canonicalUrl": "/en-US/store/2000000"
+            },
+            {
+              "pageId": "page-store-scale-20",
+              "canonicalUrl": "/en-US/store/2000020"
+            },
+            {
+              "pageId": "page-store-scale-40",
+              "canonicalUrl": "/en-US/store/2000040"
+            },
+            {
+              "pageId": "page-store-scale-60",
+              "canonicalUrl": "/en-US/store/2000060"
+            }
+          ],
+          "sampleTruncated": true,
+          "previewElapsedMilliseconds": 710.604250000004,
+          "planSteps": [
+            "SEARCH p USING INDEX page_instances_template_canonical_unique (template_id=?)",
+            "CORRELATED SCALAR SUBQUERY 1",
+            "SEARCH t USING INDEX tags_template_namespace_value_unique (template_id=? AND namespace=? AND value=?)",
+            "SEARCH pt USING COVERING INDEX page_tags_selector_idx (template_id=? AND tag_id=? AND page_instance_id=?)"
+          ],
+          "planUsesIndex": true,
+          "affectedPlacementKeys": ["primary-hero"],
+          "estimatedAffectedPlacementRows": 50001,
+          "pairwiseOverlaps": [
+            {
+              "variantId": "variant-store-chain",
+              "matchCount": 50001,
+              "conflictingPlacementKeys": []
+            },
+            {
+              "variantId": "variant-store-fast-food",
+              "matchCount": 50001,
+              "conflictingPlacementKeys": []
+            },
+            {
+              "variantId": "variant-store-burger-king",
+              "matchCount": 0,
+              "conflictingPlacementKeys": ["primary-hero"]
+            }
+          ]
+        }
+      ],
+      "scalePublication": {
+        "engine": "@repo/cms-service",
+        "publicationId": "publication-store-scale-1000000",
+        "pageCount": 1000002,
+        "persistedDocumentCount": 1000002,
+        "manifestCount": 5,
+        "crossPublicationReusedManifestCount": 2,
+        "currentPointerActive": true,
+        "preview": {
+          "eligiblePageCount": 1000002,
+          "sampledPageCount": 50,
+          "truncated": true,
+          "elapsedMilliseconds": 51.87079200000153,
+          "usesIndex": true
+        },
+        "publicationElapsedMilliseconds": 558791.99025,
+        "publishedDocumentsPerSecond": 1789.5782642707627,
+        "estimatedManifestPageStorageBytes": 862480639,
+        "logicalExpandedRenderedDocumentBytes": 1143681174,
+        "idempotentRepublish": {
+          "publicationId": "publication-store-scale-1000000",
+          "inputHashUnchanged": true,
+          "reusedCurrentPublication": true,
+          "reusedManifestCount": 5,
+          "logicalExpandedRenderedDocumentBytes": 1143681174,
+          "elapsedMilliseconds": 242113.68595800002,
+          "documentRowsUnchanged": true
+        },
+        "pageToManifestDedup": {
+          "uniqueManifestCount": 5,
+          "pagesSharingManifest": 1000002,
+          "reusedPageCount": 999997,
+          "deduplicatedPageRatio": 0.99999500001,
+          "averagePagesPerManifest": 200000.4,
+          "logicalExpandedPlacementCount": 4000008,
+          "uniqueStoredPlacementCount": 20,
+          "savedPlacementCount": 3999988,
+          "savedPlacementRatio": 0.99999500001,
+          "logicalExpandedCanonicalStructureBytes": 828401621,
+          "uniqueCanonicalStructureBytes": 4214,
+          "savedCanonicalStructureBytes": 828397407
+        },
+        "allocatedBytesBeforePublication": 1895190528,
+        "allocatedBytesAfterPublication": 3205939200,
+        "publicationStorageDeltaBytes": 1310748672,
+        "publicationStorageBytesPerDocument": 1310.7460505078989,
+        "serveReadPath": {
+          "materializationMode": "manifest",
+          "sqlQueryCountPerRequest": 2,
+          "selectorSqlExecutionsPerRequest": 0,
+          "sqlStatements": [
+            "\n  SELECT pages.route_status AS currentRouteStatus,\n         current.publication_id AS publicationId,\n         documents.page_instance_id AS pageInstanceId,\n         documents.manifest_id AS manifestId,\n         documents.document_hash AS documentHash,\n         documents.rendered_document_json AS renderedDocumentJson,\n         documents.resolved_data_json AS resolvedDataJson\n  FROM page_instances AS pages\n  LEFT JOIN current_publications AS current\n    ON current.template_id = pages.template_id\n  LEFT JOIN published_page_documents AS documents\n    ON documents.template_id = pages.template_id\n   AND documents.page_instance_id = pages.id\n   AND documents.publication_id = current.publication_id\n  WHERE pages.template_id = ? AND pages.canonical_url = ?\n",
+            "\n  SELECT items.ordinal, items.placement_key AS placementKey,\n         items.block_version_id AS blockVersionId, types.key AS blockType,\n         versions.content_json AS contentJson,\n         items.source_variant_revision_id AS sourceRevisionId,\n         items.source_operation_id AS sourceOperationId,\n         items.source_priority AS sourcePriority\n  FROM document_manifest_items AS items\n  JOIN document_manifests AS manifests ON manifests.id = items.manifest_id\n  JOIN block_versions AS versions ON versions.id = items.block_version_id\n  JOIN block_lineages AS lineages ON lineages.id = versions.lineage_id\n  JOIN block_types AS types ON types.id = versions.block_type_id\n  WHERE manifests.template_id = ? AND manifests.id = ?\n    AND lineages.template_id = manifests.template_id\n  ORDER BY items.ordinal\n"
+          ],
+          "sampleCount": 250,
+          "p50Milliseconds": 0.05595900001935661,
+          "p95Milliseconds": 0.06808300002012402
+        }
+      },
+      "publicServeReadPath": {
+        "materializationMode": "expanded",
+        "sqlQueryCountPerRequest": 1,
+        "selectorSqlExecutionsPerRequest": 0,
+        "sqlStatements": [
+          "\n  SELECT pages.route_status AS currentRouteStatus,\n         current.publication_id AS publicationId,\n         documents.page_instance_id AS pageInstanceId,\n         documents.manifest_id AS manifestId,\n         documents.document_hash AS documentHash,\n         documents.rendered_document_json AS renderedDocumentJson,\n         documents.resolved_data_json AS resolvedDataJson\n  FROM page_instances AS pages\n  LEFT JOIN current_publications AS current\n    ON current.template_id = pages.template_id\n  LEFT JOIN published_page_documents AS documents\n    ON documents.template_id = pages.template_id\n   AND documents.page_instance_id = pages.id\n   AND documents.publication_id = current.publication_id\n  WHERE pages.template_id = ? AND pages.canonical_url = ?\n"
+        ],
+        "sampleCount": 100,
+        "p50Milliseconds": 0.013875000062398612,
+        "p95Milliseconds": 0.019709000014699996
+      },
+      "interpolationManifestSharing": {
+        "firstPageId": "page-store-1001",
+        "secondPageId": "page-store-scale-0",
+        "sharedManifestId": "manifest-store-mcd-v1",
+        "sameStructuralManifest": true,
+        "renderedHeroHeadlines": [
+          "Buy now McDonald's Market — San Francisco",
+          "Buy now Scale Store 2000000 — Market 0"
+        ],
+        "renderedOutputDiffers": true,
+        "documentHashesDiffer": true
+      },
+      "mutationPropagation": {
+        "fastFoodPromoUpdateReachedBothBrands": true,
+        "fastFoodPromoUpdateLeftBrandHeroesUnchanged": true,
+        "mcdonaldsHeroEditIsolatedFromBurgerKingAndDefault": true
+      },
+      "namedBrandsSharedUnchangedBlockVersionIds": [
+        "block-store-footer-v2-chain",
+        "block-store-navigation-v1",
+        "block-store-promo-v2-fast"
+      ],
+      "independentTagRemoval": {
+        "before": ["brand=mcdonalds", "category=fast_food", "store_type=chain_store"],
+        "after": ["brand=mcdonalds", "store_type=chain_store"],
+        "removedOnlyRequestedMembership": true
+      },
+      "routeStatusOutcomes": [
+        {
+          "routeStatus": "live",
+          "actualHttpStatus": 200,
+          "reason": "served",
+          "serviceVerified": true
+        },
+        {
+          "routeStatus": "not_live",
+          "actualHttpStatus": 404,
+          "reason": "not_live",
+          "serviceVerified": true
+        },
+        {
+          "routeStatus": "archived",
+          "actualHttpStatus": 404,
+          "reason": "archived",
+          "serviceVerified": true
+        }
+      ],
+      "limitations": [
+        "Scale timings and allocated bytes are measurements of this local SQLite run only.",
+        "Route-status outcomes are verified on a bounded service fixture, separate from the configurable scale database.",
+        "The configurable scale database is previewed and published through the generic CmsService path; atomic failure and rollback use a bounded integration fixture."
+      ]
+    },
+    "structuralReplacement": {
+      "issueId": "AUT-529",
+      "templateId": "structural-marketing",
+      "defaultPlacementCount": 24,
+      "effectivePlacementCount": 23,
+      "sparseOperationCount": 2,
+      "inheritedPlacementCount": 22,
+      "inheritanceRatio": 0.9166666666666666,
+      "meetsNinetyPercentInheritance": true,
+      "stableHeroPlacementPreserved": true,
+      "heroTypeChangedFrom": "hero",
+      "heroTypeChangedTo": "hero_alt",
+      "tombstonedPlacementKey": "announcement-promo",
+      "unaffectedBlockVersionIds": [
+        "structural-block:navigation:v1",
+        "structural-block:content-01:v1",
+        "structural-block:content-02:v1",
+        "structural-block:content-03:v1",
+        "structural-block:content-04:v1",
+        "structural-block:content-05:v1",
+        "structural-block:content-06:v1",
+        "structural-block:content-07:v1",
+        "structural-block:content-08:v1",
+        "structural-block:content-09:v1",
+        "structural-block:content-10:v1",
+        "structural-block:content-11:v1",
+        "structural-block:content-12:v1",
+        "structural-block:content-13:v1",
+        "structural-block:content-14:v1",
+        "structural-block:content-15:v1",
+        "structural-block:content-16:v1",
+        "structural-block:content-17:v1",
+        "structural-block:content-18:v1",
+        "structural-block:content-19:v1",
+        "structural-block:content-20:v1",
+        "structural-block:content-21:v1"
+      ],
+      "comparison": [
+        {
+          "placementKey": "navigation",
+          "defaultBlockType": "navigation",
+          "defaultBlockVersionId": "structural-block:navigation:v1",
+          "effectiveBlockType": "navigation",
+          "effectiveBlockVersionId": "structural-block:navigation:v1",
+          "contentSourceId": "default:structural-marketing",
+          "inheritedByPointer": true,
+          "tombstoned": false
+        },
+        {
+          "placementKey": "primary-hero",
+          "defaultBlockType": "hero",
+          "defaultBlockVersionId": "structural-block:primary-hero:v1",
+          "effectiveBlockType": "hero_alt",
+          "effectiveBlockVersionId": "structural-block:primary-hero:hero-alt-v1",
+          "contentSourceId": "structural-variant:hero-alt",
+          "inheritedByPointer": false,
+          "tombstoned": false
+        },
+        {
+          "placementKey": "announcement-promo",
+          "defaultBlockType": "promo",
+          "defaultBlockVersionId": "structural-block:announcement-promo:v1",
+          "effectiveBlockType": null,
+          "effectiveBlockVersionId": null,
+          "contentSourceId": null,
+          "inheritedByPointer": false,
+          "tombstoned": true
+        },
+        {
+          "placementKey": "content-01",
+          "defaultBlockType": "content-section",
+          "defaultBlockVersionId": "structural-block:content-01:v1",
+          "effectiveBlockType": "content-section",
+          "effectiveBlockVersionId": "structural-block:content-01:v1",
+          "contentSourceId": "default:structural-marketing",
+          "inheritedByPointer": true,
+          "tombstoned": false
+        },
+        {
+          "placementKey": "content-02",
+          "defaultBlockType": "content-section",
+          "defaultBlockVersionId": "structural-block:content-02:v1",
+          "effectiveBlockType": "content-section",
+          "effectiveBlockVersionId": "structural-block:content-02:v1",
+          "contentSourceId": "default:structural-marketing",
+          "inheritedByPointer": true,
+          "tombstoned": false
+        },
+        {
+          "placementKey": "content-03",
+          "defaultBlockType": "content-section",
+          "defaultBlockVersionId": "structural-block:content-03:v1",
+          "effectiveBlockType": "content-section",
+          "effectiveBlockVersionId": "structural-block:content-03:v1",
+          "contentSourceId": "default:structural-marketing",
+          "inheritedByPointer": true,
+          "tombstoned": false
+        },
+        {
+          "placementKey": "content-04",
+          "defaultBlockType": "content-section",
+          "defaultBlockVersionId": "structural-block:content-04:v1",
+          "effectiveBlockType": "content-section",
+          "effectiveBlockVersionId": "structural-block:content-04:v1",
+          "contentSourceId": "default:structural-marketing",
+          "inheritedByPointer": true,
+          "tombstoned": false
+        },
+        {
+          "placementKey": "content-05",
+          "defaultBlockType": "content-section",
+          "defaultBlockVersionId": "structural-block:content-05:v1",
+          "effectiveBlockType": "content-section",
+          "effectiveBlockVersionId": "structural-block:content-05:v1",
+          "contentSourceId": "default:structural-marketing",
+          "inheritedByPointer": true,
+          "tombstoned": false
+        },
+        {
+          "placementKey": "content-06",
+          "defaultBlockType": "content-section",
+          "defaultBlockVersionId": "structural-block:content-06:v1",
+          "effectiveBlockType": "content-section",
+          "effectiveBlockVersionId": "structural-block:content-06:v1",
+          "contentSourceId": "default:structural-marketing",
+          "inheritedByPointer": true,
+          "tombstoned": false
+        },
+        {
+          "placementKey": "content-07",
+          "defaultBlockType": "content-section",
+          "defaultBlockVersionId": "structural-block:content-07:v1",
+          "effectiveBlockType": "content-section",
+          "effectiveBlockVersionId": "structural-block:content-07:v1",
+          "contentSourceId": "default:structural-marketing",
+          "inheritedByPointer": true,
+          "tombstoned": false
+        },
+        {
+          "placementKey": "content-08",
+          "defaultBlockType": "content-section",
+          "defaultBlockVersionId": "structural-block:content-08:v1",
+          "effectiveBlockType": "content-section",
+          "effectiveBlockVersionId": "structural-block:content-08:v1",
+          "contentSourceId": "default:structural-marketing",
+          "inheritedByPointer": true,
+          "tombstoned": false
+        },
+        {
+          "placementKey": "content-09",
+          "defaultBlockType": "content-section",
+          "defaultBlockVersionId": "structural-block:content-09:v1",
+          "effectiveBlockType": "content-section",
+          "effectiveBlockVersionId": "structural-block:content-09:v1",
+          "contentSourceId": "default:structural-marketing",
+          "inheritedByPointer": true,
+          "tombstoned": false
+        },
+        {
+          "placementKey": "content-10",
+          "defaultBlockType": "content-section",
+          "defaultBlockVersionId": "structural-block:content-10:v1",
+          "effectiveBlockType": "content-section",
+          "effectiveBlockVersionId": "structural-block:content-10:v1",
+          "contentSourceId": "default:structural-marketing",
+          "inheritedByPointer": true,
+          "tombstoned": false
+        },
+        {
+          "placementKey": "content-11",
+          "defaultBlockType": "content-section",
+          "defaultBlockVersionId": "structural-block:content-11:v1",
+          "effectiveBlockType": "content-section",
+          "effectiveBlockVersionId": "structural-block:content-11:v1",
+          "contentSourceId": "default:structural-marketing",
+          "inheritedByPointer": true,
+          "tombstoned": false
+        },
+        {
+          "placementKey": "content-12",
+          "defaultBlockType": "content-section",
+          "defaultBlockVersionId": "structural-block:content-12:v1",
+          "effectiveBlockType": "content-section",
+          "effectiveBlockVersionId": "structural-block:content-12:v1",
+          "contentSourceId": "default:structural-marketing",
+          "inheritedByPointer": true,
+          "tombstoned": false
+        },
+        {
+          "placementKey": "content-13",
+          "defaultBlockType": "content-section",
+          "defaultBlockVersionId": "structural-block:content-13:v1",
+          "effectiveBlockType": "content-section",
+          "effectiveBlockVersionId": "structural-block:content-13:v1",
+          "contentSourceId": "default:structural-marketing",
+          "inheritedByPointer": true,
+          "tombstoned": false
+        },
+        {
+          "placementKey": "content-14",
+          "defaultBlockType": "content-section",
+          "defaultBlockVersionId": "structural-block:content-14:v1",
+          "effectiveBlockType": "content-section",
+          "effectiveBlockVersionId": "structural-block:content-14:v1",
+          "contentSourceId": "default:structural-marketing",
+          "inheritedByPointer": true,
+          "tombstoned": false
+        },
+        {
+          "placementKey": "content-15",
+          "defaultBlockType": "content-section",
+          "defaultBlockVersionId": "structural-block:content-15:v1",
+          "effectiveBlockType": "content-section",
+          "effectiveBlockVersionId": "structural-block:content-15:v1",
+          "contentSourceId": "default:structural-marketing",
+          "inheritedByPointer": true,
+          "tombstoned": false
+        },
+        {
+          "placementKey": "content-16",
+          "defaultBlockType": "content-section",
+          "defaultBlockVersionId": "structural-block:content-16:v1",
+          "effectiveBlockType": "content-section",
+          "effectiveBlockVersionId": "structural-block:content-16:v1",
+          "contentSourceId": "default:structural-marketing",
+          "inheritedByPointer": true,
+          "tombstoned": false
+        },
+        {
+          "placementKey": "content-17",
+          "defaultBlockType": "content-section",
+          "defaultBlockVersionId": "structural-block:content-17:v1",
+          "effectiveBlockType": "content-section",
+          "effectiveBlockVersionId": "structural-block:content-17:v1",
+          "contentSourceId": "default:structural-marketing",
+          "inheritedByPointer": true,
+          "tombstoned": false
+        },
+        {
+          "placementKey": "content-18",
+          "defaultBlockType": "content-section",
+          "defaultBlockVersionId": "structural-block:content-18:v1",
+          "effectiveBlockType": "content-section",
+          "effectiveBlockVersionId": "structural-block:content-18:v1",
+          "contentSourceId": "default:structural-marketing",
+          "inheritedByPointer": true,
+          "tombstoned": false
+        },
+        {
+          "placementKey": "content-19",
+          "defaultBlockType": "content-section",
+          "defaultBlockVersionId": "structural-block:content-19:v1",
+          "effectiveBlockType": "content-section",
+          "effectiveBlockVersionId": "structural-block:content-19:v1",
+          "contentSourceId": "default:structural-marketing",
+          "inheritedByPointer": true,
+          "tombstoned": false
+        },
+        {
+          "placementKey": "content-20",
+          "defaultBlockType": "content-section",
+          "defaultBlockVersionId": "structural-block:content-20:v1",
+          "effectiveBlockType": "content-section",
+          "effectiveBlockVersionId": "structural-block:content-20:v1",
+          "contentSourceId": "default:structural-marketing",
+          "inheritedByPointer": true,
+          "tombstoned": false
+        },
+        {
+          "placementKey": "content-21",
+          "defaultBlockType": "content-section",
+          "defaultBlockVersionId": "structural-block:content-21:v1",
+          "effectiveBlockType": "content-section",
+          "effectiveBlockVersionId": "structural-block:content-21:v1",
+          "contentSourceId": "default:structural-marketing",
+          "inheritedByPointer": true,
+          "tombstoned": false
+        }
+      ],
+      "draftHash": "553e36f0efc641fdeea8ebbb1522688b6ca9f500cff1f85b6ee87d6154bfba88",
+      "currentPublishedHash": "3ca91d8618a91ce98424030621d9861ed29fd41b6405358374fd5eca14c5d22d",
+      "publicationHash": "691e09b1c9e6f23644144c003e752e827a76998f463d567d6467ec5a45bf5021",
+      "publicationMetrics": {
+        "pageCount": 2,
+        "uniqueManifestCount": 2,
+        "reusedPageCount": 0,
+        "manifestReuseRatio": 1,
+        "deduplicatedPageRatio": 0,
+        "expandedPlacementCount": 47,
+        "storedPlacementCount": 47,
+        "savedPlacementCount": 0,
+        "savedPlacementRatio": 0,
+        "expandedManifestBytes": 5767,
+        "storedManifestBytes": 5767,
+        "savedManifestBytes": 0,
+        "manifestReuse": [
+          {
+            "manifestId": "manifest:940122a3dad74879e3e35a7fbe55da97037336611164a39e20e0d397b24dd0ae",
+            "pageCount": 1
+          },
+          {
+            "manifestId": "manifest:ed1f417aa003e29734153a095a20f03ed8bcc5fdb18fb3235b28bc185f840f0d",
+            "pageCount": 1
+          }
+        ]
+      },
+      "publicationElapsedMilliseconds": 2.830666000000008,
+      "publicationSerializedBytes": 7455,
+      "revertEvidence": {
+        "restoredDefaultHero": true,
+        "restoredHeroBlockVersionId": "structural-block:primary-hero:v1",
+        "promoRemainsTombstoned": true
+      },
+      "persistedVerificationRunner": "runPersistedStructuralProof",
+      "limitations": [
+        "This fast proof is domain-only; runPersistedStructuralProof verifies database publication and pointer rollback.",
+        "The 91.67% inheritance result is measured on this 24-placement fixture."
+      ]
+    },
+    "generatedDeterminism": {
+      "issueId": "AUT-530",
+      "seed": 1592639710,
+      "caseCount": 200,
+      "permutationComparisons": 200,
+      "tombstoneCases": 55,
+      "assertions": {
+        "orderIndependent": true,
+        "byteStableHashes": true,
+        "noDuplicatePlacements": true,
+        "tombstonesAbsent": true,
+        "oneContentAndOrderProvenancePerWinner": true
+      },
+      "domainPublicationFailureEvidence": {
+        "rejectedDuplicateCanonicalUrl": true,
+        "errorCode": "DUPLICATE_CANONICAL_URL",
+        "priorPublicationHashUnchanged": true
+      },
+      "limitations": [
+        "Generated-model coverage is deterministic and bounded; it is not an exhaustive proof.",
+        "The fast prior-hash check is domain-only; runServiceIntegrationProof verifies database transaction rollback."
+      ]
+    },
+    "serviceIntegration": {
+      "status": "verified",
+      "publicationFailureLeftPriorPointerActive": true,
+      "rollbackRestoredPriorHash": true,
+      "routeStatusOutcomesVerified": true,
+      "publicationIds": ["store-publication:baseline", "store-publication:changed"],
+      "documentHashes": [
+        "173f0c8b8cfaff9425c595896e3e1d9f4d39bb5b3f73a358582ba17198d6306d",
+        "ccab79f3fc4eb0aa0a1b9ac750d341254a126971df9553e5926928859d8f4b66",
+        "173f0c8b8cfaff9425c595896e3e1d9f4d39bb5b3f73a358582ba17198d6306d"
+      ],
+      "densePersistence": {
+        "templateId": "eligible-vehicles",
+        "pageCount": 24,
+        "publicationPageCount": 24,
+        "manifestCount": 24,
+        "exactPageId": "eligible:en-US:CA:premium",
+        "exactOverridesEveryPlacement": true,
+        "exactMatchedRevisionIds": [
+          "eligible-country:US:r8",
+          "eligible-language:en:r8",
+          "eligible-state:CA:r3",
+          "eligible-purpose:premium:r6",
+          "eligible-exact:eligible:en-US:CA:premium:r15"
+        ],
+        "selectorPlanUsesIndexedSlotLookup": true,
+        "manifestItemsWithOperationProvenance": 168,
+        "conflictRejected": true,
+        "conflictCode": "PRIORITY_CONFLICT",
+        "failedPublicationLeftPriorPointerActive": true,
+        "failedPublicationLeftNoRows": true,
+        "publicationEvidence": {
+          "seedElapsedMilliseconds": 60.98025000002235,
+          "pageCount": 24,
+          "manifestCount": 24,
+          "rowsWritten": 218,
+          "estimatedStorageBytes": 21120,
+          "logicalExpandedRenderedDocumentBytes": 52816,
+          "durationMilliseconds": 20.053500000038184,
+          "persistedPublicationCount": 1,
+          "persistedPageDocumentCount": 24,
+          "persistedManifestCount": 24,
+          "persistedManifestItemCount": 168,
+          "allocatedBytesBeforePublication": 880640,
+          "allocatedBytesAfterPublication": 999424,
+          "storageDeltaBytes": 118784
+        }
+      },
+      "structuralPersistence": {
+        "templateId": "structural-marketing",
+        "defaultPlacementCount": 24,
+        "effectivePlacementCount": 23,
+        "inheritedPlacementCount": 22,
+        "inheritanceRatio": 0.9166666666666666,
+        "meetsNinetyPercentInheritance": true,
+        "stableHeroPlacementPreserved": true,
+        "heroBlockType": "hero_alt",
+        "promoTombstoned": true,
+        "structuralContractEvidence": {
+          "heroAltRejectedHeroPayload": true,
+          "heroAndHeroAltSchemasDiffer": true,
+          "heroAndHeroAltRenderersDiffer": true,
+          "unmatchedPageHeroBlockType": "hero",
+          "createdVariantBlockVersionCount": 1,
+          "activeSparseOperationCount": 2
+        },
+        "baselinePublicationId": "structural-publication:baseline",
+        "changedPublicationId": "structural-publication:changed",
+        "rollbackRestoredBaselineHash": true,
+        "publicationEvidence": {
+          "seedElapsedMilliseconds": 19.698124999995343,
+          "baseline": {
+            "pageCount": 2,
+            "manifestCount": 1,
+            "rowsWritten": 29,
+            "estimatedStorageBytes": 1189,
+            "logicalExpandedRenderedDocumentBytes": 14467,
+            "durationMilliseconds": 4.152874999912456
+          },
+          "changed": {
+            "pageCount": 2,
+            "manifestCount": 2,
+            "rowsWritten": 28,
+            "estimatedStorageBytes": 1189,
+            "logicalExpandedRenderedDocumentBytes": 14203,
+            "durationMilliseconds": 3.6667499999748543
+          },
+          "persistedPublicationCount": 2,
+          "persistedPageDocumentCount": 4,
+          "persistedManifestCount": 2,
+          "persistedManifestItemCount": 47,
+          "allocatedBytesBeforePublication": 630784,
+          "allocatedBytesAfterPublication": 651264,
+          "storageDeltaBytes": 20480
+        }
+      },
+      "storeService": {
+        "publicationFailureLeftPriorPointerActive": true,
+        "publicationFailureLeftNoRows": true,
+        "rollbackRestoredPriorHash": true,
+        "routeStatusOutcomesVerified": true,
+        "routeStatusOutcomes": [
+          {
+            "routeStatus": "live",
+            "status": 200,
+            "reason": "served"
+          },
+          {
+            "routeStatus": "not_live",
+            "status": 404,
+            "reason": "not_live"
+          },
+          {
+            "routeStatus": "archived",
+            "status": 404,
+            "reason": "archived"
+          }
+        ],
+        "servePlanUsesCanonicalIndex": true,
+        "serveReadPath": {
+          "materializationMode": "expanded",
+          "sqlQueryCountPerRequest": 1,
+          "selectorSqlExecutionsPerRequest": 0,
+          "sqlStatements": [
+            "\n  SELECT pages.route_status AS currentRouteStatus,\n         current.publication_id AS publicationId,\n         documents.page_instance_id AS pageInstanceId,\n         documents.manifest_id AS manifestId,\n         documents.document_hash AS documentHash,\n         documents.rendered_document_json AS renderedDocumentJson,\n         documents.resolved_data_json AS resolvedDataJson\n  FROM page_instances AS pages\n  LEFT JOIN current_publications AS current\n    ON current.template_id = pages.template_id\n  LEFT JOIN published_page_documents AS documents\n    ON documents.template_id = pages.template_id\n   AND documents.page_instance_id = pages.id\n   AND documents.publication_id = current.publication_id\n  WHERE pages.template_id = ? AND pages.canonical_url = ?\n"
+          ],
+          "sampleCount": 100,
+          "p50Milliseconds": 0.014082999899983406,
+          "p95Milliseconds": 0.023083999985828996
+        },
+        "publicationIds": ["store-publication:baseline", "store-publication:changed"],
+        "documentHashes": [
+          "173f0c8b8cfaff9425c595896e3e1d9f4d39bb5b3f73a358582ba17198d6306d",
+          "ccab79f3fc4eb0aa0a1b9ac750d341254a126971df9553e5926928859d8f4b66",
+          "173f0c8b8cfaff9425c595896e3e1d9f4d39bb5b3f73a358582ba17198d6306d"
+        ]
+      }
+    },
+    "productionSloClaimed": false
+  }
+}

@@ -240,15 +240,74 @@ Run this only after stopping the development server and unrelated indexers:
 bun run scenarios:benchmark:1m
 ```
 
-<!-- STORE_1M_EVIDENCE_REQUIRED
-Replace this comment after the actual run with a concise table copied mechanically from
-docs/evidence/store-1m.json. Include: commit/dirty state, lock hash, Bun/SQLite/OS/CPU/memory,
-total wall/CPU/max RSS, database bytes, exact seed/total/slot/tag counts, five class counts,
-canonical/tag/preview plans, seed+preview+publication+republish timings, 250-sample canonical p50/p95,
-published documents, manifests, expanded/stored placements and canonical bytes, storage delta,
-logical expanded rendered bytes, estimated manifest/page bytes, idempotency byte equality,
-SQL-per-resolve/zero-selector statement, and any exact resource limitation.
--->
+The authoritative stress run completed successfully from clean commit
+`69dbe6f8611f258eab542d78da3d64ad45e7f86b`. The machine-readable source is
+`docs/evidence/store-1m.json`; values below are copied from that envelope rather than inferred from
+the bounded run.
+
+| Run provenance and host | Measured result |
+| --- | --- |
+| Git / pre-run tree | `69dbe6f8611f258eab542d78da3d64ad45e7f86b` / clean |
+| Lock SHA-256 / package-manager pin | `57a562d35325b0d7292809b6e3404ee555e50be50a5c048a947d7aea2357e76d` / `bun@1.3.14` |
+| Runtime | actual Bun `1.3.11`; SQLite `3.43.2` |
+| Host | macOS Darwin `24.6.0`, arm64 Apple M4 Max, 16 logical CPUs, 51,539,607,552 bytes (48 GiB) physical memory |
+| Wall / CPU | 910,819.173 ms wall; 803.170 s user CPU; 106.940 s system CPU |
+| Maximum resident memory | 592,068,608 bytes (564.64 MiB) |
+| Final database | 3,205,939,200 bytes (2.986 GiB), 782,700 × 4,096-byte pages, zero freelist pages |
+
+| Persisted cardinality | Exact result |
+| --- | ---: |
+| Requested/inserted scale pages | 1,000,000 / 1,000,000 |
+| Total template pages | 1,000,002 |
+| Scalar slot rows / tag memberships | 4,000,008 / 1,300,004 |
+| Chain / independent | 500,001 / 500,001 |
+| Fast food / generic fast-food chain | 200,001 / 100,000 |
+| McDonald's / Burger King | 50,001 / 50,000 |
+| Chain non-fast-food | 300,000 |
+| Publications / page documents | 2 / 1,000,004 |
+| Manifests / manifest items | 5 / 20 |
+
+The initial seed took 62,804.599 ms. Replaying the same scale identity took 66.209 ms, inserted zero
+rows, reproduced the same SHA-256 identity, and left page and membership counts unchanged. Integrity
+was `ok` on schema v6 with zero foreign-key violations.
+
+All inspected read and selector plans used named indexes. Canonical lookup used
+`templates_domain_pattern_unique` followed by `page_instances_template_canonical_unique`. Tag lookup
+used `page_tags_selector_idx` and `page_instances_id_template_unique`, with a temporary B-tree only
+for the requested ordering. Each selector preview used the canonical-page index plus
+`tags_template_namespace_value_unique` and the covering `page_tags_selector_idx`:
+
+| Selector | Exact matches | Preview time |
+| --- | ---: | ---: |
+| `store_type = 'chain_store'` | 500,001 | 773.927 ms |
+| `category = 'fast_food'` | 200,001 | 760.836 ms |
+| `brand = 'burger_king'` | 50,000 | 712.813 ms |
+| `brand = 'mcdonalds'` | 50,001 | 710.604 ms |
+
+The bounded 50-row publication preview over all 1,000,002 eligible pages took 51.871 ms. The full
+generic publication took 558,791.990 ms and persisted 1,000,002 documents at a measured local rate
+of 1,789.58 documents/second. The identical-input compile took 242,113.686 ms, returned the same
+publication ID and input hash, reproduced exactly 1,143,681,174 logical expanded payload bytes, and
+added no page-document rows.
+
+| Publication/storage shape | Exact result |
+| --- | ---: |
+| Published pages / unique manifests | 1,000,002 / 5 |
+| Pages reusing a manifest | 999,997 |
+| Deduplicated-page ratio | 99.999500001% |
+| Logical/stored placements | 4,000,008 / 20 |
+| Logical/stored canonical structure bytes | 828,401,621 / 4,214 |
+| Saved canonical structure bytes | 828,397,407 |
+| Logical fully expanded rendered-document bytes | 1,143,681,174 |
+| Estimated manifest plus page-row bytes | 862,480,639 |
+| SQLite allocation before/after publication | 1,895,190,528 / 3,205,939,200 bytes |
+| Actual publication allocation delta | 1,310,748,672 bytes (1,310.75 bytes/document) |
+
+Across 250 full-scale samples, indexed canonical lookup measured 0.006917 ms p50 and 0.008167 ms
+p95. Manifest reconstruction measured 0.055959 ms p50 and 0.068083 ms p95, using exactly two SQL
+statements and zero selector statements per request. The separate expanded serving fixture used one
+SQL statement and zero selectors. These local hot-cache SQLite measurements compare shapes; they
+are not production SLOs. No resource limitation occurred.
 
 ## Scenario C — structural replacement (`AUT-529`)
 
@@ -289,11 +348,12 @@ in the JSON envelope.
 | Sparse Store (bounded) | 1,002 pages collapse to five manifests; 99.50% of logical placements are not repeated in manifest rows. | Shared manifests are promising when variants alter few placements, but page context/rendered payload bytes still matter. |
 | Structural | 22 of 24 block-version pointers remain inherited while one type changes and one placement is hidden. | Stable placement identity and sparse operations avoid cloning unrelated block content. |
 
-The serving schema currently stores both a manifest pointer and deterministic rendered document
-JSON per page. Manifest metrics therefore describe structural-row/canonical-structure reuse, not a
-claim that total database bytes shrink by the same ratio. The one-million envelope records actual
-allocated bytes before and after publication and bytes per published document so the ADR can weigh
-expanded one-query reads against shared structures honestly.
+The serving schema supports either a manifest pointer plus per-page context or a deterministic
+expanded document payload. The million-row run uses manifest mode; the separate expanded fixture
+proves its one-query read. Manifest metrics therefore describe structural-row/canonical-structure
+reuse, not a claim that total database bytes shrink by the same ratio. The one-million envelope
+records actual allocated bytes before and after publication and bytes per published document so the
+ADR can weigh expanded one-query reads against shared structures honestly.
 
 ## Known limitations and untested production assumptions
 
@@ -314,8 +374,6 @@ expanded one-query reads against shared structures honestly.
 
 ## Final five-phase result
 
-<!-- FINAL_FIVE_PHASE_RESULT_REQUIRED
-Replace this comment only after `bun run five-phase-pass` succeeds. Record the run date, commit,
-phase exits, package test totals, build result, Fallow issue count, browser smoke evidence, and the
-Linear AUT-515 through AUT-532 status/evidence links. Do not mark AUT-530/AUT-532/AUT-514 Done first.
--->
+The final gate has not yet been recorded. Run `bun run five-phase-pass` from the committed evidence
+tree, then replace this sentence with its dated result, package totals, build/Fallow/browser evidence,
+and the Linear closure record. AUT-530, AUT-532, and AUT-514 remain open until that succeeds.
