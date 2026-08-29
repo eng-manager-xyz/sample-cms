@@ -241,18 +241,18 @@ bun run scenarios:benchmark:1m
 ```
 
 The authoritative stress run completed successfully from clean commit
-`69dbe6f8611f258eab542d78da3d64ad45e7f86b`. The machine-readable source is
+`8e6f95d351ec803788221c8956daada2f570219c`. The machine-readable source is
 `docs/evidence/store-1m.json`; values below are copied from that envelope rather than inferred from
 the bounded run.
 
 | Run provenance and host | Measured result |
 | --- | --- |
-| Git / pre-run tree | `69dbe6f8611f258eab542d78da3d64ad45e7f86b` / clean |
-| Lock SHA-256 / package-manager pin | `57a562d35325b0d7292809b6e3404ee555e50be50a5c048a947d7aea2357e76d` / `bun@1.3.14` |
+| Git / pre-run tree | `8e6f95d351ec803788221c8956daada2f570219c` / clean |
+| Lock SHA-256 / package-manager pin | `e18bd62e511e9968b36d2c05bc8a67b9185307bac29735a0d6e5d51ce9445816` / `bun@1.3.14` |
 | Runtime | actual Bun `1.3.11`; SQLite `3.43.2` |
 | Host | macOS Darwin `24.6.0`, arm64 Apple M4 Max, 16 logical CPUs, 51,539,607,552 bytes (48 GiB) physical memory |
-| Wall / CPU | 910,819.173 ms wall; 803.170 s user CPU; 106.940 s system CPU |
-| Maximum resident memory | 592,068,608 bytes (564.64 MiB) |
+| Wall / CPU | 974,249.892 ms wall; 832.533 s user CPU; 116.036 s system CPU |
+| Maximum resident memory | 575,733,760 bytes (549.06 MiB) |
 | Final database | 3,205,939,200 bytes (2.986 GiB), 782,700 × 4,096-byte pages, zero freelist pages |
 
 | Persisted cardinality | Exact result |
@@ -267,7 +267,7 @@ the bounded run.
 | Publications / page documents | 2 / 1,000,004 |
 | Manifests / manifest items | 5 / 20 |
 
-The initial seed took 62,804.599 ms. Replaying the same scale identity took 66.209 ms, inserted zero
+The initial seed took 77,991.270 ms. Replaying the same scale identity took 125.204 ms, inserted zero
 rows, reproduced the same SHA-256 identity, and left page and membership counts unchanged. Integrity
 was `ok` on schema v6 with zero foreign-key violations.
 
@@ -279,14 +279,14 @@ for the requested ordering. Each selector preview used the canonical-page index 
 
 | Selector | Exact matches | Preview time |
 | --- | ---: | ---: |
-| `store_type = 'chain_store'` | 500,001 | 773.927 ms |
-| `category = 'fast_food'` | 200,001 | 760.836 ms |
-| `brand = 'burger_king'` | 50,000 | 712.813 ms |
-| `brand = 'mcdonalds'` | 50,001 | 710.604 ms |
+| `store_type = 'chain_store'` | 500,001 | 788.889 ms |
+| `category = 'fast_food'` | 200,001 | 752.450 ms |
+| `brand = 'burger_king'` | 50,000 | 721.361 ms |
+| `brand = 'mcdonalds'` | 50,001 | 736.053 ms |
 
-The bounded 50-row publication preview over all 1,000,002 eligible pages took 51.871 ms. The full
-generic publication took 558,791.990 ms and persisted 1,000,002 documents at a measured local rate
-of 1,789.58 documents/second. The identical-input compile took 242,113.686 ms, returned the same
+The bounded 50-row publication preview over all 1,000,002 eligible pages took 52.088 ms. The full
+generic publication took 582,582.612 ms and persisted 1,000,002 documents at a measured local rate
+of 1,716.50 documents/second. The identical-input compile took 251,939.625 ms, returned the same
 publication ID and input hash, reproduced exactly 1,143,681,174 logical expanded payload bytes, and
 added no page-document rows.
 
@@ -303,11 +303,12 @@ added no page-document rows.
 | SQLite allocation before/after publication | 1,895,190,528 / 3,205,939,200 bytes |
 | Actual publication allocation delta | 1,310,748,672 bytes (1,310.75 bytes/document) |
 
-Across 250 full-scale samples, indexed canonical lookup measured 0.006917 ms p50 and 0.008167 ms
-p95. Manifest reconstruction measured 0.055959 ms p50 and 0.068083 ms p95, using exactly two SQL
+Across 250 full-scale samples, indexed canonical lookup measured 0.008416 ms p50 and 0.009958 ms
+p95. Manifest reconstruction measured 0.166292 ms p50 and 0.310167 ms p95, using exactly two SQL
 statements and zero selector statements per request. The separate expanded serving fixture used one
-SQL statement and zero selectors. These local hot-cache SQLite measurements compare shapes; they
-are not production SLOs. No resource limitation occurred.
+SQL statement and zero selectors, measuring 0.013917 ms p50 and 0.028000 ms p95. These local
+hot-cache SQLite measurements compare shapes; they are not production SLOs. No resource limitation
+occurred.
 
 ## Scenario C — structural replacement (`AUT-529`)
 
