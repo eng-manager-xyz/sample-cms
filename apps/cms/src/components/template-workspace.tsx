@@ -25,6 +25,7 @@ import { useState } from 'react';
 import { BlockAuthoringProof } from '@/components/block-authoring-proof';
 import { InstanceTable } from '@/components/instance-table';
 import { ScenarioSwitcher } from '@/components/scenario-switcher';
+import { SqliteAuthoringWorkbench } from '@/components/sqlite-authoring-workbench';
 import { TagAuthoringProof } from '@/components/tag-authoring-proof';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -41,6 +42,7 @@ import {
   resolveFixturePlacements,
   scenarioFixtures,
 } from '@/data/scenario-fixtures';
+import type { CmsWorkspaceSnapshot } from '@/data/sqlite-authoring';
 import { parseUrlGrammar } from '@/data/template-grammar';
 import { cn } from '@/lib/cn';
 
@@ -91,7 +93,7 @@ function WorkspaceHeader({ scenario }: Readonly<{ scenario: ScenarioFixture }>) 
           <div className="min-w-0">
             <div className="mb-1.5 flex flex-wrap items-center gap-2">
               <Badge tone="info">Map detail</Badge>
-              <Badge tone="warning">Demo proof fixture</Badge>
+              <Badge tone="success">Editable SQLite + proof fixture</Badge>
               <Badge dot tone={scenario.conflictState === '2 conflicts' ? 'danger' : 'success'}>
                 {scenario.conflictState}
               </Badge>
@@ -541,6 +543,7 @@ function EffectiveDocument({ scenario }: Readonly<{ scenario: ScenarioFixture }>
 
 function CenterWorkspace({
   scenario,
+  initialWorkspace,
   view,
   axes,
   filters,
@@ -553,6 +556,7 @@ function CenterWorkspace({
   onInspectRow,
 }: Readonly<{
   scenario: ScenarioFixture;
+  initialWorkspace: CmsWorkspaceSnapshot;
   view: WorkspaceView;
   axes: [string, string];
   filters: Record<string, string>;
@@ -632,7 +636,19 @@ function CenterWorkspace({
           <InstanceTable scenario={scenario} onInspect={onInspectRow} />
         ) : null}
         {view === 'document' ? <EffectiveDocument scenario={scenario} /> : null}
-        {view === 'blocks' ? <BlockAuthoringProof scenario={scenario} /> : null}
+        {view === 'blocks' ? (
+          <div className="space-y-4">
+            <SqliteAuthoringWorkbench scenario={scenario} initialWorkspace={initialWorkspace} />
+            <details className="rounded-xl border border-line bg-canvas p-3">
+              <summary className="cursor-pointer text-[10px] font-semibold text-ink-muted">
+                Open the schema and lifecycle communication guide
+              </summary>
+              <div className="mt-3">
+                <BlockAuthoringProof scenario={scenario} />
+              </div>
+            </details>
+          </div>
+        ) : null}
         {view === 'tags' ? <TagAuthoringProof scenario={scenario} /> : null}
       </div>
     </section>
@@ -1131,7 +1147,10 @@ function ResolutionPin({
   );
 }
 
-export function TemplateWorkspace({ scenario }: Readonly<{ scenario: ScenarioFixture }>) {
+export function TemplateWorkspace({
+  scenario,
+  initialWorkspace,
+}: Readonly<{ scenario: ScenarioFixture; initialWorkspace: CmsWorkspaceSnapshot }>) {
   const initialLayerId = scenario.layers[1]?.id ?? scenario.layers[0]?.id ?? '';
   const [selectedLayerId, setSelectedLayerId] = useState(initialLayerId);
   const [layerOrder, setLayerOrder] = useState(() => scenario.layers.map((layer) => layer.id));
@@ -1201,6 +1220,7 @@ export function TemplateWorkspace({ scenario }: Readonly<{ scenario: ScenarioFix
         />
         <CenterWorkspace
           scenario={scenario}
+          initialWorkspace={initialWorkspace}
           view={view}
           axes={axes}
           filters={filters}

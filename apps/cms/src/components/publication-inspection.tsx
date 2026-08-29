@@ -1,9 +1,8 @@
+import { useMutation } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import {
   ArrowLeft,
   ArrowRight,
-  Check,
-  CircleAlert,
   Clock3,
   Database,
   FileCheck2,
@@ -23,7 +22,9 @@ import { buttonClassName } from '@/components/ui/button-styles';
 import { Card } from '@/components/ui/card';
 import type { PublicationRecord, ScenarioFixture } from '@/data/scenario-fixtures';
 import { scenarioFixtures } from '@/data/scenario-fixtures';
+import type { CmsWorkspaceSnapshot } from '@/data/sqlite-authoring';
 import { cn } from '@/lib/cn';
+import { executeCmsMutation } from '@/server-functions/cms.functions';
 
 function PublicationCard({
   publication,
@@ -208,13 +209,31 @@ function RequestTrace({ scenario }: Readonly<{ scenario: ScenarioFixture }>) {
   );
 }
 
-export function PublicationInspection({ scenario }: Readonly<{ scenario: ScenarioFixture }>) {
+export function PublicationInspection({
+  scenario,
+  initialWorkspace,
+}: Readonly<{ scenario: ScenarioFixture; initialWorkspace: CmsWorkspaceSnapshot }>) {
   const candidate = scenario.publications.find((publication) => publication.state === 'candidate');
   const active = scenario.publications.find((publication) => publication.state === 'active');
   const rollback = scenario.publications.find((publication) => publication.state === 'rollback');
   const [selectedId, setSelectedId] = useState(active?.id ?? scenario.publications[0]?.id ?? '');
   const [rollbackPreview, setRollbackPreview] = useState(false);
   const [publishPreview, setPublishPreview] = useState(false);
+  const [workspace, setWorkspace] = useState(initialWorkspace);
+  const [actionStatus, setActionStatus] = useState(
+    `Serving ${initialWorkspace.currentPublicationId ?? 'no active publication'}.`
+  );
+  const publicationMutation = useMutation({
+    mutationFn: (kind: 'publish' | 'rollback') =>
+      executeCmsMutation({ data: { kind, scenarioId: scenario.id } }),
+    onSuccess: (result) => {
+      setWorkspace(result.workspace);
+      setActionStatus(result.message);
+      setPublishPreview(false);
+      setRollbackPreview(false);
+    },
+    onError: (error) => setActionStatus(error instanceof Error ? error.message : String(error)),
+  });
   const selected =
     scenario.publications.find((publication) => publication.id === selectedId) ?? active;
 
@@ -226,14 +245,18 @@ export function PublicationInspection({ scenario }: Readonly<{ scenario: Scenari
         <div>
           <div className="mb-2 flex flex-wrap items-center gap-2">
             <Badge tone="info">Publication proof</Badge>
-            <Badge tone="warning">Demo fixture · no write performed</Badge>
+            <Badge tone="success">Live SQLite publication controls</Badge>
           </div>
           <h1 className="text-2xl font-semibold tracking-[-0.035em] text-ink sm:text-3xl">
             {scenario.name} publications
           </h1>
           <p className="mt-1.5 max-w-2xl text-[12px] leading-5 text-ink-muted">
             Inspect atomic publication, immutable serving state, and the retained rollback target
-            before changing any pointer.
+            before changing the real local pointer.
+          </p>
+          <p className="mt-2 font-mono text-[9px] text-ink-faint">
+            active: {workspace.currentPublicationId ?? 'none'} · {workspace.publicationCount}{' '}
+            immutable snapshots · {workspace.currentDocumentHash ?? 'no document hash'}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -392,46 +415,42 @@ export function PublicationInspection({ scenario }: Readonly<{ scenario: Scenari
               <h2 className="mt-0.5 text-sm font-semibold text-ink">Guarded pointer preview</h2>
             </div>
             <div className="space-y-3 p-4">
-              {candidate.conflictCount > 0 ? (
-                <div className="flex gap-2 rounded-lg border border-danger/25 bg-danger-soft p-3 text-danger-strong">
-                  <CircleAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
-                  <div>
-                    <p className="text-[10px] font-semibold">Candidate blocked</p>
-                    <p className="mt-0.5 text-[9px] leading-4">
-                      Resolve {candidate.conflictCount} same-priority conflicts before publication
-                      can begin.
-                    </p>
-                  </div>
+              <div className="flex gap-2 rounded-lg border border-accent/25 bg-accent-soft p-3 text-accent-strong">
+                <Database aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+                <div>
+                  <p className="text-[10px] font-semibold">Live command boundary</p>
+                  <p className="mt-0.5 text-[9px] leading-4">
+                    Confirmation validates the current SQLite revisions and conflicts. The fixture
+                    comparison to the left is explanatory and does not control this action.
+                  </p>
                 </div>
-              ) : (
-                <div className="flex gap-2 rounded-lg border border-success/25 bg-success-soft p-3 text-success-strong">
-                  <Check aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
-                  <div>
-                    <p className="text-[10px] font-semibold">Candidate validated</p>
-                    <p className="mt-0.5 text-[9px] leading-4">
-                      All placements have one deterministic winner.
-                    </p>
-                  </div>
-                </div>
-              )}
+              </div>
               <Button
                 className="w-full"
-                disabled={candidate.conflictCount > 0}
+                disabled={publicationMutation.isPending}
                 onClick={() => setPublishPreview((value) => !value)}
               >
                 <Database aria-hidden="true" className="size-3.5" />
-                Preview publish transaction
+                Review live SQLite publish
               </Button>
               {publishPreview ? (
                 <div
                   role="status"
                   className="rounded-lg border border-accent/25 bg-accent-soft p-3"
                 >
-                  <p className="text-[10px] font-semibold text-accent-strong">Preview only</p>
+                  <p className="text-[10px] font-semibold text-accent-strong">Ready to persist</p>
                   <p className="mt-1 text-[9px] leading-4 text-ink-muted">
-                    Would atomically move active from {active.label} to {candidate.label} and retain{' '}
-                    {active.label} as rollback.
+                    The service will compile the current authoring revisions, write immutable rows,
+                    and atomically replace {workspace.currentPublicationId ?? 'the empty pointer'}.
                   </p>
+                  <Button
+                    className="mt-2 w-full"
+                    size="sm"
+                    disabled={publicationMutation.isPending}
+                    onClick={() => publicationMutation.mutate('publish')}
+                  >
+                    Confirm publish to SQLite
+                  </Button>
                 </div>
               ) : null}
             </div>
@@ -446,7 +465,7 @@ export function PublicationInspection({ scenario }: Readonly<{ scenario: Scenari
                     Rollback
                   </p>
                   <h2 className="mt-0.5 text-sm font-semibold text-ink">
-                    Restore {rollback.label}
+                    Restore retained SQLite target
                   </h2>
                 </div>
               </div>
@@ -455,11 +474,11 @@ export function PublicationInspection({ scenario }: Readonly<{ scenario: Scenari
               <div className="rounded-lg bg-surface-subtle p-3">
                 <p className="text-[9px] leading-4 text-ink-muted">
                   Rollback repoints serving to an existing immutable snapshot. It never recompiles
-                  or mutates {rollback.label}.
+                  or mutates the retained publication.
                 </p>
                 <div className="mt-2 flex items-center gap-1.5 text-[9px] text-ink-faint">
                   <Clock3 aria-hidden="true" className="size-3" />
-                  {rollback.createdAt}
+                  {workspace.rollbackPublicationId ?? 'No retained predecessor'}
                 </div>
               </div>
               <Button
@@ -475,20 +494,41 @@ export function PublicationInspection({ scenario }: Readonly<{ scenario: Scenari
                     Confirmation preview
                   </p>
                   <p className="mt-1 text-[9px] leading-4 text-ink-muted">
-                    Would change only the active pointer: {active.id} → {rollback.id}. This proof UI
-                    intentionally performs no write.
+                    Changes only the active pointer to the retained predecessor. No immutable
+                    publication rows are rewritten.
                   </p>
                   <div className="mt-2 flex gap-2">
                     <Button variant="outline" size="sm" onClick={() => setRollbackPreview(false)}>
                       Cancel
                     </Button>
-                    <Button size="sm" disabled>
-                      Confirm in backend
+                    <Button
+                      size="sm"
+                      disabled={publicationMutation.isPending || !workspace.rollbackPublicationId}
+                      onClick={() => publicationMutation.mutate('rollback')}
+                    >
+                      Confirm rollback
                     </Button>
                   </div>
                 </div>
               ) : null}
+              {!workspace.rollbackPublicationId ? (
+                <p className="text-[8px] leading-4 text-ink-faint">
+                  The current SQLite publication has no retained predecessor.
+                </p>
+              ) : (
+                <p className="truncate font-mono text-[8px] text-ink-faint">
+                  live target: {workspace.rollbackPublicationId}
+                </p>
+              )}
             </div>
+          </Card>
+          <Card className="p-3">
+            <p className="text-[9px] font-semibold uppercase text-ink-faint">
+              SQLite action status
+            </p>
+            <p role="status" className="mt-1 text-[9px] leading-4 text-ink-muted">
+              {actionStatus}
+            </p>
           </Card>
         </aside>
       </div>

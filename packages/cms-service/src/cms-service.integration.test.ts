@@ -727,6 +727,22 @@ describe('AUT-521/AUT-522/AUT-523 immutable blocks and variants', () => {
       order: 9,
       createdBy: 'author',
     });
+    service.reorderDefaultPlacements('tpl-store', {
+      revisionId: 'tpl-store:default:r3',
+      placementKeys: ['primary-hero', 'navigation', 'category-promo', 'footer'],
+      createdBy: 'author',
+    });
+    expect(
+      service
+        .resolvePage('tpl-store', 'page-store-1002')
+        .document.placements.map((placement) => placement.placementKey)
+    ).toEqual(['primary-hero', 'navigation', 'category-promo', 'footer']);
+    expect(() =>
+      service.reorderDefaultPlacements('tpl-store', {
+        placementKeys: ['primary-hero', 'navigation', 'navigation', 'footer'],
+        createdBy: 'author',
+      })
+    ).toThrow('every current placement exactly once');
     expect(
       client.sqlite
         .query<{ count: number }, []>('SELECT count(*) AS count FROM block_versions')

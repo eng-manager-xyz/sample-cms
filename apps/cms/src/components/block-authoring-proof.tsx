@@ -63,13 +63,13 @@ const blockTypes: BlockTypeProof[] = [
   {
     key: 'footer',
     displayName: 'Footer',
-    schemaVersion: 4,
-    fields: [{ key: 'legalText', label: 'Legal text', required: true }],
+    schemaVersion: 1,
+    fields: [{ key: 'legal', label: 'Legal text', required: true }],
     schema: {
       $schema: 'https://json-schema.org/draft/2020-12/schema',
       type: 'object',
-      required: ['legalText'],
-      properties: { legalText: { type: 'string' } },
+      required: ['legal'],
+      properties: { legal: { type: 'string' } },
       additionalProperties: false,
     },
   },
@@ -86,7 +86,7 @@ export function BlockAuthoringProof({ scenario }: Readonly<{ scenario: ScenarioF
     JSON.stringify({ headline: initialPlacement?.draftValue ?? 'Untitled block' }, null, 2)
   );
   const [actionStatus, setActionStatus] = useState(
-    'Choose a command to preview a draft operation. No SQLite write is performed.'
+    'This communication guide explains the lifecycle; use the live SQLite workbench above to persist it.'
   );
   const selectedType =
     blockTypes.find((candidate) => candidate.key === selectedTypeKey) ?? blockTypes[0];
@@ -130,7 +130,7 @@ export function BlockAuthoringProof({ scenario }: Readonly<{ scenario: ScenarioF
             JSON Schema drives the form; saving creates a forked version, never an in-place edit.
           </p>
         </div>
-        <Badge tone="warning">Local draft preview · no write</Badge>
+        <Badge tone="neutral">Communication guide</Badge>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[210px_minmax(0,1fr)]">

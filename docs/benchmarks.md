@@ -374,8 +374,9 @@ ADR can weigh expanded one-query reads against shared structures honestly.
 
 ## Final five-phase result
 
-`bun run five-phase-pass` passed on 2026-08-29 from clean evidence commit
-`e9070af00c48677ad17bd1b5e02d09cf3d61ef7f`.
+`bun run five-phase-pass` passed on 2026-08-29 from the clean final implementation tree after the
+persisted authoring HUD was completed. The committed bounded and million-row ledgers retain their
+own exact source commits and lockfile digests; the verifier rejects drift.
 
 | Phase | Result | Owning Linear work |
 | --- | --- | --- |
@@ -385,15 +386,19 @@ ADR can weigh expanded one-query reads against shared structures honestly.
 | 4 — HUD and scenarios | TanStack HUD tests, fresh bounded proof, evidence verification, and client/SSR/Nitro production build passed. | AUT-526–AUT-530 |
 | 5 — cross-workspace audit | Committed bounded and one-million ledgers verified; boundaries, Biome, TypeScript, all tests, build, and Fallow passed. | AUT-530–AUT-532 |
 
-The workspace total was 102 tests and 1,070 assertions: database 8/57, domain 62/750, service
-10/120, scenarios 6/97, and CMS UI/router 16/46. Fallow reported zero issues across unused files,
+The workspace total was 107 tests and 1,116 assertions: database 8/57, domain 62/750, service
+10/122, scenarios 6/97, and CMS UI/router/server 21/90. Fallow reported zero issues across unused files,
 exports, dependencies, cycles, unresolved imports, boundary/policy violations, and stale
 suppressions.
 
-Production-browser smoke against the built server rendered `/`, `/templates/stores`, and
-`/publications/stores` with live SQLite schema v6. The instance table advanced from rows 1–8 to
-9–16 of 1,000,000 through its bounded server-function page; the live/missing-document fixture
-reported HTTP 503 without selector SQL; the browser console contained zero warnings or errors.
+Production-browser smoke against the built server rendered `/`, all three template workbenches,
+and `/publications/stores` with live SQLite schema v6. The Store workbench persisted a fifth block,
+published two pages, and retained both the block and second immutable publication after a full
+reload. Eligible Vehicles exposed seven editable placements. The structural variant exposed 23
+visible placements, one tombstone, one `hero_alt` winner, and 22 inherited placements. The
+publication route read the same live pointer, document hash, and two-publication history. Earlier
+route/table smoke also advanced the bounded instance page and exercised the unsafe
+live-without-document HTTP 503 fixture with no selector SQL; the browser console was clean.
 
-Linear closure is performed only after this evidence is committed and reverified. The handoff and
-issue comments link back to this report for AUT-515 through AUT-532.
+Linear closure follows the clean gate. Each AUT-514–AUT-532 handoff comment names its acceptance
+evidence and points back to this report; the parent closes only after every child is Done.

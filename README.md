@@ -40,6 +40,14 @@ bun run dev
 The application opens at `http://localhost:3000`. Its SQLite access remains behind TanStack server
 functions; browser modules cannot import the database or service packages directly.
 
+Open any `/templates/:templateId` route and choose **Block authoring** for the persisted workbench.
+The HUD can add, reorder, version, replace, hide, and revert stable placements; create linked or
+explicitly empty variants; preview and revise selectors; change priority; publish atomically; and
+roll back the serving pointer. Its inputs are validated at the server-function boundary and then
+delegate to the same `CmsService` used by the executable proofs. The Store foundation and bounded
+Eligible Vehicles/structural workbenches are real SQLite rows; the projection, comparison, and
+million-cardinality panels remain clearly labeled explanatory fixtures.
+
 The standard validation commands are:
 
 ```bash
@@ -89,8 +97,8 @@ docs                     Process guide, measurements, and production ADR
 
 The primary HUD routes are `/`, `/templates/stores`, `/templates/eligible-vehicles`,
 `/templates/structural-proof`, and the corresponding `/publications/:templateId` views. UI
-fixtures are labeled as demonstrations; only the scenario evidence commands above create benchmark
-evidence.
+authoring and publication controls persist bounded SQLite state. Explanatory projections are
+labeled as fixtures, and only the scenario evidence commands above create benchmark evidence.
 
 ## Five-phase delivery gate
 

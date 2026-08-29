@@ -67,7 +67,7 @@ export function TagAuthoringProof({ scenario }: Readonly<{ scenario: ScenarioFix
             Membership is independent: removing a brand never removes category or store-type tags.
           </p>
         </div>
-        <Badge tone="warning">Demo fixture · no SQLite write</Badge>
+        <Badge tone="neutral">Fixture-scale tag explorer</Badge>
       </div>
 
       <section
@@ -208,7 +208,7 @@ export function TagAuthoringProof({ scenario }: Readonly<{ scenario: ScenarioFix
             <Button
               onClick={() =>
                 setAuditMessage(
-                  `Fixture apply recorded: ${selectedTag}; ${previewCount.toLocaleString()} matched, ${candidateRows.length} sample rows shown; no database mutation.`
+                  `Fixture preview recorded: ${selectedTag}; ${previewCount.toLocaleString()} matched and ${candidateRows.length} bounded samples are shown.`
                 )
               }
             >
@@ -224,8 +224,8 @@ export function TagAuthoringProof({ scenario }: Readonly<{ scenario: ScenarioFix
               {auditMessage}
             </p>
             <p className="mt-3 border-t border-line pt-3 text-[8px] leading-4 text-ink-faint">
-              Production mutation is owned by the validated service API. This communication surface
-              intentionally cannot bypass it.
+              Persisted bulk assignment is owned by the validated service API; this panel focuses on
+              the bounded match and provenance explanation.
             </p>
           </aside>
         </div>

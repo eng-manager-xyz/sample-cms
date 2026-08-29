@@ -445,15 +445,10 @@ export class CmsService {
   }
 
   private transaction<T>(operation: () => T): T {
-    this.client.sqlite.exec('BEGIN IMMEDIATE');
-    try {
-      const result = operation();
-      this.client.sqlite.exec('COMMIT');
-      return result;
-    } catch (error) {
-      this.client.sqlite.exec('ROLLBACK');
-      throw error;
-    }
+    // Bun's transaction wrapper nests with savepoints. That lets a caller group several public
+    // service commands plus a final validation/read projection into one atomic unit while each
+    // command keeps its own transaction boundary when called independently.
+    return this.client.sqlite.transaction(operation).immediate();
   }
 
   private requireTemplate(templateId: string, active = false): TemplateRecord {
@@ -2380,7 +2375,10 @@ export class CmsService {
         this.replaceContentOperation(operations, input.placementKey, {
           operationKind: 'tombstone',
           blockVersionId: null,
-        }),
+        }).filter(
+          (operation) =>
+            operation.placementKey !== input.placementKey || operation.operationKind !== 'order'
+        ),
     });
   }
 
@@ -2418,6 +2416,55 @@ export class CmsService {
           blockVersionId: null,
           orderIndex: input.order,
         },
+      ],
+    });
+  }
+
+  /** Persists a complete visible order for one variant in a single revision. */
+  reorderVariantPlacements(
+    templateId: string,
+    variantId: string,
+    input: {
+      readonly revisionId?: string;
+      readonly placementKeys: readonly string[];
+      readonly createdBy: string;
+    }
+  ): VariantRevisionRecord {
+    const variant = this.requireVariant(templateId, variantId);
+    if (variant.isDefault) {
+      throw new CmsServiceError(
+        'INVALID_INPUT',
+        'Use the default-document order command for the template default.'
+      );
+    }
+    if (
+      input.placementKeys.length === 0 ||
+      input.placementKeys.some((key) => key.trim().length === 0) ||
+      new Set(input.placementKeys).size !== input.placementKeys.length
+    ) {
+      throw new CmsServiceError(
+        'INVALID_INPUT',
+        'A variant reorder requires unique, non-empty visible placement keys.'
+      );
+    }
+    return this.forkRevisionSnapshot(templateId, variantId, {
+      revisionId: input.revisionId,
+      createdBy: input.createdBy,
+      transform: (operations) => [
+        ...operations
+          .filter((operation) => operation.operationKind !== 'order')
+          .map((operation) => ({
+            placementKey: operation.placementKey,
+            operationKind: operation.operationKind,
+            blockVersionId: operation.blockVersionId,
+            orderIndex: operation.orderIndex,
+          })),
+        ...input.placementKeys.map((placementKey, orderIndex) => ({
+          placementKey,
+          operationKind: 'order' as const,
+          blockVersionId: null,
+          orderIndex,
+        })),
       ],
     });
   }
@@ -2689,6 +2736,57 @@ export class CmsService {
   ): VariantRevisionRecord {
     const defaultVariant = this.requireDefaultVariant(templateId);
     return this.reorderVariantPlacement(templateId, defaultVariant.id, input);
+  }
+
+  /** Rewrites the complete default placement order in one immutable revision. */
+  reorderDefaultPlacements(
+    templateId: string,
+    input: {
+      readonly revisionId?: string;
+      readonly placementKeys: readonly string[];
+      readonly createdBy: string;
+    }
+  ): VariantRevisionRecord {
+    const defaultVariant = this.requireDefaultVariant(templateId);
+    if (!defaultVariant.activeRevisionId) {
+      throw new CmsServiceError('CONFLICT', 'Template default has no active revision.');
+    }
+    const operations = this.loadRevisionOperations(templateId, defaultVariant.activeRevisionId);
+    const currentPlacementKeys = operations
+      .filter((operation) => operation.operationKind === 'set')
+      .map((operation) => operation.placementKey)
+      .sort();
+    const requestedPlacementKeys = [...input.placementKeys];
+    if (
+      new Set(requestedPlacementKeys).size !== requestedPlacementKeys.length ||
+      requestedPlacementKeys.length !== currentPlacementKeys.length ||
+      [...requestedPlacementKeys].sort().some((key, index) => key !== currentPlacementKeys[index])
+    ) {
+      throw new CmsServiceError(
+        'INVALID_INPUT',
+        'A default reorder must include every current placement exactly once.'
+      );
+    }
+    return this.forkRevisionSnapshot(templateId, defaultVariant.id, {
+      revisionId: input.revisionId,
+      createdBy: input.createdBy,
+      transform: (snapshot) => [
+        ...snapshot
+          .filter((operation) => operation.operationKind !== 'order')
+          .map((operation) => ({
+            placementKey: operation.placementKey,
+            operationKind: operation.operationKind,
+            blockVersionId: operation.blockVersionId,
+            orderIndex: operation.orderIndex,
+          })),
+        ...requestedPlacementKeys.map((placementKey, orderIndex) => ({
+          placementKey,
+          operationKind: 'order' as const,
+          blockVersionId: null,
+          orderIndex,
+        })),
+      ],
+    });
   }
 
   removeDefaultPlacement(
@@ -3216,6 +3314,13 @@ export class CmsService {
 
   resolvePage(templateId: string, pageId: string): EffectivePageDocument {
     return this.resolvePageAtPriority(templateId, pageId);
+  }
+
+  /** Resolves only the template-owned default document for default-scope authoring. */
+  resolveDefaultPage(templateId: string, pageId: string): EffectivePageDocument {
+    this.requireTemplate(templateId);
+    const page = this.requirePage(templateId, pageId);
+    return this.renderResolvedPage(templateId, page, this.loadDefaultDocument(templateId), []);
   }
 
   /**

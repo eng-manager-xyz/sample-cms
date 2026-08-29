@@ -269,6 +269,27 @@ eligible page, validates schemas and interpolation dependencies, deduplicates ma
 immutable rows, validates counts and hashes, then advances `current_publications` atomically.
 Rollback advances that pointer to a retained prior publication; it does not rewrite either result.
 
+### 5.10 Execute the workflow in the prototype HUD
+
+The **Block authoring** tab on each template route is an executable bounded workbench, not a local
+React-only simulation. Route loaders and mutations cross Zod-validated TanStack server functions,
+open the configured SQLite database only on the server, and delegate every command to
+`CmsService`. The Store workbench uses the deterministic foundation seed; the Eligible Vehicles
+and structural workbenches idempotently install compact, editable rows that preserve their proof
+contracts. The explanatory map, million-cardinality labels, and historical comparison cards remain
+fixtures and do not pretend to be the benchmark database.
+
+The persisted controls cover the complete author loop: default placement add/reorder/edit/type
+replacement/delete; linked or explicitly empty variant creation; bounded selector preview and
+revision; priority change; inherited copy-on-write; scoped tombstone and revert; atomic publish;
+and pointer-only rollback. A write and its refreshed resolution projection share one outer SQLite
+transaction, so a conflict discovered while building the response rolls the write back too. Each
+successful mutation returns a fresh projection containing the effective placements, rendered
+value, separate content/order provenance, tombstones, active publication ID, exact rollback target,
+document hash, and publication count. The three scenario routes therefore remain independently
+editable, publishable, and resolvable without adding scenario branches to the resolver or
+publisher.
+
 ```mermaid
 stateDiagram-v2
   [*] --> Draft
