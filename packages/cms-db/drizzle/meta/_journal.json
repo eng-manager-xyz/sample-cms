@@ -1,0 +1,48 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1767225600000,
+      "tag": "0000_slot_variant_foundation",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1788032440481,
+      "tag": "0001_authoring-contract",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1788033816582,
+      "tag": "0002_block-version-parent-provenance",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1788034301763,
+      "tag": "0003_domain-path-canonical-identity",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1788034930213,
+      "tag": "0004_selector-validation-and-preview-metadata",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1788035771832,
+      "tag": "0005_route-source-observed-at",
+      "breakpoints": true
+    }
+  ]
+}

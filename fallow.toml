@@ -1,0 +1,20 @@
+entry = [
+  "apps/cms/src/start.ts",
+  "apps/cms/src/client.tsx",
+  "apps/cms/src/server-functions/*.ts",
+]
+
+publicPackages = [
+  "@repo/cms-db",
+  "@repo/cms-domain",
+  "@repo/cms-service",
+  "@repo/cms-scenarios",
+]
+
+[duplicates]
+ignore = [
+  "**/*.test.ts",
+  "**/*.test.tsx",
+  "**/routeTree.gen.ts",
+]
+ignoreDefaults = true

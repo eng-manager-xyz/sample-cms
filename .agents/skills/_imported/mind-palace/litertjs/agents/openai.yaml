@@ -1,0 +1,4 @@
+interface:
+  display_name: "LiteRT.js"
+  short_description: "On-device browser inference with LiteRT.js"
+  default_prompt: "Use $litertjs to add a browser-local LiteRT model pipeline."

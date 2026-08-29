@@ -1,0 +1,5 @@
+[install]
+minimumReleaseAge = 1209600
+
+[test]
+coverageReporter = ["text", "lcov"]

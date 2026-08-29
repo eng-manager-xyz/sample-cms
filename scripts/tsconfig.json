@@ -1,0 +1,8 @@
+{
+  "extends": "../packages/typescript-config/library.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": ["bun"]
+  },
+  "include": ["./*.ts"]
+}

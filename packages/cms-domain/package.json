@@ -1,0 +1,41 @@
+{
+  "name": "@repo/cms-domain",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts"
+    },
+    "./selector": {
+      "types": "./src/selector.ts",
+      "import": "./src/selector.ts"
+    },
+    "./interpolation": {
+      "types": "./src/interpolation.ts",
+      "import": "./src/interpolation.ts"
+    },
+    "./resolution": {
+      "types": "./src/resolution.ts",
+      "import": "./src/resolution.ts"
+    },
+    "./publication": {
+      "types": "./src/publication.ts",
+      "import": "./src/publication.ts"
+    }
+  },
+  "scripts": {
+    "build": "bun build ./src/index.ts --outdir ./dist --target browser",
+    "check-types": "tsc --noEmit",
+    "lint": "biome check .",
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "@repo/typescript-config": "workspace:*",
+    "@types/bun": "1.3.14",
+    "typescript": "6.0.2"
+  }
+}

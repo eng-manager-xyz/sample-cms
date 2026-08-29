@@ -1,0 +1,27 @@
+import { fileURLToPath } from 'node:url';
+import tailwindcss from '@tailwindcss/vite';
+import { tanstackStart } from '@tanstack/react-start/plugin/vite';
+import viteReact from '@vitejs/plugin-react';
+import { nitro } from 'nitro/vite';
+import { defineConfig } from 'vite';
+
+export default defineConfig({
+  build: {
+    assetsDir: 'cms-assets',
+  },
+  plugins: [
+    tanstackStart(),
+    nitro({ preset: process.env.NITRO_PRESET ?? 'bun' }),
+    tailwindcss(),
+    viteReact(),
+  ],
+  resolve: {
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+    },
+    dedupe: ['react', 'react-dom', '@tanstack/react-router'],
+  },
+  server: {
+    port: 3000,
+  },
+});

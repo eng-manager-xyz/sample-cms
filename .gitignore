@@ -1,0 +1,17 @@
+node_modules/
+.turbo/
+.output/
+.tanstack/
+dist/
+coverage/
+.env
+.env.local
+.DS_Store
+.tmp/
+.data/
+data/*.db
+data/*.db-*
+data/*.sqlite
+data/*.sqlite-*
+apps/test-project/
+*.tsbuildinfo

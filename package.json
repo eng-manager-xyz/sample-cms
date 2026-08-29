@@ -1,0 +1,48 @@
+{
+  "name": "auteur-cms-prototype",
+  "private": true,
+  "type": "module",
+  "packageManager": "bun@1.3.14",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev --filter=cms",
+    "dev:cms": "turbo run dev --filter=cms",
+    "build": "turbo run build",
+    "check-types": "turbo run check-types && tsc --project scripts/tsconfig.json",
+    "check:boundaries": "bun scripts/check-prototype-boundaries.ts",
+    "test": "turbo run test",
+    "lint": "biome ci .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "check": "bun run check:boundaries && bun run lint && bun run check-types && bun run test && bun run build",
+    "db:generate": "turbo run db:generate --filter=@repo/cms-db",
+    "db:migrate": "turbo run db:migrate --filter=@repo/cms-db",
+    "db:reset": "turbo run db:reset --filter=@repo/cms-db",
+    "db:seed": "turbo run db:seed --filter=@repo/cms-db",
+    "db:seed:scale": "turbo run db:seed:scale --filter=@repo/cms-db",
+    "db:benchmark": "turbo run db:benchmark --filter=@repo/cms-db",
+    "scenarios:prove": "bun run packages/cms-scenarios/src/cli.ts prove --output .data/scenario-proof.json --database .data/scenario-proof.sqlite --pages 1000 --samples 100 --cases 200 --seed 1592639710",
+    "scenarios:report": "bun run scripts/run-scenario-evidence.ts --output .data/scenario-report.json --database .data/scenario-report.sqlite --pages 1000 --samples 100 --cases 200 --seed 1592639710",
+    "scenarios:evidence:bounded": "bun run scripts/run-scenario-evidence.ts --output docs/evidence/bounded-report.json --database .data/bounded-evidence.sqlite --pages 1000 --samples 100 --cases 200 --seed 1592639710",
+    "scenarios:benchmark:1m": "bun run scripts/run-scenario-evidence.ts --output docs/evidence/store-1m.json --database .data/store-1m.sqlite --pages 1000000 --samples 250 --cases 200 --seed 1592639710",
+    "evidence:verify": "bun run scripts/verify-evidence.ts all .data/five-phase-scenario-proof.json docs/evidence/store-1m.json",
+    "evidence:verify:bounded": "bun run scripts/verify-evidence.ts bounded docs/evidence/bounded-report.json",
+    "skills:verify": "bun scripts/verify-imported-skills.ts",
+    "fallow": "fallow",
+    "fallow:audit": "bash scripts/run-fallow-audit.sh",
+    "five-phase-pass": "bash scripts/five-phase-pass.sh"
+  },
+  "dependencies": {
+    "@repo/cms-scenarios": "workspace:*"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.10",
+    "@types/bun": "1.3.14",
+    "fallow": "2.95.0",
+    "turbo": "2.9.6",
+    "typescript": "6.0.2"
+  }
+}
