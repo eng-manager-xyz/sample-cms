@@ -93,7 +93,7 @@ const ContentExplorerPageSchema = z.object({
 });
 export type ContentExplorerPage = z.infer<typeof ContentExplorerPageSchema>;
 
-export const ContentPageNavigationSegmentSchema = z.object({
+const ContentPageNavigationSegmentSchema = z.object({
   slotId: z.string().min(1),
   key: z.string().min(1),
   label: z.string().min(1),
@@ -103,9 +103,7 @@ export const ContentPageNavigationSegmentSchema = z.object({
   defaultValue: z.string().nullable(),
   selectedValue: z.string().nullable(),
 });
-export type ContentPageNavigationSegment = z.infer<typeof ContentPageNavigationSegmentSchema>;
-
-export const ContentPageNavigationOptionSchema = z.object({
+const ContentPageNavigationOptionSchema = z.object({
   pageId: z.string().min(1),
   canonicalUrl: CanonicalUrlSchema,
   routeStatus: z.enum(['live', 'not_live', 'archived']),
