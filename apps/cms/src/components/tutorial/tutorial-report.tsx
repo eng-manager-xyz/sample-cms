@@ -115,9 +115,9 @@ function HealthSummary({ health }: Readonly<{ health: CmsHealthSummary }>) {
 
 function TutorialContents({ chapters }: Readonly<{ chapters: TutorialChapter[] }>) {
   return (
-    <aside className="print:hidden xl:sticky xl:top-[72px] xl:max-h-[calc(100vh-88px)] xl:overflow-y-auto">
-      <Card className="overflow-hidden">
-        <div className="border-b border-line p-4">
+    <aside className="print:hidden">
+      <Card className="overflow-hidden xl:flex xl:max-h-[calc(100dvh-88px)] xl:flex-col">
+        <div className="shrink-0 border-b border-line p-4">
           <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.11em] text-accent-strong">
             Tutorial contents
           </p>
@@ -125,7 +125,10 @@ function TutorialContents({ chapters }: Readonly<{ chapters: TutorialChapter[] }
             Follow the dependency chain or jump to a review question.
           </p>
         </div>
-        <nav aria-label="Tutorial chapters" className="p-2">
+        <nav
+          aria-label="Tutorial chapters"
+          className="p-2 xl:min-h-0 xl:overflow-y-auto xl:overscroll-contain xl:[scrollbar-gutter:stable]"
+        >
           <ol className="space-y-1">
             {chapters.map((chapter) => (
               <li
@@ -484,7 +487,7 @@ export function TutorialReport({ health }: Readonly<{ health: CmsHealthSummary }
       </div>
 
       <div className="mt-6 grid items-start gap-6 xl:grid-cols-[280px_minmax(0,1fr)]">
-        <div id="tutorial-contents" className="scroll-mt-24">
+        <div id="tutorial-contents" className="scroll-mt-24 xl:sticky xl:top-[72px] xl:self-start">
           <TutorialContents chapters={tutorialCurriculum.chapters} />
         </div>
         <section className="min-w-0 space-y-8" aria-label="Architecture tutorial report">

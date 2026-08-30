@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@import "katex/dist/katex.min.css";
 
 @source "../**/*.{ts,tsx}";
 
@@ -134,7 +133,132 @@
     box-decoration-break: clone;
   }
 
-  .tutorial-prose :where(.katex-display) {
+  .tutorial-prose :where(.tutorial-code-block[data-language]) {
+    position: relative;
+    padding-top: 2.5rem;
+  }
+
+  .tutorial-prose :where(.tutorial-code-block[data-language])::before {
+    content: attr(data-language);
+    position: absolute;
+    top: 0.65rem;
+    right: 0.8rem;
+    border: 1px solid oklch(1 0 0 / 14%);
+    border-radius: 0.3rem;
+    padding: 0.05rem 0.42rem;
+    color: oklch(0.79 0.03 270);
+    font-family: var(--font-sans);
+    font-size: 0.625rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+  }
+
+  .tutorial-prose :where(.hljs-keyword, .hljs-selector-tag, .hljs-literal) {
+    color: oklch(0.78 0.17 326);
+  }
+
+  .tutorial-prose :where(.hljs-string, .hljs-regexp, .hljs-attr) {
+    color: oklch(0.82 0.13 156);
+  }
+
+  .tutorial-prose :where(.hljs-number, .hljs-built_in, .hljs-symbol) {
+    color: oklch(0.81 0.14 77);
+  }
+
+  .tutorial-prose :where(.hljs-title, .hljs-title.function_, .hljs-function) {
+    color: oklch(0.78 0.13 240);
+  }
+
+  .tutorial-prose :where(.hljs-type, .hljs-class .hljs-title, .hljs-variable.language_) {
+    color: oklch(0.78 0.14 292);
+  }
+
+  .tutorial-prose :where(.hljs-comment, .hljs-quote) {
+    color: oklch(0.67 0.025 270);
+    font-style: italic;
+  }
+
+  .tutorial-prose :where(.hljs-operator, .hljs-punctuation) {
+    color: oklch(0.76 0.025 270);
+  }
+
+  .tutorial-prose :where(.tutorial-inline-code) {
+    border-color: var(--color-line);
+    background: var(--color-surface-muted);
+    color: var(--color-ink);
+  }
+
+  .tutorial-prose :where(.tutorial-inline-code[data-code-kind="identifier"]) {
+    border-color: oklch(0.78 0.08 205);
+    background: oklch(0.965 0.025 205);
+    color: oklch(0.42 0.1 210);
+  }
+
+  .tutorial-prose :where(.tutorial-inline-code[data-code-kind="type"]) {
+    border-color: oklch(0.81 0.065 292);
+    background: oklch(0.968 0.022 292);
+    color: oklch(0.43 0.14 292);
+  }
+
+  .tutorial-prose :where(.tutorial-inline-code[data-code-kind="callable"]) {
+    border-color: oklch(0.81 0.06 240);
+    background: oklch(0.968 0.02 240);
+    color: oklch(0.42 0.12 240);
+  }
+
+  .tutorial-prose :where(.tutorial-inline-code[data-code-kind="config"]) {
+    border-color: oklch(0.82 0.07 72);
+    background: oklch(0.975 0.026 82);
+    color: oklch(0.43 0.105 65);
+  }
+
+  .tutorial-prose :where(.tutorial-inline-code[data-code-kind="path"]) {
+    border-color: oklch(0.82 0.06 154);
+    background: oklch(0.971 0.021 154);
+    color: oklch(0.4 0.1 154);
+  }
+
+  .tutorial-prose :where(.tutorial-inline-code[data-code-kind="keyword"]) {
+    border-color: oklch(0.82 0.07 326);
+    background: oklch(0.972 0.024 326);
+    color: oklch(0.44 0.14 326);
+    font-weight: 700;
+  }
+
+  .tutorial-prose :where(.tutorial-inline-code[data-code-kind="literal"]) {
+    border-color: oklch(0.84 0.065 77);
+    background: oklch(0.978 0.026 87);
+    color: oklch(0.45 0.105 66);
+  }
+
+  .tutorial-prose :where(.tutorial-inline-code[data-code-kind="math"]) {
+    border-color: oklch(0.82 0.07 292);
+    background: oklch(0.974 0.022 292);
+    color: var(--color-accent-strong);
+    font-family: var(--font-serif);
+    font-style: italic;
+  }
+
+  .tutorial-prose :where(.mathjax-equation) {
+    display: inline-block;
+    max-width: 100%;
+    color: var(--color-accent-strong);
+    vertical-align: -0.18em;
+  }
+
+  .tutorial-prose :where(.mathjax-equation)::before {
+    content: attr(data-tex);
+    font-family: var(--font-mono);
+    font-size: 0.82em;
+    color: var(--color-ink-faint);
+  }
+
+  .tutorial-prose :where(.mathjax-equation[data-math-state="ready"])::before {
+    content: none;
+  }
+
+  .tutorial-prose :where(.mathjax-equation-display) {
+    display: block;
     margin-block: 1.5rem;
     overflow-x: auto;
     overflow-y: hidden;
@@ -142,19 +266,31 @@
     border-radius: 0.75rem;
     background: var(--color-surface-subtle);
     padding: 1rem 1.25rem;
-    color: var(--color-ink);
+    color: var(--color-accent-strong);
     scrollbar-width: thin;
     scrollbar-color: var(--color-line-strong) transparent;
   }
 
-  .tutorial-prose :where(.katex-display > .katex) {
+  .tutorial-prose :where(.mathjax-equation-display > mjx-container) {
+    margin: 0;
     min-width: max-content;
     font-size: 1.08em;
     text-align: center;
   }
 
-  .tutorial-prose :where(.katex-mathml math) {
-    overflow-wrap: normal;
+  .tutorial-prose :where(.mathjax-equation svg) {
+    display: inline-block;
+    max-width: none;
+    overflow: visible;
+  }
+
+  .tutorial-prose :where(.mathjax-equation mjx-assistive-mml) {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    overflow: hidden !important;
+    clip-path: inset(50%) !important;
+    white-space: nowrap !important;
   }
 }
 

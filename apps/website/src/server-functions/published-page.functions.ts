@@ -6,6 +6,7 @@ import {
   publicHostMatchesTemplate,
   resolvePublicTemplate,
 } from '@/data/public-path';
+import { publishedResponseHeaders } from '@/data/published-page-policy';
 
 export const loadPublishedPage = createServerFn({ method: 'GET' })
   .validator(PublicPageRequestSchema)
@@ -33,12 +34,14 @@ export const loadPublishedPage = createServerFn({ method: 'GET' })
       const served = new CmsService(client).serve(template.templateId, data.canonicalUrl);
       if (served.status === 404) return served;
       const document = parsePublishedDocument(served.document);
-      setResponseHeader(
-        'Cache-Control',
-        'public, max-age=0, s-maxage=60, stale-while-revalidate=300'
-      );
-      setResponseHeader('ETag', `"${served.documentHash}"`);
-      setResponseHeader('X-Auteur-Publication', served.publicationId);
+      for (const [name, value] of Object.entries(
+        publishedResponseHeaders({
+          documentHash: served.documentHash,
+          publicationId: served.publicationId,
+        })
+      )) {
+        setResponseHeader(name, value);
+      }
       return {
         status: 200,
         page: createPublicPageViewModel({

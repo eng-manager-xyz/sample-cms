@@ -205,13 +205,13 @@ INSERT OR IGNORE INTO published_page_documents (
   (
     'publication-store-1', 'tpl-store', 'page-store-1001', 'manifest-store-mcd-v1',
     '/en-US/store/1001', 'live',
-    '{"locale":"en-US","store":{"id":1001,"name":"McDonald''s Market","location":"San Francisco"}}',
+    '{"contract":"cms-published-placement-content-v1","placements":{"category-promo":{"message":"Fast-food deals"},"footer":{"legal":"Chain-store terms"},"navigation":{"label":"Uber Eats"},"primary-hero":{"headline":"Buy now McDonald''s Market — San Francisco"}}}',
     NULL, '173f0c8b8cfaff9425c595896e3e1d9f4d39bb5b3f73a358582ba17198d6306d', '2026-01-01T00:00:02.000Z'
   ),
   (
     'publication-store-1', 'tpl-store', 'page-store-1002', 'manifest-store-default-v1',
     '/en-US/store/1002', 'live',
-    '{"locale":"en-US","store":{"id":1002,"name":"Neighborhood Kitchen","location":"Oakland"}}',
+    '{"contract":"cms-published-placement-content-v1","placements":{"category-promo":{"message":"Local favorites"},"footer":{"legal":"Standard terms"},"navigation":{"label":"Uber Eats"},"primary-hero":{"headline":"I am Neighborhood Kitchen — Oakland"}}}',
     NULL, '2b7e04a41b0799a12af85ada05bb1bad29d6e665b35e943f5cbf6f2bb4d753a2', '2026-01-01T00:00:02.000Z'
   );
 
@@ -220,7 +220,4 @@ INSERT INTO current_publications (
 ) VALUES (
   'tpl-store', 'publication-store-1', '2026-01-01T00:00:03.000Z', 'seed'
 )
-ON CONFLICT(template_id) DO UPDATE SET
-  publication_id = excluded.publication_id,
-  activated_at = excluded.activated_at,
-  activated_by = excluded.activated_by;
+ON CONFLICT(template_id) DO NOTHING;

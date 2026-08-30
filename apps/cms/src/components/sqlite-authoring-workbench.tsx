@@ -265,12 +265,15 @@ export function SqliteAuthoringWorkbench({
                       size="sm"
                       variant="ghost"
                       className="h-6 border border-danger/25 font-mono text-[8px] text-danger-strong"
-                      disabled={pending || selectedVariant?.isDefault}
+                      disabled={
+                        pending || !workspace.scopeMatchesSamplePage || selectedVariant?.isDefault
+                      }
                       onClick={() =>
                         run({
                           kind: 'revertPlacement',
                           scenarioId: scenario.id,
                           scopeId: workspace.scopeId,
+                          canonicalUrl: workspace.canonicalUrl,
                           placementKey: tombstone.placementKey,
                         })
                       }
@@ -333,6 +336,7 @@ export function SqliteAuthoringWorkbench({
                       kind: 'editPlacement',
                       scenarioId: scenario.id,
                       scopeId: workspace.scopeId,
+                      canonicalUrl: workspace.canonicalUrl,
                       placementKey: selectedPlacement.placementKey,
                       blockTypeKey: blockTypeKey as
                         | 'navigation'
@@ -349,12 +353,15 @@ export function SqliteAuthoringWorkbench({
                 <Button
                   size="sm"
                   variant="outline"
-                  disabled={pending || selectedPlacement.order === 0}
+                  disabled={
+                    pending || !workspace.scopeMatchesSamplePage || selectedPlacement.order === 0
+                  }
                   onClick={() =>
                     run({
                       kind: 'movePlacement',
                       scenarioId: scenario.id,
                       scopeId: workspace.scopeId,
+                      canonicalUrl: workspace.canonicalUrl,
                       placementKey: selectedPlacement.placementKey,
                       direction: 'up',
                     })
@@ -365,12 +372,17 @@ export function SqliteAuthoringWorkbench({
                 <Button
                   size="sm"
                   variant="outline"
-                  disabled={pending || selectedPlacement.order >= workspace.placements.length - 1}
+                  disabled={
+                    pending ||
+                    !workspace.scopeMatchesSamplePage ||
+                    selectedPlacement.order >= workspace.placements.length - 1
+                  }
                   onClick={() =>
                     run({
                       kind: 'movePlacement',
                       scenarioId: scenario.id,
                       scopeId: workspace.scopeId,
+                      canonicalUrl: workspace.canonicalUrl,
                       placementKey: selectedPlacement.placementKey,
                       direction: 'down',
                     })
@@ -378,15 +390,34 @@ export function SqliteAuthoringWorkbench({
                 >
                   <ArrowDown aria-hidden="true" className="size-3" /> Move down
                 </Button>
+                {!selectedVariant?.isDefault &&
+                workspace.placements.some((placement) => !placement.orderInherited) ? (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    disabled={pending || !workspace.scopeMatchesSamplePage}
+                    onClick={() =>
+                      run({
+                        kind: 'revertOrder',
+                        scenarioId: scenario.id,
+                        scopeId: workspace.scopeId,
+                        canonicalUrl: workspace.canonicalUrl,
+                      })
+                    }
+                  >
+                    <RotateCcw aria-hidden="true" className="size-3" /> Revert order
+                  </Button>
+                ) : null}
                 <Button
                   size="sm"
                   variant="outline"
-                  disabled={pending}
+                  disabled={pending || !workspace.scopeMatchesSamplePage}
                   onClick={() =>
                     run({
                       kind: 'deletePlacement',
                       scenarioId: scenario.id,
                       scopeId: workspace.scopeId,
+                      canonicalUrl: workspace.canonicalUrl,
                       placementKey: selectedPlacement.placementKey,
                     })
                   }
@@ -394,16 +425,17 @@ export function SqliteAuthoringWorkbench({
                   <Trash2 aria-hidden="true" className="size-3" />
                   {selectedVariant?.isDefault ? 'Delete' : 'Hide here'}
                 </Button>
-                {!selectedVariant?.isDefault ? (
+                {!selectedVariant?.isDefault && !selectedPlacement.inherited ? (
                   <Button
                     size="sm"
                     variant="ghost"
-                    disabled={pending}
+                    disabled={pending || !workspace.scopeMatchesSamplePage}
                     onClick={() =>
                       run({
                         kind: 'revertPlacement',
                         scenarioId: scenario.id,
                         scopeId: workspace.scopeId,
+                        canonicalUrl: workspace.canonicalUrl,
                         placementKey: selectedPlacement.placementKey,
                       })
                     }
@@ -479,6 +511,7 @@ export function SqliteAuthoringWorkbench({
                   kind: 'addPlacement',
                   scenarioId: scenario.id,
                   scopeId: workspace.scopeId,
+                  canonicalUrl: workspace.canonicalUrl,
                   placementKey: addPlacementKey,
                   blockTypeKey: addBlockTypeKey as
                     | 'navigation'

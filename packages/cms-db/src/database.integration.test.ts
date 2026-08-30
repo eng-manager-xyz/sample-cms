@@ -76,6 +76,58 @@ describe('CMS database foundation', () => {
     expect(secondHealth).toEqual(firstHealth);
   });
 
+  test('repeatable seed preserves immutable legacy Store publication history', async () => {
+    await seedFoundationDatabase(client);
+    client.sqlite.exec(`
+      DROP TRIGGER published_page_documents_immutable_update;
+      UPDATE published_page_documents
+      SET resolved_data_json = CASE page_instance_id
+        WHEN 'page-store-1001'
+          THEN '{"locale":"en-US","store":{"id":1001,"name":"McDonald''s Market","location":"San Francisco"}}'
+        ELSE '{"locale":"en-US","store":{"id":1002,"name":"Neighborhood Kitchen","location":"Oakland"}}'
+      END
+      WHERE publication_id = 'publication-store-1';
+      CREATE TRIGGER published_page_documents_immutable_update
+      BEFORE UPDATE ON published_page_documents
+      BEGIN
+        SELECT RAISE(ABORT, 'published page documents are immutable');
+      END;
+    `);
+
+    const legacyRows = client.sqlite
+      .query<{ pageInstanceId: string; payload: string }, []>(
+        `SELECT page_instance_id AS pageInstanceId, resolved_data_json AS payload
+         FROM published_page_documents
+         WHERE publication_id = 'publication-store-1'
+         ORDER BY page_instance_id`
+      )
+      .all();
+
+    await seedFoundationDatabase(client);
+    expect(
+      client.sqlite
+        .query<{ pageInstanceId: string; payload: string }, []>(
+          `SELECT page_instance_id AS pageInstanceId, resolved_data_json AS payload
+           FROM published_page_documents
+           WHERE publication_id = 'publication-store-1'
+           ORDER BY page_instance_id`
+        )
+        .all()
+    ).toEqual(legacyRows);
+    expect(
+      legacyRows.every(({ payload }) => !payload.includes('cms-published-placement-content-v1'))
+    ).toBe(true);
+    expect(() =>
+      client.sqlite
+        .query(
+          `UPDATE published_page_documents
+           SET resolved_data_json = '{}'
+           WHERE publication_id = 'publication-store-1'`
+        )
+        .run()
+    ).toThrow('published page documents are immutable');
+  });
+
   test('enforces canonical domain-plus-path identity and one default per template', async () => {
     await seedFoundationDatabase(client);
 

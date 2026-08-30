@@ -1,6 +1,7 @@
 import { createFileRoute, notFound } from '@tanstack/react-router';
 import { AppShell } from '@/components/app-shell';
 import { TemplateWorkspace } from '@/components/template-workspace';
+import { TemplateWorkspaceSearchSchema } from '@/data/content-explorer';
 import {
   getScenarioFixture,
   ScenarioIdSchema,
@@ -12,10 +13,14 @@ export const Route = createFileRoute('/templates/$templateId')({
   params: {
     parse: (params) => TemplateParamsSchema.parse(params),
   },
-  loader: async ({ params }) => {
+  validateSearch: (search) => TemplateWorkspaceSearchSchema.parse(search),
+  loaderDeps: ({ search }) => ({ canonicalUrl: search.canonicalUrl }),
+  loader: async ({ deps, params }) => {
     const scenarioId = ScenarioIdSchema.safeParse(params.templateId);
     if (!scenarioId.success) throw notFound();
-    const workspace = await loadCmsWorkspace({ data: { scenarioId: scenarioId.data } });
+    const workspace = await loadCmsWorkspace({
+      data: { scenarioId: scenarioId.data, canonicalUrl: deps.canonicalUrl },
+    });
     return { health: await loadCmsHealth(), scenarioId: scenarioId.data, workspace };
   },
   component: TemplateRoute,
@@ -33,7 +38,11 @@ function TemplateRoute() {
       breadcrumb={scenario.name}
       templateId={scenario.id}
     >
-      <TemplateWorkspace key={scenario.id} scenario={scenario} initialWorkspace={workspace} />
+      <TemplateWorkspace
+        key={`${scenario.id}:${workspace.pageId}`}
+        scenario={scenario}
+        initialWorkspace={workspace}
+      />
     </AppShell>
   );
 }

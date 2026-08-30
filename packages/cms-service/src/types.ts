@@ -385,8 +385,83 @@ export interface PublishInput {
   readonly createdBy: string;
   readonly failAt?: PublicationFailureStage;
   readonly materializationMode?: 'manifest' | 'expanded';
+  /** Re-materialize an immutable publication even when its authoring input is unchanged. */
+  readonly forceNewPublication?: boolean;
+  /** Reject the write if the draft no longer matches the read-only preflight result. */
+  readonly expectedInputHash?: string;
+  /** Reject the write if another publication moved the serving pointer after preflight. */
+  readonly expectedCurrentPublicationId?: string | null;
   readonly batchSize?: number;
   readonly onProgress?: (progress: PublicationProgress) => void;
+}
+
+export interface PublicationPreflightInput {
+  readonly materializationMode?: 'manifest' | 'expanded';
+  readonly batchSize?: number;
+  readonly sampleLimit?: number;
+}
+
+export interface PublicationMetadata {
+  readonly id: string;
+  readonly sequence: number;
+  readonly inputHash: string;
+  readonly previousPublicationId: string | null;
+  readonly pageCount: number;
+  readonly manifestCount: number;
+  readonly publishedAt: string;
+  readonly activatedAt: string | null;
+  readonly activatedBy: string | null;
+}
+
+export interface PublicationPreflightIssue {
+  readonly code:
+    | 'PRIORITY_CONFLICT'
+    | 'NOT_FOUND'
+    | 'INVALID_INPUT'
+    | 'ARCHIVED_GUARD'
+    | 'CONFLICT'
+    | 'CEL_VALIDATION'
+    | 'SCHEMA_VALIDATION'
+    | 'PUBLICATION_FAILED';
+  readonly message: string;
+  readonly affectedPageCount: number;
+  readonly sampleCanonicalUrls: readonly string[];
+  readonly placementKey: string | null;
+  readonly priority: number | null;
+  /** Domain conflict sources are immutable variant revision IDs. */
+  readonly variantRevisionIds: readonly string[];
+  readonly operationKinds: readonly ('set' | 'tombstone' | 'order')[];
+}
+
+export interface PublicationPreflightResult {
+  readonly templateId: string;
+  readonly materializationMode: 'manifest' | 'expanded';
+  /** Non-archived pages included in the immutable publication snapshot. */
+  readonly totalActivePages: number;
+  /** Pages whose materialized document or serving status differs from the current publication. */
+  readonly affectedActivePages: {
+    readonly count: number;
+    readonly sampleCanonicalUrls: readonly string[];
+    readonly truncated: boolean;
+  };
+  readonly issues: readonly PublicationPreflightIssue[];
+  readonly canPublish: boolean;
+  readonly inputHash: string | null;
+  readonly reusesCurrentPublication: boolean;
+  readonly manifestReuse: {
+    readonly eligibleManifestCount: number;
+    readonly reusedManifestCount: number;
+    readonly newManifestCount: number;
+  };
+  readonly currentPublication: PublicationMetadata | null;
+  readonly rollbackTarget: {
+    readonly publication: PublicationMetadata;
+    readonly valid: boolean;
+    readonly reason: string | null;
+  } | null;
+  readonly selectorMatchCount: number;
+  readonly blockReferenceCount: number;
+  readonly logicalExpandedRenderedDocumentBytes: number;
 }
 
 export interface PublicationProgress {
@@ -412,6 +487,14 @@ export interface PublishResult {
   /** UTF-8 bytes for every page's fully rendered document, independent of storage mode. */
   readonly logicalExpandedRenderedDocumentBytes: number;
   readonly durationMilliseconds: number;
+  readonly publication: PublicationMetadata;
+  readonly fromPublication: PublicationMetadata | null;
+}
+
+export interface RollbackInput {
+  readonly targetPublicationId: string;
+  readonly expectedCurrentPublicationId: string;
+  readonly activatedBy: string;
 }
 
 export interface RollbackResult {
@@ -419,6 +502,8 @@ export interface RollbackResult {
   readonly publicationId: string;
   readonly activatedAt: string;
   readonly activatedBy: string;
+  readonly fromPublication: PublicationMetadata;
+  readonly publication: PublicationMetadata;
 }
 
 export type PublishedDocumentResult =
@@ -450,6 +535,7 @@ export interface ServeReadEvidence {
   readonly materializationMode: 'manifest' | 'expanded' | null;
   readonly sqlQueryCount: 1 | 2;
   readonly selectorSqlExecutions: 0;
+  readonly celEvaluations: 0;
   readonly elapsedMilliseconds: number;
 }
 

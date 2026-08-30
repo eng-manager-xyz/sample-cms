@@ -113,6 +113,7 @@ export interface StoreServiceEvidence {
     readonly materializationMode: 'expanded';
     readonly sqlQueryCountPerRequest: 1;
     readonly selectorSqlExecutionsPerRequest: 0;
+    readonly celEvaluationsPerRequest: 0;
     readonly sqlStatements: readonly string[];
     readonly sampleCount: number;
     readonly p50Milliseconds: number;
@@ -938,9 +939,12 @@ export async function runStoreServiceProof(): Promise<StoreServiceEvidence> {
         evidence.result.status !== 200 ||
         evidence.materializationMode !== 'expanded' ||
         evidence.sqlQueryCount !== 1 ||
-        evidence.selectorSqlExecutions !== 0
+        evidence.selectorSqlExecutions !== 0 ||
+        evidence.celEvaluations !== 0
       ) {
-        throw new Error('Expanded serve read path was not one fixed selector-free query.');
+        throw new Error(
+          'Expanded serve read path was not one fixed selector-free and CEL-free query.'
+        );
       }
       serveTimings.push(evidence.elapsedMilliseconds);
     }
@@ -967,6 +971,7 @@ export async function runStoreServiceProof(): Promise<StoreServiceEvidence> {
         materializationMode: 'expanded',
         sqlQueryCountPerRequest: 1,
         selectorSqlExecutionsPerRequest: 0,
+        celEvaluationsPerRequest: 0,
         sqlStatements: service.getServeReadQueryTexts('expanded'),
         sampleCount: serveTimings.length,
         p50Milliseconds: percentile(serveTimings, 0.5),

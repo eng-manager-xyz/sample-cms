@@ -1,6 +1,6 @@
 # Prototype correctness and benchmark report
 
-Linear issues: [AUT-530](https://linear.app/harwood/issue/AUT-530/prove-determinism-crud-semantics-selector-safety-and-scale) for the proof ledger, [AUT-533](https://linear.app/harwood/issue/AUT-533/build-the-chaptered-architecture-tutorial-and-reviewed-ui-walkthroughs) for the governed tutorial transfer, and [AUT-534–AUT-536](https://linear.app/harwood/issue/AUT-536/update-the-auteur-tutorial-for-the-standalone-publishing-and-hybrid) for the standalone publishing proof and its documented hybrid seams.
+Linear issues: [AUT-530](https://linear.app/harwood/issue/AUT-530/prove-determinism-crud-semantics-selector-safety-and-scale) for the proof ledger, [AUT-533](https://linear.app/harwood/issue/AUT-533/build-the-chaptered-architecture-tutorial-and-reviewed-ui-walkthroughs) for the governed tutorial transfer, [AUT-534–AUT-536](https://linear.app/harwood/issue/AUT-536/update-the-auteur-tutorial-for-the-standalone-publishing-and-hybrid) for the standalone publishing proof and its documented hybrid seams, and [AUT-544](https://linear.app/harwood/issue/AUT-544/prove-the-authoring-journeys-and-preserve-all-production-style-pages) for the production-shaped authoring and publication loop.
 
 This is the human-readable index for two machine-readable evidence envelopes:
 
@@ -117,12 +117,12 @@ from a template-owned allowlist; author values become parameters; `template_id` 
 the AST. Service tests separately cover zero matches, exact full-template counts independent of
 sample limits, bounded previews, indexed plans, overlap diagnostics, and template isolation.
 
-Both measured serving shapes execute zero selector statements. The expanded public
-`CmsService.serve` path uses one prepared materialized-read statement. The structural-manifest
-read uses two fixed statements: one current-publication/page lookup and one ordered manifest/block
-lookup. Their query text reads only canonical page identity, current and immutable publication
-state, manifest items, blocks, and provenance; selector, slot, tag, variant, and operation tables
-are absent.
+Both measured serving shapes execute zero selector statements and zero CEL evaluations. The
+expanded public `CmsService.serve` path uses one prepared materialized-read statement. The
+structural-manifest read uses two fixed statements: one current-publication/page lookup and one
+ordered manifest/block lookup. Their query text reads only canonical page identity, current and
+immutable publication state, manifest items, blocks, and provenance; selector, slot, tag, variant,
+operation, and CEL authoring surfaces are absent.
 
 ## Generated determinism
 
@@ -199,8 +199,8 @@ store-type memberships untouched.
 | Raw publications/page documents/manifests/items after republish | 2 / 1,004 / 5 / 20 |
 | Five-class golden coverage | true |
 | Identical republish reuses current publication | true |
-| Manifest serve SQL/selector statements per request | 2 / 0 |
-| Expanded serve SQL/selector statements per request | 1 / 0 |
+| Manifest serve SQL/selector statements/CEL evaluations per request | 2 / 0 / 0 |
+| Expanded serve SQL/selector statements/CEL evaluations per request | 1 / 0 / 0 |
 
 Database bytes, seed/preview/publication/republish timings, document throughput, canonical p50/p95,
 tag-count duration, full query-plan steps, and process memory are measurements in the bounded JSON
@@ -311,10 +311,10 @@ added no page-document rows.
 
 Across 250 full-scale samples, indexed canonical lookup measured 0.006750 ms p50 and 0.008000 ms
 p95. Manifest reconstruction measured 0.173500 ms p50 and 0.324666 ms p95, using exactly two SQL
-statements and zero selector statements per request. The separate expanded serving fixture used one
-SQL statement and zero selectors, measuring 0.017000 ms p50 and 0.023500 ms p95. These local
-hot-cache SQLite measurements compare shapes; they are not production SLOs. No resource limitation
-occurred.
+statements, zero selector statements, and zero CEL evaluations per request. The separate expanded
+serving fixture used one SQL statement, zero selectors, and zero CEL evaluations, measuring
+0.017000 ms p50 and 0.023500 ms p95. These local hot-cache SQLite measurements compare shapes; they
+are not production SLOs. No resource limitation occurred.
 
 ## Scenario C — structural replacement (`AUT-529`)
 
@@ -361,6 +361,65 @@ proves its one-query read. Manifest metrics therefore describe structural-row/ca
 reuse, not a claim that total database bytes shrink by the same ratio. The one-million envelope
 records actual allocated bytes before and after publication and bytes per published document so the
 ADR can weigh expanded one-query reads against shared structures honestly.
+
+## Production-shaped authoring and publication loop (`AUT-544`)
+
+The 2026-08-30 browser verification used a freshly migrated, deterministically seeded SQLite
+database and the separate CMS and website applications. The authoring explorer exposed exactly the
+three fixed Store, Eligible Vehicles, and Structural replacement templates, offered no template
+creation control, searched the SQLite-backed page tree, and opened each exact canonical page in the
+authoring studio.
+
+The Store journey added `browser-proof-promo` to the default layer, evaluated
+`Browser offer for {{ store.name }}` as `Browser offer for McDonald's Market`, rejected the forbidden
+`store.constructor` property, and saved an immutable first version that survived reload. Before
+publication, the draft appeared once in private preview and zero times on the public route. The
+preflight reported two active and two changed pages, two new manifests, zero blockers, ten block
+references, three selector matches, the current pointer, and the publication input hash. Publishing
+created `publication:4265639f-472d-42bf-b796-85ffefb52a3e`; the public ETag changed from
+`173f0c8b8cfaff9425c595896e3e1d9f4d39bb5b3f73a358582ba17198d6306d` to
+`aa2fa24f76ea8fb550bed0175273257cba1ed0c761fee96213873bbfde83a9bc`. Exact rollback to pointer
+`#1` restored `publication-store-1` and the original ETag, while the draft remained available in
+preview. Adding `?edit_mode=true` to the public URL never exposed that draft.
+
+A second browser pass edited the default `primary-hero` into immutable version 4 while retaining
+versions 1–3, their hashes, and their parent links in History. The identical saved source
+`Welcome to {{ store.name }} in {{ store.location }}` evaluated as
+`Welcome to McDonald's Market in San Francisco` on Store 1001 and
+`Welcome to Neighborhood Kitchen in Oakland` on Store 1002. Save attempts with malformed
+`{{ store.name + }}` and forbidden `{{ store.constructor }}` expressions failed with structured
+`SYNTAX_ERROR` and `FORBIDDEN_PROPERTY` diagnostics. Reload restored the valid version-4 source,
+showed no version 5, and retained `publication-store-1`; the public page still contained neither
+the draft headline nor the draft promotion.
+
+The public response remained `200` with
+`Cache-Control: public, max-age=0, s-maxage=60, stale-while-revalidate=300`, an ETag, and
+`x-auteur-publication`. Preview remained `private, no-store, max-age=0` with
+`x-robots-tag: noindex, nofollow, noarchive`. Cross-application tests exercise all three canonical
+journeys with one expanded or two manifest SQL reads, zero selector SQL, and zero CEL evaluations on
+the public request path, including stale-input/pointer rejection without partial mutation and exact
+predecessor rollback while preserving draft state.
+
+The Structural replacement journey retained the stable `primary-hero` placement while resolving
+local `hero_alt` v2, 22 inherited placements, and one scoped tombstone. Copy-on-write editing of
+inherited `section-01` created local v2 with a parent link to immutable v1; reverting later operations
+restored inheritance without deleting that history. Reorder and revert-order were atomic, and a
+hide/revert cycle changed the visible/hidden counts from 23/1 to 22/2 and back without changing
+placement identity.
+
+The cascade inspector previewed `route_status = 'live'` against both Store pages with parameterized
+bindings, bounded samples, pairwise overlaps, affected placements, and an indexed query plan.
+Duplicating the matching McDonald's priority-30 selector produced a publication-blocking
+`primary-hero` conflict; changing the duplicate to priority 40 repaired it. An advanced
+`DROP TABLE page_instances` expression was rejected before execution and did not replace the saved
+selector. The three public proof URLs continued to render their active publications:
+`/en-US/store/1001`, `/en-US/eligible-vehicles/ca/premium`, and `/en-US/airport/hero-alt`.
+
+At a 390-pixel viewport, both explorer and studio matched the viewport width with no horizontal
+overflow. The mobile navigation and native publication dialog closed with Escape and restored focus
+to their exact triggers; the dialog initially focused its Close control, fit the viewport, and
+locked dismissal while busy. CMS, public, preview, and mobile browser consoles contained no warnings
+or errors.
 
 ## Known limitations and untested production assumptions
 

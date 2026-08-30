@@ -38,6 +38,7 @@
     "test": "bun test"
   },
   "dependencies": {
+    "@repo/cel-engine": "workspace:*",
     "zod": "4.4.3"
   },
   "devDependencies": {

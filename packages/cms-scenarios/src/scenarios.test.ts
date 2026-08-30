@@ -203,6 +203,7 @@ test('AUT-528 store composition, lookup plans, interpolation, and tag removal ar
     materializationMode: 'manifest',
     sqlQueryCountPerRequest: 2,
     selectorSqlExecutionsPerRequest: 0,
+    celEvaluationsPerRequest: 0,
     sampleCount: 20,
   });
   expect(report.scalePublication.serveReadPath.p50Milliseconds).toBeGreaterThan(0);
@@ -224,6 +225,7 @@ test('AUT-528 store composition, lookup plans, interpolation, and tag removal ar
     materializationMode: 'expanded',
     sqlQueryCountPerRequest: 1,
     selectorSqlExecutionsPerRequest: 0,
+    celEvaluationsPerRequest: 0,
     sampleCount: 100,
   });
   expect(report.scalePublication.pageToManifestDedup.savedCanonicalStructureBytes).toBeGreaterThan(
@@ -386,6 +388,7 @@ test('persisted service proof covers dense conflict atomicity, structural rollba
     materializationMode: 'expanded',
     sqlQueryCountPerRequest: 1,
     selectorSqlExecutionsPerRequest: 0,
+    celEvaluationsPerRequest: 0,
     sampleCount: 100,
   });
   expect(evidence.storeService.serveReadPath.p50Milliseconds).toBeGreaterThan(0);
@@ -407,6 +410,14 @@ test('CLI keeps the explicit scale default and writes machine-readable integrati
   const report: unknown = await Bun.file(outputPath).json();
   expect(report).toMatchObject({
     command: 'integration',
-    evidence: { status: 'verified' },
+    evidence: {
+      status: 'verified',
+      storeService: {
+        serveReadPath: {
+          selectorSqlExecutionsPerRequest: 0,
+          celEvaluationsPerRequest: 0,
+        },
+      },
+    },
   });
 }, 30_000);

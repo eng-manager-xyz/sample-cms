@@ -165,6 +165,7 @@ export interface ScalePublicationEvidence {
     readonly materializationMode: 'manifest';
     readonly sqlQueryCountPerRequest: 2;
     readonly selectorSqlExecutionsPerRequest: 0;
+    readonly celEvaluationsPerRequest: 0;
     readonly sqlStatements: readonly string[];
     readonly sampleCount: number;
     readonly p50Milliseconds: number;
@@ -968,9 +969,10 @@ function publishScaleDatabase(
       evidence.result.status !== 200 ||
       evidence.materializationMode !== 'manifest' ||
       evidence.sqlQueryCount !== 2 ||
-      evidence.selectorSqlExecutions !== 0
+      evidence.selectorSqlExecutions !== 0 ||
+      evidence.celEvaluations !== 0
     ) {
-      throw new Error('Scale serve read-path evidence was not fixed and selector-free.');
+      throw new Error('Scale serve read-path evidence was not fixed, selector-free, and CEL-free.');
     }
     serveTimings.push(evidence.elapsedMilliseconds);
   }
@@ -1018,6 +1020,7 @@ function publishScaleDatabase(
       materializationMode: 'manifest',
       sqlQueryCountPerRequest: 2,
       selectorSqlExecutionsPerRequest: 0,
+      celEvaluationsPerRequest: 0,
       sqlStatements: service.getServeReadQueryTexts('manifest'),
       sampleCount: serveTimings.length,
       p50Milliseconds: percentile(serveTimings, 0.5),

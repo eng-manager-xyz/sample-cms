@@ -5,6 +5,7 @@ import {
   ChevronDown,
   Database,
   FileStack,
+  FolderTree,
   Map as MapIcon,
   PanelLeftClose,
   PanelLeftOpen,
@@ -17,7 +18,7 @@ import { Separator } from '@/components/ui/separator';
 import type { ScenarioId } from '@/data/scenario-fixtures';
 import { cn } from '@/lib/cn';
 
-type ShellSection = 'maps' | 'tutorial' | 'template' | 'publications';
+type ShellSection = 'maps' | 'content' | 'tutorial' | 'template' | 'publications';
 
 interface AppShellProps {
   children: ReactNode;
@@ -36,6 +37,7 @@ interface NavigationItem {
 
 const baseNavigation: NavigationItem[] = [
   { label: 'Wall of Maps', icon: MapIcon, section: 'maps' },
+  { label: 'Content explorer', icon: FolderTree, section: 'content' },
   { label: 'Tutorial', icon: BookOpen, section: 'tutorial' },
   { label: 'Template workspace', icon: FileStack, section: 'template' },
   { label: 'Publications', icon: Database, section: 'publications' },
@@ -86,6 +88,20 @@ function SidebarLink({
     return (
       <Link
         to="/"
+        onClick={onNavigate}
+        title={collapsed ? item.label : undefined}
+        className={className}
+      >
+        {contents}
+      </Link>
+    );
+  }
+
+  if (item.section === 'content') {
+    return (
+      <Link
+        to="/content"
+        search={{ view: 'tree', template: 'stores', q: '' }}
         onClick={onNavigate}
         title={collapsed ? item.label : undefined}
         className={className}

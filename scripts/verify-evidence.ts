@@ -712,8 +712,10 @@ function verifyBounded(report: JsonRecord, envelope: JsonRecord): void {
   assert(
     path(report, 'store.scalePublication.serveReadPath.materializationMode') === 'manifest' &&
       number(report, 'store.scalePublication.serveReadPath.sqlQueryCountPerRequest') === 2 &&
-      number(report, 'store.scalePublication.serveReadPath.selectorSqlExecutionsPerRequest') === 0,
-    'bounded: materialized Store serve must use two fixed queries and zero selectors'
+      number(report, 'store.scalePublication.serveReadPath.selectorSqlExecutionsPerRequest') ===
+        0 &&
+      number(report, 'store.scalePublication.serveReadPath.celEvaluationsPerRequest') === 0,
+    'bounded: materialized Store serve must use two fixed queries, zero selectors, and zero CEL evaluations'
   );
   const manifestServeP50 = number(report, 'store.scalePublication.serveReadPath.p50Milliseconds');
   const manifestServeP95 = number(report, 'store.scalePublication.serveReadPath.p95Milliseconds');
@@ -724,8 +726,9 @@ function verifyBounded(report: JsonRecord, envelope: JsonRecord): void {
   assert(
     path(report, 'store.publicServeReadPath.materializationMode') === 'expanded' &&
       number(report, 'store.publicServeReadPath.sqlQueryCountPerRequest') === 1 &&
-      number(report, 'store.publicServeReadPath.selectorSqlExecutionsPerRequest') === 0,
-    'bounded: expanded public serve must use one fixed query and zero selectors'
+      number(report, 'store.publicServeReadPath.selectorSqlExecutionsPerRequest') === 0 &&
+      number(report, 'store.publicServeReadPath.celEvaluationsPerRequest') === 0,
+    'bounded: expanded public serve must use one fixed query, zero selectors, and zero CEL evaluations'
   );
   const expandedServeP50 = number(report, 'store.publicServeReadPath.p50Milliseconds');
   const expandedServeP95 = number(report, 'store.publicServeReadPath.p95Milliseconds');
@@ -973,8 +976,10 @@ function verifyMillion(report: JsonRecord, envelope: JsonRecord): void {
   assert(
     path(report, 'store.scalePublication.serveReadPath.materializationMode') === 'manifest' &&
       number(report, 'store.scalePublication.serveReadPath.sqlQueryCountPerRequest') === 2 &&
-      number(report, 'store.scalePublication.serveReadPath.selectorSqlExecutionsPerRequest') === 0,
-    'million: materialized serve must use two fixed SQL queries and zero selector queries'
+      number(report, 'store.scalePublication.serveReadPath.selectorSqlExecutionsPerRequest') ===
+        0 &&
+      number(report, 'store.scalePublication.serveReadPath.celEvaluationsPerRequest') === 0,
+    'million: materialized serve must use two fixed SQL queries, zero selector queries, and zero CEL evaluations'
   );
   assert(
     number(report, 'store.scalePublication.serveReadPath.sampleCount') >= 250,

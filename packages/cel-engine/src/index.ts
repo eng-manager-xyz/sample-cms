@@ -1,0 +1,26 @@
+export {
+  CelEngine,
+  compileCelExpression,
+  evaluateCelExpression,
+  evaluateCelSource,
+  formatCelScalar,
+  validateCelExpressionCount,
+} from './engine';
+export {
+  type CelCompileResult,
+  type CelContext,
+  type CelEngineConfig,
+  type CelError,
+  type CelErrorCode,
+  type CelErrorPhase,
+  type CelEvaluationResult,
+  type CelExpressionCountResult,
+  type CelJsonPrimitive,
+  type CelJsonValue,
+  type CompileCelOptions,
+  type CompiledCelExpression,
+  DEFAULT_CEL_CONFIG,
+  type EvaluateCelOptions,
+  type ResolvedCelEngineConfig,
+  type SerializedCelAst,
+} from './types';

@@ -1,5 +1,5 @@
 import type { CmsDatabaseClient } from '@repo/cms-db';
-import type { JsonObject } from '@repo/cms-domain';
+import { canonicalHash, type JsonObject } from '@repo/cms-domain';
 import { CmsService, CmsServiceError } from '@repo/cms-service';
 
 const SEED_ACTOR = 'compact-scenario-seed';
@@ -348,15 +348,191 @@ export function compactScenarioIsComplete(
     ) {
       return false;
     }
-    const currentPublicationId = client.sqlite
-      .query<{ publicationId: string }, [string]>(
-        'SELECT publication_id AS publicationId FROM current_publications WHERE template_id = ?'
-      )
-      .get(registration.templateId)?.publicationId;
-    if (!currentPublicationId) return false;
+    const current = publicationState(client, registration.templateId);
+    if (
+      !current ||
+      !publicationChainIsCompatible(client, service, registration.templateId, current)
+    ) {
+      return false;
+    }
     return service.serve(registration.templateId, registration.canonicalUrl).status === 200;
   } catch {
     return false;
+  }
+}
+
+interface PublicationState {
+  readonly id: string;
+  readonly previousPublicationId: string | null;
+}
+
+function publicationState(
+  client: CmsDatabaseClient,
+  templateId: string,
+  publicationId?: string
+): PublicationState | null {
+  if (publicationId) {
+    return (
+      client.sqlite
+        .query<PublicationState, [string, string]>(
+          `SELECT id, previous_publication_id AS previousPublicationId
+           FROM publications
+           WHERE template_id = ? AND id = ? AND status = 'published'`
+        )
+        .get(templateId, publicationId) ?? null
+    );
+  }
+  return (
+    client.sqlite
+      .query<PublicationState, [string]>(
+        `SELECT publications.id,
+                publications.previous_publication_id AS previousPublicationId
+         FROM current_publications AS current
+         JOIN publications
+           ON publications.template_id = current.template_id
+          AND publications.id = current.publication_id
+         WHERE current.template_id = ? AND publications.status = 'published'`
+      )
+      .get(templateId) ?? null
+  );
+}
+
+function publicationMaterializationIsCompatible(
+  client: CmsDatabaseClient,
+  service: CmsService,
+  templateId: string,
+  publicationId: string
+): boolean {
+  const publication = client.sqlite
+    .query<{ pageCount: number }, [string, string]>(
+      `SELECT page_count AS pageCount
+       FROM publications
+       WHERE template_id = ? AND id = ? AND status = 'published'`
+    )
+    .get(templateId, publicationId);
+  if (!publication) return false;
+  const pages = client.sqlite
+    .query<{ canonicalUrl: string }, [string, string]>(
+      `SELECT canonical_url AS canonicalUrl
+       FROM published_page_documents
+       WHERE template_id = ? AND publication_id = ?
+       ORDER BY canonical_url, page_instance_id`
+    )
+    .all(templateId, publicationId);
+  if (pages.length !== publication.pageCount) return false;
+  try {
+    return pages.every(({ canonicalUrl }) => {
+      const result = service.resolvePublication(templateId, publicationId, canonicalUrl);
+      return result.status === 200 && canonicalHash(result.document) === result.documentHash;
+    });
+  } catch {
+    return false;
+  }
+}
+
+function publicationChainIsCompatible(
+  client: CmsDatabaseClient,
+  service: CmsService,
+  templateId: string,
+  state: PublicationState
+): boolean {
+  return (
+    publicationMaterializationIsCompatible(client, service, templateId, state.id) &&
+    (state.previousPublicationId === null ||
+      publicationMaterializationIsCompatible(
+        client,
+        service,
+        templateId,
+        state.previousPublicationId
+      ))
+  );
+}
+
+function upgradeCurrentManifestPublication(
+  client: CmsDatabaseClient,
+  registration: CompactScenarioRegistration
+): void {
+  const service = deterministicService(client, registration.templateId);
+  const current = publicationState(client, registration.templateId);
+  if (!current || publicationChainIsCompatible(client, service, registration.templateId, current)) {
+    return;
+  }
+
+  const finalPublicationId = `${registration.templateId}:cel-materialized-current-v2`;
+  const existingFinal = publicationState(client, registration.templateId, finalPublicationId);
+  if (
+    existingFinal &&
+    publicationChainIsCompatible(client, service, registration.templateId, existingFinal)
+  ) {
+    service.rollback(registration.templateId, finalPublicationId, SEED_ACTOR);
+    return;
+  }
+  if (existingFinal) {
+    throw new CmsServiceError(
+      'CONFLICT',
+      `Compact scenario "${registration.templateId}" has an incompatible deterministic CEL reconciliation publication.`
+    );
+  }
+
+  if (
+    !publicationMaterializationIsCompatible(client, service, registration.templateId, current.id)
+  ) {
+    const rollbackPublicationId = `${registration.templateId}:cel-materialized-rollback-v2`;
+    const legacyV1PublicationId = `${registration.templateId}:cel-materialized-publication-v1`;
+    const existingAnchor = [rollbackPublicationId, legacyV1PublicationId].find((publicationId) =>
+      publicationMaterializationIsCompatible(
+        client,
+        service,
+        registration.templateId,
+        publicationId
+      )
+    );
+    if (existingAnchor) {
+      service.rollback(registration.templateId, existingAnchor, SEED_ACTOR);
+    } else {
+      if (publicationState(client, registration.templateId, rollbackPublicationId)) {
+        throw new CmsServiceError(
+          'CONFLICT',
+          `Compact scenario "${registration.templateId}" has an incompatible deterministic CEL rollback publication.`
+        );
+      }
+      service.publish(registration.templateId, {
+        id: rollbackPublicationId,
+        createdBy: SEED_ACTOR,
+        forceNewPublication: true,
+      });
+    }
+  }
+
+  const rollbackAnchor = publicationState(client, registration.templateId);
+  if (
+    !rollbackAnchor ||
+    !publicationMaterializationIsCompatible(
+      client,
+      service,
+      registration.templateId,
+      rollbackAnchor.id
+    )
+  ) {
+    throw new CmsServiceError(
+      'CONFLICT',
+      `Compact scenario "${registration.templateId}" could not materialize a rollback anchor.`
+    );
+  }
+  service.publish(registration.templateId, {
+    id: finalPublicationId,
+    createdBy: SEED_ACTOR,
+    forceNewPublication: true,
+  });
+  const reconciled = publicationState(client, registration.templateId);
+  if (
+    !reconciled ||
+    !publicationChainIsCompatible(client, service, registration.templateId, reconciled)
+  ) {
+    throw new CmsServiceError(
+      'CONFLICT',
+      `Compact scenario "${registration.templateId}" did not produce a serveable CEL publication chain.`
+    );
   }
 }
 
@@ -367,6 +543,7 @@ export function ensureCompactPublishedScenario(
   const registration = compactScenarioRegistry[scenarioId];
   const service = new CmsService(client);
   if (service.getTemplate(registration.templateId)) {
+    upgradeCurrentManifestPublication(client, registration);
     if (!compactScenarioIsComplete(client, scenarioId)) {
       throw new CmsServiceError(
         'CONFLICT',

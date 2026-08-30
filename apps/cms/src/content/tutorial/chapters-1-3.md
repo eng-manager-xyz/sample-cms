@@ -488,13 +488,13 @@ In the algebra, `S_v(p)` looks like a simple Boolean function. In the product, a
 
 The selector language is intentionally smaller than SQL. It supports approved field comparisons, `IN`, `AND`, `OR`, and parentheses. A Store selector may look like:
 
-```text
+```sql
 category = 'fast_food'
 ```
 
 or combine dimensions:
 
-```text
+```sql
 locale = 'en-US' AND state IN ('CA', 'NY')
 ```
 

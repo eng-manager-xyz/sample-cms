@@ -5,14 +5,23 @@ export {
 } from './hash';
 export {
   type CompiledInterpolation,
+  type CompiledJsonInterpolation,
+  type CompiledJsonInterpolationField,
+  type CompileInterpolationOptions,
   compileInterpolation,
+  compileJsonInterpolation,
   type InterpolateOptions,
   InterpolationError,
   type InterpolationErrorCode,
+  type InterpolationInspection,
+  type InterpolationSampleInspection,
   type InterpolationToken,
+  inspectInterpolation,
+  inspectInterpolationSample,
   interpolateJson,
   interpolateTemplate,
   renderInterpolation,
+  renderJsonInterpolation,
 } from './interpolation';
 export {
   type CompiledPublication,

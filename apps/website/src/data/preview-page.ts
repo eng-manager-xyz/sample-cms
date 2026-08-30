@@ -174,9 +174,10 @@ function authoringTrace(
 }
 
 /**
- * Merges rendered (interpolated) content with the resolved authoring document. The identity,
- * ordering, and provenance all come from the resolved placements; rendered content is accepted
- * only when it describes that exact placement and immutable block version.
+ * Merges rendered (interpolated) content with the resolved authoring document. Identity, resolved
+ * sequence, and provenance come from the resolved placements; rendered content is accepted only
+ * when its authored order and immutable block version match. The final preview list is then
+ * normalized to contiguous ordinals at the same document boundary as publication.
  */
 export function createPreviewPageViewModel(input: {
   readonly scenarioId: PreviewPageViewModel['scenarioId'];
@@ -198,7 +199,7 @@ export function createPreviewPageViewModel(input: {
     throw new Error('Preview draft requires one rendered placement per resolved placement.');
   }
 
-  const placements = draft.document.placements.map((placement) => {
+  const placements = draft.document.placements.map((placement, ordinal) => {
     const rendered = renderedByPlacement.get(placement.placementKey);
     if (
       !rendered ||
@@ -212,6 +213,7 @@ export function createPreviewPageViewModel(input: {
     }
     return PreviewPlacementSchema.parse({
       ...rendered,
+      order: ordinal,
       provenance: {
         content: authoringSource(placement.provenance.content),
         order: authoringSource(placement.provenance.order),

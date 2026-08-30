@@ -107,6 +107,75 @@ describe('preview page view model', () => {
       })
     ).toThrow('does not match its resolved authoring placement');
   });
+
+  test('normalizes sparse resolved order values while preserving their exact provenance trace', () => {
+    const footer = {
+      placementKey: 'footer',
+      order: 40,
+      blockVersion: {
+        id: 'block-store-footer-preview',
+        blockType: 'footer',
+      },
+      provenance: {
+        content: {
+          kind: 'default' as const,
+          sourceId: 'tpl-store:default:r1',
+          priority: 0,
+        },
+        order: {
+          kind: 'variant' as const,
+          sourceId: 'revision-store-structural-order',
+          priority: 20,
+        },
+      },
+      trace: [
+        {
+          kind: 'order' as const,
+          source: {
+            kind: 'variant' as const,
+            sourceId: 'revision-store-structural-order',
+            priority: 20,
+          },
+          order: 40,
+        },
+      ],
+    };
+    const page = createPreviewPageViewModel({
+      scenarioId: 'stores',
+      canonicalUrl: '/en-US/store/1001',
+      draft: {
+        ...draft,
+        document: {
+          ...draft.document,
+          placements: [...draft.document.placements, footer],
+        },
+        renderedPlacements: [
+          ...draft.renderedPlacements,
+          {
+            placementKey: footer.placementKey,
+            order: footer.order,
+            blockType: footer.blockVersion.blockType,
+            blockVersionId: footer.blockVersion.id,
+            content: { legal: 'Preview terms' },
+          },
+        ],
+      },
+    });
+
+    expect(page.placements.map((placement) => placement.order)).toEqual([0, 1]);
+    expect(page.placements[1]?.provenance).toMatchObject({
+      order: {
+        sourceRevisionId: 'revision-store-structural-order',
+        sourcePriority: 20,
+      },
+      trace: [
+        {
+          operationKind: 'order',
+          order: 40,
+        },
+      ],
+    });
+  });
 });
 
 describe('preview request isolation', () => {

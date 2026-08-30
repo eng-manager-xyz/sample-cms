@@ -1,14 +1,18 @@
 import type { SQLQueryBindings } from 'bun:sqlite';
 import type { CmsDatabaseClient } from '@repo/cms-db';
 import {
+  type CompiledJsonInterpolation,
   canonicalHash,
   canonicalJson,
+  compileJsonInterpolation,
   type DefaultDocument,
   type BlockVersion as DomainBlockVersion,
   type ProvenanceSource as DomainProvenanceSource,
   type VariantOperation as DomainVariantOperation,
   evaluateSelector,
-  interpolateJson,
+  InterpolationError,
+  type InterpolationSampleInspection,
+  inspectInterpolationSample,
   type JsonObject,
   type JsonValue,
   orderPlacement,
@@ -17,11 +21,13 @@ import {
   type ResolvedDocument,
   type ResolvedPlacement,
   type ResolvedTombstone,
+  renderJsonInterpolation,
   resolveDocument,
   type SelectorExpression,
   type SelectorRecord,
   setPlacement,
   tombstonePlacement,
+  VariantConflictError,
   type VariantLayer,
 } from '@repo/cms-domain';
 
@@ -51,9 +57,15 @@ import type {
   PageInput,
   PageRecord,
   PageTagRecord,
+  PublicationMetadata,
+  PublicationPreflightInput,
+  PublicationPreflightIssue,
+  PublicationPreflightResult,
+  PublicationProgress,
   PublishedDocumentResult,
   PublishInput,
   PublishResult,
+  RollbackInput,
   RollbackResult,
   RouteImportInput,
   RouteImportResult,
@@ -78,6 +90,7 @@ export type CmsServiceErrorCode =
   | 'INVALID_INPUT'
   | 'ARCHIVED_GUARD'
   | 'CONFLICT'
+  | 'CEL_VALIDATION'
   | 'SCHEMA_VALIDATION'
   | 'PUBLICATION_FAILED';
 
@@ -211,6 +224,9 @@ interface PublicationRow {
   previousPublicationId: string | null;
   pageCount: number;
   manifestCount: number;
+  publishedAt: string;
+  activatedAt: string | null;
+  activatedBy: string | null;
 }
 
 interface MaterializedPlacement {
@@ -236,11 +252,37 @@ interface PreparedResolutionState {
   readonly slotsByKey: ReadonlyMap<string, TemplateSlotRecord>;
   readonly layers: readonly PreparedResolutionLayer[];
   readonly sourceOperationIds: ReadonlyMap<string, string>;
+  readonly compiledContentByBlockVersionId: ReadonlyMap<string, CompiledJsonInterpolation>;
+  readonly schemaByBlockVersionId: ReadonlyMap<string, JsonObject>;
 }
 
 interface PreparedPublicationPage {
   readonly page: PageRecord;
   readonly tagsByNamespace: ReadonlyMap<string, readonly string[]>;
+  readonly currentDocumentHash: string | null;
+  readonly currentRouteStatus: RouteStatus | null;
+}
+
+interface PublicationCompilation {
+  readonly state: PreparedResolutionState | null;
+  readonly activeRevisions: readonly {
+    readonly variantId: string;
+    readonly priority: number;
+    readonly revisionId: string;
+    readonly selectorHash: string;
+  }[];
+  readonly totalPages: number;
+  readonly inputHash: string | null;
+  readonly manifests: ReadonlyMap<
+    string,
+    { readonly id: string; readonly placements: readonly MaterializedPlacement[] }
+  >;
+  readonly issues: readonly PublicationPreflightIssue[];
+  readonly affectedPageCount: number;
+  readonly affectedPageSample: readonly string[];
+  readonly selectorMatchCount: number;
+  readonly blockReferenceCount: number;
+  readonly logicalExpandedRenderedDocumentBytes: number;
 }
 
 const templateSelect = `
@@ -299,7 +341,6 @@ const serveSql = `
 const publishedManifestSql = `
   SELECT items.ordinal, items.placement_key AS placementKey,
          items.block_version_id AS blockVersionId, types.key AS blockType,
-         versions.content_json AS contentJson,
          items.source_variant_revision_id AS sourceRevisionId,
          items.source_operation_id AS sourceOperationId,
          items.source_priority AS sourcePriority
@@ -343,6 +384,16 @@ const assertPageLimit = (limit: number, maximum = 100): number => {
   return limit;
 };
 
+const assertPublicationBatchSize = (batchSize: number): number => {
+  if (!Number.isSafeInteger(batchSize) || batchSize < 1 || batchSize > 10_000) {
+    throw new CmsServiceError(
+      'INVALID_INPUT',
+      'Publication batch size must be an integer from 1 through 10000.'
+    );
+  }
+  return batchSize;
+};
+
 const normalizeMachineValue = (value: string): string =>
   value.normalize('NFKC').trim().toLowerCase();
 
@@ -364,6 +415,9 @@ const isJsonValue = (value: unknown): value is JsonValue => {
     Object.values(value).every((entry) => isJsonValue(entry))
   );
 };
+
+const isJsonObject = (value: unknown): value is JsonObject =>
+  value !== null && typeof value === 'object' && !Array.isArray(value);
 
 const parseJson = (value: string): JsonValue => {
   const parsed: unknown = JSON.parse(value);
@@ -451,6 +505,7 @@ export class CmsService {
   private readonly now: () => string;
   private readonly createId: (scope: string) => string;
   private readonly selectorPreviewLimit: number;
+  private readonly interpolationAllowedRootsCache = new Map<string, readonly string[]>();
 
   constructor(client: CmsDatabaseClient, options: CmsServiceOptions = {}) {
     this.client = client;
@@ -629,6 +684,7 @@ export class CmsService {
         this.now(),
       ]
     );
+    this.interpolationAllowedRootsCache.delete(templateId);
     return this.requireSlot(templateId, input.id);
   }
 
@@ -677,6 +733,7 @@ export class CmsService {
         slotId,
       ]
     );
+    this.interpolationAllowedRootsCache.delete(templateId);
     return this.requireSlot(templateId, slotId);
   }
 
@@ -684,6 +741,7 @@ export class CmsService {
     this.requireTemplate(templateId, true);
     this.requireSlot(templateId, slotId);
     this.run('DELETE FROM template_slots WHERE template_id = ? AND id = ?', [templateId, slotId]);
+    this.interpolationAllowedRootsCache.delete(templateId);
   }
 
   private normalizeSlotValue(
@@ -706,6 +764,23 @@ export class CmsService {
       return { value: normalized, normalized };
     }
     return { value, normalized: normalizeMachineValue(value) };
+  }
+
+  private interpolationSlotValue(slot: TemplateSlotRecord, rawValue: string): JsonValue {
+    if (slot.valueType === 'integer') {
+      const value = Number(rawValue);
+      if (!Number.isSafeInteger(value)) {
+        throw new CmsServiceError('INVALID_INPUT', `Slot "${slot.key}" requires an integer.`);
+      }
+      return value;
+    }
+    if (slot.valueType === 'boolean') {
+      if (rawValue !== 'true' && rawValue !== 'false') {
+        throw new CmsServiceError('INVALID_INPUT', `Slot "${slot.key}" requires a boolean.`);
+      }
+      return rawValue === 'true';
+    }
+    return rawValue;
   }
 
   private prepareSlotValues(
@@ -806,6 +881,7 @@ export class CmsService {
         [input.id, templateId, entry.slot.id, entry.value, entry.normalized, now]
       );
     }
+    this.interpolationAllowedRootsCache.delete(templateId);
   }
 
   private buildCanonicalUrlFromPrepared(
@@ -1316,6 +1392,7 @@ export class CmsService {
         this.now(),
       ]
     );
+    this.interpolationAllowedRootsCache.delete(templateId);
     return this.requireTag(templateId, input.id);
   }
 
@@ -1355,6 +1432,7 @@ export class CmsService {
         tagId,
       ]
     );
+    this.interpolationAllowedRootsCache.delete(templateId);
     return this.requireTag(templateId, tagId);
   }
 
@@ -1362,6 +1440,7 @@ export class CmsService {
     this.requireTemplate(templateId, true);
     this.requireTag(templateId, tagId);
     this.run('DELETE FROM tags WHERE template_id = ? AND id = ?', [templateId, tagId]);
+    this.interpolationAllowedRootsCache.delete(templateId);
   }
 
   assignTags(
@@ -1782,6 +1861,96 @@ export class CmsService {
     return { ...row, schema: parseJsonObject(row.schemaJson) };
   }
 
+  private interpolationAllowedRoots(templateId: string): readonly string[] {
+    const cached = this.interpolationAllowedRootsCache.get(templateId);
+    if (cached) return cached;
+    const contextRoots = this.all<{ key: string }>(
+      `SELECT DISTINCT context_keys.key AS key
+       FROM page_instances AS pages
+       JOIN json_each(pages.context_json) AS context_keys ON TRUE
+       WHERE pages.template_id = ? AND pages.route_status <> 'archived'
+       ORDER BY context_keys.key`,
+      [templateId]
+    ).map(({ key }) => key);
+    const slotRoots = this.listTemplateSlots(templateId).map((slot) => slot.key);
+    const tagRoots = this.all<{ namespace: string }>(
+      `SELECT DISTINCT namespace
+       FROM tags
+       WHERE template_id = ?
+       ORDER BY namespace`,
+      [templateId]
+    ).map((tag) => tag.namespace);
+    const roots = [
+      ...new Set([
+        'context',
+        'page',
+        'route',
+        'slot',
+        'slots',
+        'tag',
+        'tags',
+        ...contextRoots,
+        ...slotRoots,
+        ...tagRoots,
+      ]),
+    ].sort();
+    this.interpolationAllowedRootsCache.set(templateId, roots);
+    return roots;
+  }
+
+  private compileBlockContent(templateId: string, content: JsonObject): CompiledJsonInterpolation {
+    try {
+      return compileJsonInterpolation(content, {
+        allowedRoots: this.interpolationAllowedRoots(templateId),
+      });
+    } catch (error) {
+      if (error instanceof InterpolationError) {
+        throw new CmsServiceError(
+          'CEL_VALIDATION',
+          `Block CEL compilation failed (${error.code}): ${error.message}`
+        );
+      }
+      throw error;
+    }
+  }
+
+  private evaluateBlockContent(
+    compiled: CompiledJsonInterpolation,
+    context: JsonObject,
+    schema: JsonObject,
+    placementLabel: string
+  ): JsonObject {
+    let rendered: JsonValue;
+    try {
+      rendered = renderJsonInterpolation(compiled, context);
+    } catch (error) {
+      if (error instanceof InterpolationError) {
+        throw new CmsServiceError(
+          'CEL_VALIDATION',
+          `${placementLabel} CEL evaluation failed (${error.code}): ${error.message}`
+        );
+      }
+      throw error;
+    }
+    if (!isJsonObject(rendered)) {
+      throw new CmsServiceError(
+        'CEL_VALIDATION',
+        `${placementLabel} evaluated content must remain an object.`
+      );
+    }
+    try {
+      assertBlockContent(schema, rendered);
+    } catch (error) {
+      throw new CmsServiceError(
+        'SCHEMA_VALIDATION',
+        `${placementLabel} evaluated content failed schema validation: ${
+          error instanceof Error ? error.message : 'unknown schema error'
+        }`
+      );
+    }
+    return rendered;
+  }
+
   private insertBlockVersion(
     templateId: string,
     input: CreateBlockVersionInput,
@@ -1804,6 +1973,7 @@ export class CmsService {
         error instanceof Error ? error.message : 'Block content failed schema validation.'
       );
     }
+    this.compileBlockContent(templateId, input.content);
     const contentHash = canonicalHash({
       blockType: blockType.key,
       schemaVersion: blockType.schemaVersion,
@@ -1887,17 +2057,27 @@ export class CmsService {
     blockVersionId: string,
     context: JsonObject
   ): JsonObject {
-    const interpolated = interpolateJson(
-      this.requireBlockVersion(templateId, blockVersionId).content,
-      context
+    const blockVersion = this.requireBlockVersion(templateId, blockVersionId);
+    const blockType = this.requireBlockType(blockVersion.blockTypeKey);
+    return this.evaluateBlockContent(
+      this.compileBlockContent(templateId, blockVersion.content),
+      context,
+      blockType.schema,
+      `Block version "${blockVersionId}"`
     );
-    if (interpolated === null || typeof interpolated !== 'object' || Array.isArray(interpolated)) {
-      throw new CmsServiceError(
-        'INVALID_INPUT',
-        'Interpolated block content must remain an object.'
-      );
-    }
-    return interpolated as JsonObject;
+  }
+
+  /** Uses the canonical page aliases and allowlist shared by preview and publication. */
+  inspectBlockFieldInterpolation(
+    templateId: string,
+    pageId: string,
+    source: string
+  ): InterpolationSampleInspection {
+    this.requireTemplate(templateId);
+    const page = this.requirePage(templateId, pageId);
+    return inspectInterpolationSample(source, this.interpolationContext(templateId, page), {
+      allowedRoots: this.interpolationAllowedRoots(templateId),
+    });
   }
 
   private variantFromRow(row: VariantRow): VariantRecord {
@@ -2496,6 +2676,40 @@ export class CmsService {
     });
   }
 
+  /** Removes the selected variant's complete local order snapshot in one immutable revision. */
+  revertVariantOrder(
+    templateId: string,
+    variantId: string,
+    input: {
+      readonly revisionId?: string;
+      readonly createdBy: string;
+    }
+  ): VariantRevisionRecord {
+    const variant = this.requireVariant(templateId, variantId);
+    if (variant.isDefault) {
+      throw new CmsServiceError(
+        'INVALID_INPUT',
+        'The template default order cannot revert to another authoring scope.'
+      );
+    }
+    if (variant.status === 'archived') {
+      throw new CmsServiceError('ARCHIVED_GUARD', `Variant "${variantId}" is archived.`);
+    }
+    return this.forkRevisionSnapshot(templateId, variantId, {
+      revisionId: input.revisionId,
+      createdBy: input.createdBy,
+      transform: (operations) =>
+        operations
+          .filter((operation) => operation.operationKind !== 'order')
+          .map((operation) => ({
+            placementKey: operation.placementKey,
+            operationKind: operation.operationKind,
+            blockVersionId: operation.blockVersionId,
+            orderIndex: operation.orderIndex,
+          })),
+    });
+  }
+
   revertVariantPlacement(
     templateId: string,
     variantId: string,
@@ -2520,7 +2734,10 @@ export class CmsService {
       createdBy: input.createdBy,
       transform: (operations) =>
         operations
-          .filter((operation) => operation.placementKey !== input.placementKey)
+          .filter(
+            (operation) =>
+              operation.placementKey !== input.placementKey || operation.operationKind === 'order'
+          )
           .map((operation) => ({
             placementKey: operation.placementKey,
             operationKind: operation.operationKind,
@@ -2947,7 +3164,15 @@ export class CmsService {
   }
 
   private interpolationContext(templateId: string, page: PageRecord): JsonObject {
-    const slotValues: JsonObject = { ...page.slotValues };
+    const slotsByKey = new Map(
+      this.listTemplateSlots(templateId).map((slot) => [slot.key, slot] as const)
+    );
+    const slotValues: JsonObject = Object.fromEntries(
+      Object.entries(page.slotValues).map(([key, value]) => {
+        const slot = slotsByKey.get(key);
+        return [key, slot ? this.interpolationSlotValue(slot, value) : value];
+      })
+    );
     const tagValues = new Map<string, string[]>();
     for (const assignment of this.getTagsForPage(templateId, page.id)) {
       const values = tagValues.get(assignment.tag.namespace) ?? [];
@@ -2965,6 +3190,17 @@ export class CmsService {
     );
     const context: Record<string, JsonValue> = {
       ...page.context,
+      context: page.context,
+      page: {
+        id: page.id,
+        canonicalUrl: page.canonicalUrl,
+        externalId: page.routeExternalId,
+        status: page.routeStatus,
+        revision: page.routeRevision,
+        context: page.context,
+        slots: slotValues,
+        tags,
+      },
       slot: slotValues,
       slots: slotValues,
       tag,
@@ -2976,7 +3212,7 @@ export class CmsService {
         revision: page.routeRevision,
       },
     };
-    for (const [key, value] of Object.entries(page.slotValues)) {
+    for (const [key, value] of Object.entries(slotValues)) {
       context[key] ??= value;
     }
     for (const [namespace, values] of tagValues) {
@@ -3029,6 +3265,8 @@ export class CmsService {
       this.listTemplateSlots(templateId).map((slot) => [slot.key, slot] as const)
     );
     const sourceOperationIds = new Map<string, string>();
+    const compiledContentByBlockVersionId = new Map<string, CompiledJsonInterpolation>();
+    const schemaByBlockVersionId = new Map<string, JsonObject>();
     const validateAndIndexOperations = (
       revisionId: string,
       operations: readonly OperationRow[]
@@ -3052,6 +3290,13 @@ export class CmsService {
             'SCHEMA_VALIDATION',
             error instanceof Error ? error.message : 'Block content failed schema validation.'
           );
+        }
+        if (!compiledContentByBlockVersionId.has(block.id)) {
+          compiledContentByBlockVersionId.set(
+            block.id,
+            this.compileBlockContent(templateId, block.content)
+          );
+          schemaByBlockVersionId.set(block.id, blockType.schema);
         }
         sourceOperationIds.set(
           sourceOperationKey(revisionId, operation.placementKey, operation.blockVersionId),
@@ -3093,6 +3338,8 @@ export class CmsService {
       slotsByKey,
       layers,
       sourceOperationIds,
+      compiledContentByBlockVersionId,
+      schemaByBlockVersionId,
     };
   }
 
@@ -3117,6 +3364,25 @@ export class CmsService {
       }
       const pageIds: string[] = rows.map((row: PageRow) => row.id);
       const placeholders = pageIds.map(() => '?').join(', ');
+      const currentDocumentRows = this.all<{
+        pageId: string;
+        documentHash: string;
+        routeStatus: RouteStatus;
+      }>(
+        `SELECT documents.page_instance_id AS pageId,
+                documents.document_hash AS documentHash,
+                documents.route_status AS routeStatus
+         FROM current_publications AS current
+         JOIN published_page_documents AS documents
+           ON documents.template_id = current.template_id
+          AND documents.publication_id = current.publication_id
+         WHERE current.template_id = ?
+           AND documents.page_instance_id IN (${placeholders})`,
+        [templateId, ...pageIds]
+      );
+      const currentDocumentByPage = new Map(
+        currentDocumentRows.map((row) => [row.pageId, row] as const)
+      );
       const slotRows = this.all<{ pageId: string; key: string; value: string }>(
         `SELECT values_table.page_instance_id AS pageId, slots.key, values_table.value
          FROM page_slot_values AS values_table
@@ -3153,6 +3419,7 @@ export class CmsService {
       yield rows.map((row: PageRow): PreparedPublicationPage => {
         const context = parseJsonObject(row.contextJson);
         const tags = tagsByPage.get(row.id) ?? new Map<string, string[]>();
+        const currentDocument = currentDocumentByPage.get(row.id);
         return {
           page: {
             ...row,
@@ -3166,6 +3433,8 @@ export class CmsService {
               [...new Set(values)].sort(),
             ])
           ),
+          currentDocumentHash: currentDocument?.documentHash ?? null,
+          currentRouteStatus: currentDocument?.routeStatus ?? null,
         };
       });
       const last: PageRow | undefined = rows.at(-1);
@@ -3203,16 +3472,33 @@ export class CmsService {
   }
 
   private preparedInterpolationContext(
+    state: PreparedResolutionState,
     page: PageRecord,
     tagsByNamespace: ReadonlyMap<string, readonly string[]>
   ): JsonObject {
-    const slotValues: JsonObject = { ...page.slotValues };
+    const slotValues: JsonObject = Object.fromEntries(
+      Object.entries(page.slotValues).map(([key, value]) => {
+        const slot = state.slotsByKey.get(key);
+        return [key, slot ? this.interpolationSlotValue(slot, value) : value];
+      })
+    );
     const tags: JsonObject = Object.fromEntries(tagsByNamespace);
     const tag: JsonObject = Object.fromEntries(
       [...tagsByNamespace.entries()].map(([namespace, values]) => [namespace, values.join(',')])
     );
     const context: Record<string, JsonValue> = {
       ...page.context,
+      context: page.context,
+      page: {
+        id: page.id,
+        canonicalUrl: page.canonicalUrl,
+        externalId: page.routeExternalId,
+        status: page.routeStatus,
+        revision: page.routeRevision,
+        context: page.context,
+        slots: slotValues,
+        tags,
+      },
       slot: slotValues,
       slots: slotValues,
       tag,
@@ -3224,7 +3510,7 @@ export class CmsService {
         revision: page.routeRevision,
       },
     };
-    for (const [key, value] of Object.entries(page.slotValues)) {
+    for (const [key, value] of Object.entries(slotValues)) {
       context[key] ??= value;
     }
     for (const [namespace, values] of tagsByNamespace) {
@@ -3245,21 +3531,32 @@ export class CmsService {
       resolveDocument(state.defaultDocument, matchingLayers),
       state.defaultRevisionId
     );
-    const context = this.preparedInterpolationContext(prepared.page, prepared.tagsByNamespace);
+    const context = this.preparedInterpolationContext(
+      state,
+      prepared.page,
+      prepared.tagsByNamespace
+    );
     const renderedPlacements = document.placements.map((placement) => {
-      const content = interpolateJson(placement.blockVersion.content, context);
-      if (content === null || typeof content !== 'object' || Array.isArray(content)) {
+      const compiled = state.compiledContentByBlockVersionId.get(placement.blockVersion.id);
+      const schema = state.schemaByBlockVersionId.get(placement.blockVersion.id);
+      if (!compiled || !schema) {
         throw new CmsServiceError(
-          'INVALID_INPUT',
-          `Placement "${placement.placementKey}" did not render to an object.`
+          'CONFLICT',
+          `Placement "${placement.placementKey}" has no prepared CEL compilation.`
         );
       }
+      const content = this.evaluateBlockContent(
+        compiled,
+        context,
+        schema,
+        `Placement "${placement.placementKey}"`
+      );
       return {
         placementKey: placement.placementKey,
         order: placement.order,
         blockType: placement.blockVersion.blockType,
         blockVersionId: placement.blockVersion.id,
-        content: content as JsonObject,
+        content,
       };
     });
     return { page: prepared.page, document, renderedPlacements };
@@ -3321,19 +3618,19 @@ export class CmsService {
     );
     const interpolationContext = this.interpolationContext(templateId, page);
     const renderedPlacements = document.placements.map((placement) => {
-      const content = interpolateJson(placement.blockVersion.content, interpolationContext);
-      if (content === null || typeof content !== 'object' || Array.isArray(content)) {
-        throw new CmsServiceError(
-          'INVALID_INPUT',
-          `Placement "${placement.placementKey}" did not render to an object.`
-        );
-      }
+      const blockType = this.requireBlockType(placement.blockVersion.blockType);
+      const content = this.evaluateBlockContent(
+        this.compileBlockContent(templateId, placement.blockVersion.content),
+        interpolationContext,
+        blockType.schema,
+        `Placement "${placement.placementKey}"`
+      );
       return {
         placementKey: placement.placementKey,
         order: placement.order,
         blockType: placement.blockVersion.blockType,
         blockVersionId: placement.blockVersion.id,
-        content: content as JsonObject,
+        content,
       };
     });
     return { page, document, renderedPlacements };
@@ -3352,7 +3649,9 @@ export class CmsService {
 
   /**
    * Resolves one variant revision into the complete document without activating a draft variant or
-   * publishing it. Other active matching variants remain present, so conflict behavior is exact.
+   * publishing it. The authoring projection contains only defaults, strictly lower-priority active
+   * layers, and the selected revision; global higher-priority winners remain visible in cascade
+   * diagnostics rather than masking the selected scope's local operations.
    */
   resolveVariantDraft(
     templateId: string,
@@ -3384,15 +3683,13 @@ export class CmsService {
         `Page "${pageId}" does not match revision "${selectedRevisionId}".`
       );
     }
-    const layers = this.matchingLayers(templateId, page)
-      .filter((layer) => layer.id !== selectedRevisionId && layer.id !== variant.activeRevisionId)
-      .concat({
-        id: selectedRevisionId,
-        priority: variant.priority,
-        operations: this.loadRevisionOperations(templateId, selectedRevisionId).map((operation) =>
-          this.domainOperation(operation)
-        ),
-      });
+    const layers = this.matchingLayers(templateId, page, variant.priority).concat({
+      id: selectedRevisionId,
+      priority: variant.priority,
+      operations: this.loadRevisionOperations(templateId, selectedRevisionId).map((operation) =>
+        this.domainOperation(operation)
+      ),
+    });
     return this.renderResolvedPage(templateId, page, this.loadDefaultDocument(templateId), layers);
   }
 
@@ -3408,6 +3705,37 @@ export class CmsService {
       );
     }
     return this.resolvePage(templateId, page.id);
+  }
+
+  /**
+   * Proves every active page can be structurally resolved and rendered even while intentional
+   * same-priority conflicts remain in draft state. Each matching layer is made the deterministic
+   * winner of its own priority group in one validation pass; synthetic priorities are never saved.
+   */
+  validateAuthoringResolution(templateId: string): void {
+    this.requireTemplate(templateId);
+    const state = this.prepareResolutionState(templateId);
+    for (const batch of this.publicationPageBatches(templateId)) {
+      for (const prepared of batch) {
+        const record = this.preparedSelectorRecord(state, prepared.page, prepared.tagsByNamespace);
+        const matchingLayerIds = state.layers
+          .filter((layer) => evaluateSelector(layer.expression, record))
+          .map((layer) => layer.id);
+        const focusLayerIds: readonly (string | null)[] =
+          matchingLayerIds.length === 0 ? [null] : matchingLayerIds;
+        for (const focusLayerId of focusLayerIds) {
+          const layers = [...state.layers]
+            .sort((left, right) => {
+              if (left.priority !== right.priority) return left.priority - right.priority;
+              if (left.id === focusLayerId) return 1;
+              if (right.id === focusLayerId) return -1;
+              return left.id.localeCompare(right.id);
+            })
+            .map((layer, index) => ({ ...layer, priority: index + 1 }));
+          this.resolvePreparedPage({ ...state, layers }, prepared);
+        }
+      }
+    }
   }
 
   copyOnWritePlacement(
@@ -3450,6 +3778,8 @@ export class CmsService {
       const currentSet = this.loadRevisionOperations(templateId, currentRevision.id).find(
         (operation) => operation.placementKey === placementKey && operation.operationKind === 'set'
       );
+      // resolvePageAtPriority uses an exclusive maximum, so copy-on-write can never fork a
+      // same- or higher-priority winner that merely masks the selected authoring scope.
       const lowerPlacement = this.resolvePageAtPriority(
         templateId,
         pageId,
@@ -3531,13 +3861,17 @@ export class CmsService {
           this.get<{ count: number }>(
             `SELECT count(*) AS count
              FROM page_instances AS p
-             WHERE p.template_id = ? AND ${predicate}`,
+             WHERE p.template_id = ?
+               AND p.route_status <> 'archived'
+               AND ${predicate}`,
             parameters
           )?.count ?? 0;
         const overlapPageIds = this.all<{ id: string }>(
           `SELECT p.id
            FROM page_instances AS p
-           WHERE p.template_id = ? AND ${predicate}
+           WHERE p.template_id = ?
+             AND p.route_status <> 'archived'
+             AND ${predicate}
            ORDER BY p.canonical_url, p.id
            LIMIT ?`,
           [...parameters, limit]
@@ -3618,12 +3952,28 @@ export class CmsService {
     });
   }
 
+  private publishedPlacementContentValue(
+    renderedPlacements: EffectivePageDocument['renderedPlacements']
+  ): JsonObject {
+    return {
+      contract: 'cms-published-placement-content-v1',
+      placements: Object.fromEntries(
+        [...renderedPlacements]
+          .sort((left, right) => left.placementKey.localeCompare(right.placementKey))
+          .map((placement) => [placement.placementKey, placement.content])
+      ),
+    };
+  }
+
   private currentPublication(templateId: string): PublicationRow | null {
     return this.get<PublicationRow>(
       `SELECT publications.id, publications.sequence, publications.input_hash AS inputHash,
               publications.previous_publication_id AS previousPublicationId,
               publications.page_count AS pageCount,
-              publications.manifest_count AS manifestCount
+              publications.manifest_count AS manifestCount,
+              publications.published_at AS publishedAt,
+              current.activated_at AS activatedAt,
+              current.activated_by AS activatedBy
        FROM current_publications AS current
        JOIN publications ON publications.id = current.publication_id
          AND publications.template_id = current.template_id
@@ -3632,58 +3982,171 @@ export class CmsService {
     );
   }
 
-  publish(templateId: string, input: PublishInput): PublishResult {
-    const startedAt = performance.now();
-    this.requireTemplate(templateId, true);
-    const batchSize = input.batchSize ?? 5_000;
-    if (!Number.isSafeInteger(batchSize) || batchSize < 1 || batchSize > 10_000) {
-      throw new CmsServiceError(
-        'INVALID_INPUT',
-        'Publication batch size must be an integer from 1 through 10000.'
-      );
+  private publicationMetadata(
+    templateId: string,
+    publicationId: string
+  ): PublicationMetadata | null {
+    return this.get<PublicationMetadata>(
+      `SELECT publications.id, publications.sequence, publications.input_hash AS inputHash,
+              publications.previous_publication_id AS previousPublicationId,
+              publications.page_count AS pageCount,
+              publications.manifest_count AS manifestCount,
+              publications.published_at AS publishedAt,
+              current.activated_at AS activatedAt,
+              current.activated_by AS activatedBy
+       FROM publications
+       LEFT JOIN current_publications AS current
+         ON current.template_id = publications.template_id
+        AND current.publication_id = publications.id
+       WHERE publications.template_id = ? AND publications.id = ?
+         AND publications.status = 'published'`,
+      [templateId, publicationId]
+    );
+  }
+
+  private publicationIssues(
+    error: unknown,
+    canonicalUrl: string | null,
+    affectedPageCount = 1
+  ): readonly PublicationPreflightIssue[] {
+    const sampleCanonicalUrls = canonicalUrl ? [canonicalUrl] : [];
+    if (error instanceof VariantConflictError) {
+      return error.conflicts.map((conflict) => ({
+        code: 'PRIORITY_CONFLICT' as const,
+        message: `Priority ${conflict.priority} conflict for placement "${conflict.placementKey}" between revisions ${conflict.variantIds.join(', ')}.`,
+        affectedPageCount,
+        sampleCanonicalUrls,
+        placementKey: conflict.placementKey,
+        priority: conflict.priority,
+        variantRevisionIds: [...conflict.variantIds].sort(),
+        operationKinds: [...conflict.operationKinds].sort(),
+      }));
     }
-    const materializationMode = input.materializationMode ?? 'manifest';
-    return this.transaction(() => {
-      const state = this.prepareResolutionState(templateId);
-      const activeRevisions = this.all<{
-        variantId: string;
-        priority: number;
-        revisionId: string;
-        selectorHash: string;
-      }>(
-        `SELECT variants.id AS variantId, variants.priority,
-                revisions.id AS revisionId, revisions.selector_hash AS selectorHash
-         FROM variants
-         JOIN variant_revisions AS revisions ON revisions.id = variants.active_revision_id
-         WHERE variants.template_id = ? AND variants.status = 'active'
-         ORDER BY variants.priority, variants.id`,
+    return [
+      {
+        code: error instanceof CmsServiceError ? error.code : 'PUBLICATION_FAILED',
+        message: error instanceof Error ? error.message : 'Publication preflight failed.',
+        affectedPageCount,
+        sampleCanonicalUrls,
+        placementKey: null,
+        priority: null,
+        variantRevisionIds: [],
+        operationKinds: [],
+      },
+    ];
+  }
+
+  private compilePublication(
+    templateId: string,
+    materializationMode: 'manifest' | 'expanded',
+    batchSize: number,
+    sampleLimit: number,
+    collectIssues: boolean,
+    onProgress?: (progress: PublicationProgress) => void
+  ): PublicationCompilation {
+    const activeRevisions = this.all<{
+      variantId: string;
+      priority: number;
+      revisionId: string;
+      selectorHash: string;
+    }>(
+      `SELECT variants.id AS variantId, variants.priority,
+              revisions.id AS revisionId, revisions.selector_hash AS selectorHash
+       FROM variants
+       JOIN variant_revisions AS revisions ON revisions.id = variants.active_revision_id
+       WHERE variants.template_id = ? AND variants.status = 'active'
+       ORDER BY variants.priority, variants.id`,
+      [templateId]
+    );
+    const totalPages =
+      this.get<{ count: number }>(
+        `SELECT count(*) AS count FROM page_instances
+         WHERE template_id = ? AND route_status <> 'archived'`,
         [templateId]
+      )?.count ?? 0;
+    const allPageSample = this.all<{ canonicalUrl: string }>(
+      `SELECT canonical_url AS canonicalUrl
+       FROM page_instances
+       WHERE template_id = ? AND route_status <> 'archived'
+       ORDER BY canonical_url, id
+       LIMIT ?`,
+      [templateId, sampleLimit]
+    ).map((row) => row.canonicalUrl);
+    const issueGroups = new Map<string, PublicationPreflightIssue>();
+    const addIssues = (issues: readonly PublicationPreflightIssue[]): void => {
+      for (const issue of issues) {
+        const key = canonicalJson({
+          code: issue.code,
+          message: issue.message,
+          placementKey: issue.placementKey,
+          priority: issue.priority,
+          variantRevisionIds: issue.variantRevisionIds,
+          operationKinds: issue.operationKinds,
+        });
+        const existing = issueGroups.get(key);
+        if (!existing) {
+          issueGroups.set(key, issue);
+          continue;
+        }
+        issueGroups.set(key, {
+          ...existing,
+          affectedPageCount: existing.affectedPageCount + issue.affectedPageCount,
+          sampleCanonicalUrls: [
+            ...new Set([...existing.sampleCanonicalUrls, ...issue.sampleCanonicalUrls]),
+          ]
+            .sort()
+            .slice(0, sampleLimit),
+        });
+      }
+    };
+    let state: PreparedResolutionState;
+    try {
+      state = this.prepareResolutionState(templateId);
+    } catch (error) {
+      if (!collectIssues) throw error;
+      addIssues(
+        this.publicationIssues(error, null, totalPages).map((issue) => ({
+          ...issue,
+          sampleCanonicalUrls: allPageSample,
+        }))
       );
-      const totalPages =
-        this.get<{ count: number }>(
-          `SELECT count(*) AS count FROM page_instances
-           WHERE template_id = ? AND route_status <> 'archived'`,
-          [templateId]
-        )?.count ?? 0;
-      const inputHasher = new Bun.CryptoHasher('sha256');
-      inputHasher.update(
-        canonicalJson({
-          contract: 'cms-publication-input-v2',
-          templateId,
-          materializationMode,
-          activeRevisions,
-        })
-      );
-      const manifests = new Map<
-        string,
-        { readonly id: string; readonly placements: readonly MaterializedPlacement[] }
-      >();
-      let compiledPages = 0;
-      let selectorMatchCount = 0;
-      let blockReferenceCount = 0;
-      let logicalExpandedRenderedDocumentBytes = 0;
-      for (const batch of this.publicationPageBatches(templateId, batchSize)) {
-        for (const prepared of batch) {
+      return {
+        state: null,
+        activeRevisions,
+        totalPages,
+        inputHash: null,
+        manifests: new Map(),
+        issues: [...issueGroups.values()],
+        affectedPageCount: totalPages,
+        affectedPageSample: allPageSample,
+        selectorMatchCount: 0,
+        blockReferenceCount: 0,
+        logicalExpandedRenderedDocumentBytes: 0,
+      };
+    }
+
+    const inputHasher = new Bun.CryptoHasher('sha256');
+    inputHasher.update(
+      canonicalJson({
+        contract: 'cms-publication-input-v3-cel-materialized',
+        templateId,
+        materializationMode,
+        activeRevisions,
+      })
+    );
+    const manifests = new Map<
+      string,
+      { readonly id: string; readonly placements: readonly MaterializedPlacement[] }
+    >();
+    const affectedPageSample: string[] = [];
+    let affectedPageCount = 0;
+    let compiledPages = 0;
+    let selectorMatchCount = 0;
+    let blockReferenceCount = 0;
+    let logicalExpandedRenderedDocumentBytes = 0;
+    for (const batch of this.publicationPageBatches(templateId, batchSize)) {
+      for (const prepared of batch) {
+        try {
           const entry = this.resolvePreparedPage(state, prepared);
           const placements = this.preparedMaterializedPlacements(state, entry.document);
           const manifestHash = canonicalHash({
@@ -3704,17 +4167,26 @@ export class CmsService {
               placements,
             }
           );
+          const document = this.publishedDocumentValue(
+            templateId,
+            entry.page.id,
+            entry.renderedPlacements,
+            placements
+          );
+          const documentHash = canonicalHash(document);
+          if (
+            prepared.currentDocumentHash !== documentHash ||
+            prepared.currentRouteStatus !== entry.page.routeStatus
+          ) {
+            affectedPageCount += 1;
+            if (affectedPageSample.length < sampleLimit) {
+              affectedPageSample.push(entry.page.canonicalUrl);
+            }
+          }
           selectorMatchCount += entry.document.matchedVariantIds.length;
           blockReferenceCount += placements.length;
           logicalExpandedRenderedDocumentBytes += Buffer.byteLength(
-            stringifyJson(
-              this.publishedDocumentValue(
-                templateId,
-                entry.page.id,
-                entry.renderedPlacements,
-                placements
-              )
-            ),
+            stringifyJson(document),
             'utf8'
           );
           inputHasher.update(
@@ -3727,22 +4199,181 @@ export class CmsService {
               slotValueHash: entry.page.slotValueHash,
               tags: Object.fromEntries(prepared.tagsByNamespace),
               contentHash: entry.document.contentHash,
+              evaluatedContentHash: canonicalHash(
+                this.publishedPlacementContentValue(entry.renderedPlacements)
+              ),
               manifestHash,
             })
           );
-          compiledPages += 1;
+        } catch (error) {
+          if (!collectIssues) throw error;
+          addIssues(this.publicationIssues(error, prepared.page.canonicalUrl));
+          affectedPageCount += 1;
+          if (affectedPageSample.length < sampleLimit) {
+            affectedPageSample.push(prepared.page.canonicalUrl);
+          }
         }
-        input.onProgress?.({ phase: 'compile', pagesProcessed: compiledPages, totalPages });
+        compiledPages += 1;
       }
-      if (compiledPages !== totalPages) {
+      onProgress?.({ phase: 'compile', pagesProcessed: compiledPages, totalPages });
+    }
+    if (compiledPages !== totalPages) {
+      const error = new CmsServiceError(
+        'PUBLICATION_FAILED',
+        `Publication page snapshot changed from ${totalPages} to ${compiledPages} rows.`
+      );
+      if (!collectIssues) throw error;
+      addIssues(this.publicationIssues(error, null, totalPages));
+    }
+    const issues = [...issueGroups.values()].sort(
+      (left, right) =>
+        left.code.localeCompare(right.code) ||
+        (left.priority ?? -1) - (right.priority ?? -1) ||
+        (left.placementKey ?? '').localeCompare(right.placementKey ?? '') ||
+        left.message.localeCompare(right.message)
+    );
+    return {
+      state,
+      activeRevisions,
+      totalPages,
+      inputHash: issues.length === 0 ? inputHasher.digest('hex') : null,
+      manifests,
+      issues,
+      affectedPageCount,
+      affectedPageSample,
+      selectorMatchCount,
+      blockReferenceCount,
+      logicalExpandedRenderedDocumentBytes,
+    };
+  }
+
+  preflightPublication(
+    templateId: string,
+    input: PublicationPreflightInput = {}
+  ): PublicationPreflightResult {
+    this.requireTemplate(templateId, true);
+    const batchSize = assertPublicationBatchSize(input.batchSize ?? 5_000);
+    const sampleLimit = assertPageLimit(input.sampleLimit ?? 10, 100);
+    const materializationMode = input.materializationMode ?? 'manifest';
+    return this.client.sqlite
+      .transaction(() => {
+        const compilation = this.compilePublication(
+          templateId,
+          materializationMode,
+          batchSize,
+          sampleLimit,
+          true
+        );
+        const current = this.currentPublication(templateId);
+        let rollbackTarget: PublicationPreflightResult['rollbackTarget'] = null;
+        if (current?.previousPublicationId) {
+          const target = this.publicationMetadata(templateId, current.previousPublicationId);
+          if (!target) {
+            rollbackTarget = null;
+          } else {
+            let valid = true;
+            let reason: string | null = null;
+            try {
+              this.assertPublicationMaterialization(
+                templateId,
+                target.id,
+                target.pageCount,
+                'rollback target'
+              );
+            } catch (error) {
+              valid = false;
+              reason = error instanceof Error ? error.message : 'Rollback target is invalid.';
+            }
+            rollbackTarget = { publication: target, valid, reason };
+          }
+        }
+        let reusedManifestCount = 0;
+        for (const hash of compilation.manifests.keys()) {
+          if (
+            this.get<{ id: string }>(
+              'SELECT id FROM document_manifests WHERE template_id = ? AND content_hash = ?',
+              [templateId, hash]
+            )
+          ) {
+            reusedManifestCount += 1;
+          }
+        }
+        return {
+          templateId,
+          materializationMode,
+          totalActivePages: compilation.totalPages,
+          affectedActivePages: {
+            count: compilation.affectedPageCount,
+            sampleCanonicalUrls: compilation.affectedPageSample,
+            truncated: compilation.affectedPageCount > compilation.affectedPageSample.length,
+          },
+          issues: compilation.issues,
+          canPublish: compilation.issues.length === 0,
+          inputHash: compilation.inputHash,
+          reusesCurrentPublication:
+            compilation.inputHash !== null && current?.inputHash === compilation.inputHash,
+          manifestReuse: {
+            eligibleManifestCount: compilation.manifests.size,
+            reusedManifestCount,
+            newManifestCount: compilation.manifests.size - reusedManifestCount,
+          },
+          currentPublication: current,
+          rollbackTarget,
+          selectorMatchCount: compilation.selectorMatchCount,
+          blockReferenceCount: compilation.blockReferenceCount,
+          logicalExpandedRenderedDocumentBytes: compilation.logicalExpandedRenderedDocumentBytes,
+        };
+      })
+      .deferred();
+  }
+
+  publish(templateId: string, input: PublishInput): PublishResult {
+    const startedAt = performance.now();
+    this.requireTemplate(templateId, true);
+    const batchSize = assertPublicationBatchSize(input.batchSize ?? 5_000);
+    const materializationMode = input.materializationMode ?? 'manifest';
+    return this.transaction(() => {
+      const current = this.currentPublication(templateId);
+      if (
+        'expectedCurrentPublicationId' in input &&
+        input.expectedCurrentPublicationId !== (current?.id ?? null)
+      ) {
         throw new CmsServiceError(
-          'PUBLICATION_FAILED',
-          `Publication page snapshot changed from ${totalPages} to ${compiledPages} rows.`
+          'CONFLICT',
+          `Serving pointer changed after preflight; expected "${input.expectedCurrentPublicationId ?? 'none'}" but found "${current?.id ?? 'none'}".`
         );
       }
-      const inputHash = inputHasher.digest('hex');
-      const current = this.currentPublication(templateId);
-      if (current?.inputHash === inputHash) {
+      const compilation = this.compilePublication(
+        templateId,
+        materializationMode,
+        batchSize,
+        1,
+        false,
+        input.onProgress
+      );
+      const {
+        state,
+        activeRevisions,
+        totalPages,
+        inputHash,
+        manifests,
+        selectorMatchCount,
+        blockReferenceCount,
+        logicalExpandedRenderedDocumentBytes,
+      } = compilation;
+      if (!state || !inputHash) {
+        throw new CmsServiceError(
+          'PUBLICATION_FAILED',
+          'Publication compilation did not produce a complete immutable plan.'
+        );
+      }
+      if (input.expectedInputHash !== undefined && input.expectedInputHash !== inputHash) {
+        throw new CmsServiceError(
+          'CONFLICT',
+          `Authoring input changed after preflight; expected hash "${input.expectedInputHash}" but compiled "${inputHash}".`
+        );
+      }
+      if (!input.forceNewPublication && current?.inputHash === inputHash) {
         return {
           publicationId: current.id,
           sequence: current.sequence,
@@ -3759,6 +4390,8 @@ export class CmsService {
           estimatedStorageBytes: 0,
           logicalExpandedRenderedDocumentBytes,
           durationMilliseconds: performance.now() - startedAt,
+          publication: current,
+          fromPublication: current,
         };
       }
 
@@ -3864,17 +4497,15 @@ export class CmsService {
               `Manifest "${manifestHash}" disappeared between publication passes.`
             );
           }
-          const interpolationContext = this.preparedInterpolationContext(
-            entry.page,
-            prepared.tagsByNamespace
-          );
           const document = this.publishedDocumentValue(
             templateId,
             entry.page.id,
             entry.renderedPlacements,
             placements
           );
-          const resolvedDataJson = stringifyJson(interpolationContext);
+          const resolvedDataJson = stringifyJson(
+            this.publishedPlacementContentValue(entry.renderedPlacements)
+          );
           const renderedDocumentJson =
             materializationMode === 'expanded' ? stringifyJson(document) : null;
           const documentHash = canonicalHash(document);
@@ -3926,6 +4557,17 @@ export class CmsService {
         [templateId, publicationId, now, input.createdBy]
       );
       rowsWritten += 1;
+      const publication: PublicationMetadata = {
+        id: publicationId,
+        sequence,
+        inputHash,
+        previousPublicationId: current?.id ?? null,
+        pageCount: totalPages,
+        manifestCount: manifests.size,
+        publishedAt: now,
+        activatedAt: now,
+        activatedBy: input.createdBy,
+      };
       return {
         publicationId,
         sequence,
@@ -3942,14 +4584,22 @@ export class CmsService {
         estimatedStorageBytes,
         logicalExpandedRenderedDocumentBytes,
         durationMilliseconds: performance.now() - startedAt,
+        publication,
+        fromPublication: current,
       };
     });
   }
 
+  rollback(templateId: string, input: RollbackInput): RollbackResult;
   rollback(
     templateId: string,
     targetPublicationId: string | undefined,
     activatedBy: string
+  ): RollbackResult;
+  rollback(
+    templateId: string,
+    inputOrTargetPublicationId: RollbackInput | string | undefined,
+    legacyActivatedBy?: string
   ): RollbackResult {
     this.requireTemplate(templateId, true);
     return this.transaction(() => {
@@ -3957,20 +4607,44 @@ export class CmsService {
       if (!current) {
         throw new CmsServiceError('NOT_FOUND', 'Template has no current publication.');
       }
-      const targetId = targetPublicationId ?? current.previousPublicationId;
+      const exactInput =
+        typeof inputOrTargetPublicationId === 'object' ? inputOrTargetPublicationId : null;
+      const legacyTargetPublicationId =
+        typeof inputOrTargetPublicationId === 'string' ? inputOrTargetPublicationId : undefined;
+      if (exactInput && exactInput.expectedCurrentPublicationId !== current.id) {
+        throw new CmsServiceError(
+          'CONFLICT',
+          `Serving pointer changed after preflight; expected "${exactInput.expectedCurrentPublicationId}" but found "${current.id}".`
+        );
+      }
+      const targetId = exactInput
+        ? exactInput.targetPublicationId
+        : (legacyTargetPublicationId ?? current.previousPublicationId);
       if (!targetId) {
         throw new CmsServiceError('NOT_FOUND', 'Current publication has no rollback target.');
       }
-      const target = this.get<{ id: string }>(
-        `SELECT id FROM publications
-         WHERE template_id = ? AND id = ? AND status = 'published'`,
-        [templateId, targetId]
-      );
+      if (exactInput && targetId !== current.previousPublicationId) {
+        throw new CmsServiceError(
+          'CONFLICT',
+          `Publication "${targetId}" is not the exact retained predecessor of "${current.id}".`
+        );
+      }
+      const target = this.publicationMetadata(templateId, targetId);
       if (!target) {
         throw new CmsServiceError(
           'NOT_FOUND',
           `Published rollback target "${targetId}" was not found in the template.`
         );
+      }
+      this.assertPublicationMaterialization(
+        templateId,
+        target.id,
+        target.pageCount,
+        'rollback target'
+      );
+      const activatedBy = exactInput?.activatedBy ?? legacyActivatedBy;
+      if (!activatedBy?.trim()) {
+        throw new CmsServiceError('INVALID_INPUT', 'Rollback requires an activating author.');
       }
       const activatedAt = this.now();
       this.run(
@@ -3984,6 +4658,12 @@ export class CmsService {
         publicationId: targetId,
         activatedAt,
         activatedBy,
+        fromPublication: current,
+        publication: {
+          ...target,
+          activatedAt,
+          activatedBy,
+        },
       };
     });
   }
@@ -3996,32 +4676,109 @@ export class CmsService {
     return materializationMode === 'expanded' ? [serveSql] : [serveSql, publishedManifestSql];
   }
 
+  private assertPublicationMaterialization(
+    templateId: string,
+    publicationId: string,
+    expectedPageCount: number,
+    label: string
+  ): void {
+    const rows = this.all<{
+      pageInstanceId: string;
+      manifestId: string;
+      canonicalUrl: string;
+      documentHash: string;
+      renderedDocumentJson: string | null;
+      resolvedDataJson: string;
+    }>(
+      `SELECT page_instance_id AS pageInstanceId, manifest_id AS manifestId,
+              canonical_url AS canonicalUrl, document_hash AS documentHash,
+              rendered_document_json AS renderedDocumentJson,
+              resolved_data_json AS resolvedDataJson
+       FROM published_page_documents
+       WHERE template_id = ? AND publication_id = ?
+       ORDER BY canonical_url, page_instance_id`,
+      [templateId, publicationId]
+    );
+    if (rows.length !== expectedPageCount) {
+      throw new CmsServiceError(
+        'PUBLICATION_FAILED',
+        `Published ${label} "${publicationId}" has ${rows.length} page documents; expected ${expectedPageCount}.`
+      );
+    }
+    for (const row of rows) {
+      let document: PublishedDocument;
+      try {
+        document = row.renderedDocumentJson
+          ? parsePublishedDocumentJson(row.renderedDocumentJson)
+          : this.renderPublishedManifest(
+              templateId,
+              row.pageInstanceId,
+              row.manifestId,
+              row.resolvedDataJson
+            );
+      } catch (error) {
+        const detail = error instanceof Error ? ` ${error.message}` : '';
+        throw new CmsServiceError(
+          'PUBLICATION_FAILED',
+          `Published ${label} "${publicationId}" has incompatible materialization for "${row.canonicalUrl}".${detail}`
+        );
+      }
+      if (document.templateId !== templateId || document.pageId !== row.pageInstanceId) {
+        throw new CmsServiceError(
+          'PUBLICATION_FAILED',
+          `Published ${label} "${publicationId}" contains a document for the wrong template or page.`
+        );
+      }
+      if (canonicalHash(document) !== row.documentHash) {
+        throw new CmsServiceError(
+          'PUBLICATION_FAILED',
+          `Published ${label} "${publicationId}" has a document hash mismatch for "${row.canonicalUrl}".`
+        );
+      }
+    }
+  }
+
   private renderPublishedManifest(
     templateId: string,
     pageInstanceId: string,
     manifestId: string,
     resolvedDataJson: string
   ): PublishedDocument {
-    const context = parseJsonObject(resolvedDataJson);
+    const payload = parseJsonObject(resolvedDataJson);
+    if (
+      payload.contract !== 'cms-published-placement-content-v1' ||
+      !isJsonObject(payload.placements)
+    ) {
+      throw new CmsServiceError(
+        'PUBLICATION_FAILED',
+        'Published manifest content payload failed contract validation.'
+      );
+    }
+    const contentByPlacement = payload.placements;
     const rows = this.all<{
       ordinal: number;
       placementKey: string;
       blockVersionId: string;
       blockType: string;
-      contentJson: string;
       sourceRevisionId: string;
       sourceOperationId: string;
       sourcePriority: number;
     }>(publishedManifestSql, [templateId, manifestId]);
+    if (Object.keys(contentByPlacement).length !== rows.length) {
+      throw new CmsServiceError(
+        'PUBLICATION_FAILED',
+        'Published manifest content count does not match its immutable placement manifest.'
+      );
+    }
     return assertPublishedDocument({
       templateId,
       pageId: pageInstanceId,
       placements: rows.map((row) => {
-        const content = interpolateJson(parseJsonObject(row.contentJson), context);
-        if (content === null || typeof content !== 'object' || Array.isArray(content)) {
+        const content = contentByPlacement[row.placementKey];
+        if (content === undefined || !isJsonObject(content)) {
           throw new CmsServiceError(
             'PUBLICATION_FAILED',
-            `Published placement "${row.placementKey}" did not render to an object.`
+            `Published placement "${row.placementKey}" has no materialized object content.`
           );
         }
         return {
@@ -4104,6 +4861,7 @@ export class CmsService {
         materializationMode: null,
         sqlQueryCount: 1,
         selectorSqlExecutions: 0,
+        celEvaluations: 0,
         elapsedMilliseconds: performance.now() - startedAt,
       };
     }
@@ -4118,6 +4876,7 @@ export class CmsService {
         materializationMode,
         sqlQueryCount: 1,
         selectorSqlExecutions: 0,
+        celEvaluations: 0,
         elapsedMilliseconds: performance.now() - startedAt,
       };
     }
@@ -4127,6 +4886,7 @@ export class CmsService {
         materializationMode,
         sqlQueryCount: 1,
         selectorSqlExecutions: 0,
+        celEvaluations: 0,
         elapsedMilliseconds: performance.now() - startedAt,
       };
     }
@@ -4142,6 +4902,7 @@ export class CmsService {
         materializationMode,
         sqlQueryCount: 1,
         selectorSqlExecutions: 0,
+        celEvaluations: 0,
         elapsedMilliseconds: performance.now() - startedAt,
       };
     }
@@ -4164,6 +4925,7 @@ export class CmsService {
       materializationMode,
       sqlQueryCount: row.renderedDocumentJson ? 1 : 2,
       selectorSqlExecutions: 0,
+      celEvaluations: 0,
       elapsedMilliseconds: performance.now() - startedAt,
     };
   }

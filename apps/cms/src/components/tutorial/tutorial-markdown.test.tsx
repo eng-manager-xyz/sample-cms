@@ -20,7 +20,7 @@ function renderMarkdown(markdown: string): string {
 }
 
 describe('TutorialMarkdown', () => {
-  test('renders math as accessible KaTeX and keeps every tutorial equation valid', () => {
+  test('marks every tutorial equation for accessible client-side MathJax SVG rendering', () => {
     const source = markdownSources.map(({ markdown }) => markdown).join('\n');
     expect(source.match(/^\$\$$/gm)).toHaveLength(36);
     expect(source).not.toMatch(/^\\[[\]]$/m);
@@ -33,14 +33,14 @@ describe('TutorialMarkdown', () => {
       .map(renderMarkdown)
       .join('\n');
 
-    expect(renderedTutorial.match(/class="katex-display"/g)).toHaveLength(18);
-    expect(renderedTutorial.match(/<math[^>]*display="block"/g)).toHaveLength(18);
-    expect(renderedTutorial).not.toContain('mathcolor="#cc0000"');
-    expect(renderedTutorial).not.toContain('style="color:#cc0000"');
+    expect(renderedTutorial.match(/mathjax-equation-display/g)).toHaveLength(18);
+    expect(renderedTutorial.match(/role="math"/g)).toHaveLength(18);
+    expect(renderedTutorial).not.toContain('class="katex');
 
     const inlineMath = renderMarkdown('The score is $x^2 + y^2$.');
-    expect(inlineMath).toContain('<span class="katex">');
-    expect(inlineMath).toContain('<annotation encoding="application/x-tex">x^2 + y^2</annotation>');
+    expect(inlineMath).toContain('class="mathjax-equation"');
+    expect(inlineMath).toContain('aria-label="x^2 + y^2"');
+    expect(inlineMath).toContain('data-tex="x^2 + y^2"');
   });
 
   test('preserves Markdown semantics and exposes safe, explicit highlighting', () => {
@@ -72,5 +72,31 @@ Raw <mark>HTML stays text</mark>.`);
     expect(markup).toContain('&lt;mark&gt;HTML stays text&lt;/mark&gt;');
     expect(markup).toContain('>==literal syntax==</code>');
     expect(markup.match(/<mark/g)).toHaveLength(1);
+  });
+
+  test('highlights fenced languages and classifies inline technical vocabulary', () => {
+    const markup =
+      renderMarkdown(`\`publications\`, \`document_manifests\`, \`PublishedDocumentSchema\`,
+\`CmsService.serve(templateId, canonicalUrl)\`, \`CMS_ENABLE_PREVIEW=true\`, and \`docs/data-model.md\`.
+
+\`\`\`sql
+SELECT publication_id FROM document_manifests WHERE canonical_url = '/en-US/store/1001';
+\`\`\`
+
+\`\`\`typescript
+const published = await service.serve(templateId, canonicalUrl);
+\`\`\``);
+
+    expect(markup).toContain('data-code-kind="identifier">publications</code>');
+    expect(markup).toContain('data-code-kind="identifier">document_manifests</code>');
+    expect(markup).toContain('data-code-kind="type">PublishedDocumentSchema</code>');
+    expect(markup).toContain('data-code-kind="callable">CmsService.serve');
+    expect(markup).toContain('data-code-kind="config">CMS_ENABLE_PREVIEW=true</code>');
+    expect(markup).toContain('data-code-kind="path">docs/data-model.md</code>');
+    expect(markup).toContain('data-language="SQL"');
+    expect(markup).toContain('class="hljs-keyword">SELECT</span>');
+    expect(markup).toContain('class="hljs-string">&#x27;/en-US/store/1001&#x27;</span>');
+    expect(markup).toContain('data-language="TYPESCRIPT"');
+    expect(markup).toContain('class="hljs-keyword">const</span>');
   });
 });

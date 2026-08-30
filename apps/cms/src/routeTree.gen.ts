@@ -10,7 +10,9 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ContentRouteImport } from './routes/content'
 import { Route as TutorialRouteImport } from './routes/tutorial'
+import { Route as AuthorTemplateIdRouteImport } from './routes/author.$templateId'
 import { Route as PublicationsTemplateIdRouteImport } from './routes/publications.$templateId'
 import { Route as TemplatesTemplateIdRouteImport } from './routes/templates.$templateId'
 
@@ -19,9 +21,19 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ContentRoute = ContentRouteImport.update({
+  id: '/content',
+  path: '/content',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TutorialRoute = TutorialRouteImport.update({
   id: '/tutorial',
   path: '/tutorial',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthorTemplateIdRoute = AuthorTemplateIdRouteImport.update({
+  id: '/author/$templateId',
+  path: '/author/$templateId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PublicationsTemplateIdRoute = PublicationsTemplateIdRouteImport.update({
@@ -37,40 +49,61 @@ const TemplatesTemplateIdRoute = TemplatesTemplateIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/content': typeof ContentRoute
   '/tutorial': typeof TutorialRoute
+  '/author/$templateId': typeof AuthorTemplateIdRoute
   '/publications/$templateId': typeof PublicationsTemplateIdRoute
   '/templates/$templateId': typeof TemplatesTemplateIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/content': typeof ContentRoute
   '/tutorial': typeof TutorialRoute
+  '/author/$templateId': typeof AuthorTemplateIdRoute
   '/publications/$templateId': typeof PublicationsTemplateIdRoute
   '/templates/$templateId': typeof TemplatesTemplateIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/content': typeof ContentRoute
   '/tutorial': typeof TutorialRoute
+  '/author/$templateId': typeof AuthorTemplateIdRoute
   '/publications/$templateId': typeof PublicationsTemplateIdRoute
   '/templates/$templateId': typeof TemplatesTemplateIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/tutorial' | '/publications/$templateId' | '/templates/$templateId'
+    | '/'
+    | '/content'
+    | '/tutorial'
+    | '/author/$templateId'
+    | '/publications/$templateId'
+    | '/templates/$templateId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/tutorial' | '/publications/$templateId' | '/templates/$templateId'
+  to:
+    | '/'
+    | '/content'
+    | '/tutorial'
+    | '/author/$templateId'
+    | '/publications/$templateId'
+    | '/templates/$templateId'
   id:
     | '__root__'
     | '/'
+    | '/content'
     | '/tutorial'
+    | '/author/$templateId'
     | '/publications/$templateId'
     | '/templates/$templateId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ContentRoute: typeof ContentRoute
   TutorialRoute: typeof TutorialRoute
+  AuthorTemplateIdRoute: typeof AuthorTemplateIdRoute
   PublicationsTemplateIdRoute: typeof PublicationsTemplateIdRoute
   TemplatesTemplateIdRoute: typeof TemplatesTemplateIdRoute
 }
@@ -84,11 +117,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/content': {
+      id: '/content'
+      path: '/content'
+      fullPath: '/content'
+      preLoaderRoute: typeof ContentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/tutorial': {
       id: '/tutorial'
       path: '/tutorial'
       fullPath: '/tutorial'
       preLoaderRoute: typeof TutorialRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/author/$templateId': {
+      id: '/author/$templateId'
+      path: '/author/$templateId'
+      fullPath: '/author/$templateId'
+      preLoaderRoute: typeof AuthorTemplateIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/publications/$templateId': {
@@ -110,7 +157,9 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ContentRoute: ContentRoute,
   TutorialRoute: TutorialRoute,
+  AuthorTemplateIdRoute: AuthorTemplateIdRoute,
   PublicationsTemplateIdRoute: PublicationsTemplateIdRoute,
   TemplatesTemplateIdRoute: TemplatesTemplateIdRoute,
 }

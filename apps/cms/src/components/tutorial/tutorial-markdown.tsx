@@ -1,8 +1,17 @@
+import bash from 'highlight.js/lib/languages/bash';
+import css from 'highlight.js/lib/languages/css';
+import javascript from 'highlight.js/lib/languages/javascript';
+import json from 'highlight.js/lib/languages/json';
+import sql from 'highlight.js/lib/languages/sql';
+import typescript from 'highlight.js/lib/languages/typescript';
+import { createLowlight } from 'lowlight';
+import type { ReactNode } from 'react';
+import { isValidElement } from 'react';
 import type { Components } from 'react-markdown';
 import ReactMarkdown from 'react-markdown';
-import rehypeKatex from 'rehype-katex';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
+import { MathJaxEquation } from '@/components/tutorial/mathjax-equation';
 import { cn } from '@/lib/cn';
 
 interface MarkdownAstNode {
@@ -16,6 +25,94 @@ interface MarkdownAstNode {
 
 const highlightPattern = /==([^=\n]+)==/g;
 const literalNodeTypes = new Set(['code', 'inlineCode', 'html']);
+const syntaxHighlighter = createLowlight({ bash, css, javascript, json, sql, typescript });
+syntaxHighlighter.registerAlias({
+  bash: ['sh', 'shell', 'zsh'],
+  javascript: ['js', 'jsx'],
+  typescript: ['ts', 'tsx'],
+});
+
+const SQL_KEYWORDS = new Set([
+  'ALTER',
+  'AND',
+  'CREATE',
+  'DELETE',
+  'DROP',
+  'EXISTS',
+  'EXPLAIN',
+  'FROM',
+  'IN',
+  'INSERT',
+  'JOIN',
+  'OR',
+  'PRAGMA',
+  'SELECT',
+  'UPDATE',
+  'WHERE',
+]);
+
+interface SyntaxNode {
+  type: 'element' | 'text';
+  value?: string;
+  properties?: {
+    className?: string[];
+  };
+  children?: SyntaxNode[];
+}
+
+function languageFromClassName(className?: string): string | undefined {
+  return className?.match(/(?:^|\s)language-([\w-]+)/)?.[1]?.toLowerCase();
+}
+
+function renderSyntaxNodes(nodes: SyntaxNode[], parentKey = 'syntax'): ReactNode[] {
+  return nodes.map((node, index) => {
+    const key = `${parentKey}-${index}`;
+    if (node.type === 'text') return node.value;
+    return (
+      <span key={key} className={node.properties?.className?.join(' ')}>
+        {renderSyntaxNodes(node.children ?? [], key)}
+      </span>
+    );
+  });
+}
+
+function highlightedCode(language: string | undefined, source: string): ReactNode {
+  if (!language || !syntaxHighlighter.registered(language)) return source;
+  const tree = syntaxHighlighter.highlight(language, source);
+  return renderSyntaxNodes(tree.children as SyntaxNode[]);
+}
+
+type InlineCodeKind =
+  | 'callable'
+  | 'config'
+  | 'identifier'
+  | 'keyword'
+  | 'literal'
+  | 'math'
+  | 'path'
+  | 'plain'
+  | 'type';
+
+function classifyInlineCode(source: string): InlineCodeKind {
+  if (
+    /^(?:https?:\/\/|\/|\.\/|\.\.\/)/.test(source) ||
+    /(?:^|\/)[\w@.$-]+\.(?:css|json|md|sql|ts|tsx)$/.test(source)
+  ) {
+    return 'path';
+  }
+  if (/^[A-Z][A-Z0-9_]+(?:=[^\s]+)?$/.test(source)) return 'config';
+  if (SQL_KEYWORDS.has(source.toUpperCase())) return 'keyword';
+  if (/^(?:true|false|null|undefined|\d+(?:\.\d+)?%?)$/.test(source)) return 'literal';
+  if (/^['"].*['"]$/.test(source)) return 'literal';
+  if (/[πμΠ∈≠∩∪→↦]/u.test(source) || /^[CDIKLMOPRSThvkp]_[A-Za-z](?:\([^)]*\))?$/.test(source)) {
+    return 'math';
+  }
+  if (/^[A-Z][A-Za-z0-9]*(?:Schema|Service|Document|Result|Error)$/.test(source)) return 'type';
+  if (/^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)+\([^)]*\)$/.test(source)) return 'callable';
+  if (/^[A-Za-z_$][\w$]*\([^)]*\)$/.test(source)) return 'callable';
+  if (/^[a-z][a-z0-9]*(?:[_-][a-z0-9]+)*$/.test(source)) return 'identifier';
+  return 'plain';
+}
 
 function splitHighlightText(node: MarkdownAstNode): MarkdownAstNode[] {
   const value = node.value ?? '';
@@ -137,22 +234,46 @@ const markdownComponents: Components = {
     </blockquote>
   ),
   hr: () => <hr className="my-10 border-0 border-t border-line" />,
-  pre: ({ children }) => (
-    <pre className="mt-6 max-w-full overflow-x-auto rounded-xl border border-line bg-ink px-4 py-4 font-mono text-[12px] leading-6 text-canvas shadow-sm [tab-size:2] [&>code]:border-0 [&>code]:bg-transparent [&>code]:p-0 [&>code]:text-inherit">
-      {children}
-    </pre>
-  ),
-  code: ({ children, className }) => {
-    const block = className?.startsWith('language-');
+  pre: ({ children }) => {
+    if (
+      isValidElement<{ className?: string }>(children) &&
+      children.props.className?.includes('math-display')
+    ) {
+      return children;
+    }
+    const language = isValidElement<{ className?: string }>(children)
+      ? languageFromClassName(children.props.className)
+      : undefined;
     return (
-      <code
-        className={cn(
-          block
-            ? className
-            : 'rounded border border-line bg-surface-muted px-1.5 py-0.5 font-mono text-[0.86em] font-medium text-ink'
-        )}
+      <pre
+        className="tutorial-code-block mt-6 max-w-full overflow-x-auto rounded-xl border border-line bg-ink px-4 py-4 font-mono text-[12px] leading-6 text-canvas shadow-sm [tab-size:2] [&>code]:border-0 [&>code]:bg-transparent [&>code]:p-0 [&>code]:text-inherit"
+        data-language={language && language !== 'text' ? language.toUpperCase() : undefined}
       >
         {children}
+      </pre>
+    );
+  },
+  code: ({ children, className }) => {
+    const tex = String(children).trim();
+    if (className?.includes('math-display')) {
+      return <MathJaxEquation display tex={tex} />;
+    }
+    if (className?.includes('math-inline')) {
+      return <MathJaxEquation display={false} tex={tex} />;
+    }
+    const language = languageFromClassName(className);
+    const block = language !== undefined;
+    const inlineKind = block ? undefined : classifyInlineCode(tex);
+    return (
+      <code
+        className={
+          block
+            ? cn('hljs', className)
+            : 'tutorial-inline-code rounded border px-1.5 py-0.5 font-mono text-[0.86em] font-medium'
+        }
+        data-code-kind={inlineKind}
+      >
+        {block ? highlightedCode(language, tex) : children}
       </code>
     );
   },
@@ -202,7 +323,6 @@ export function TutorialMarkdown({
     <div className={cn('tutorial-prose min-w-0 font-sans', className)}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMath, remarkHighlight]}
-        rehypePlugins={[rehypeKatex]}
         components={markdownComponents}
       >
         {markdown}

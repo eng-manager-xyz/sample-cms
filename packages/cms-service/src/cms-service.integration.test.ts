@@ -748,6 +748,43 @@ describe('AUT-521/AUT-522/AUT-523 immutable blocks and variants', () => {
         .query<{ count: number }, []>('SELECT count(*) AS count FROM block_versions')
         .get()?.count
     ).toBe(versionCount);
+    const inheritedVariantOrder = service
+      .resolveVariantDraft('tpl-store', 'variant-store-mcdonalds', 'page-store-1001')
+      .document.placements.map((placement) => placement.placementKey);
+    service.reorderVariantPlacements('tpl-store', 'variant-store-mcdonalds', {
+      revisionId: 'revision-store-mcdonalds-order',
+      placementKeys: [...inheritedVariantOrder].reverse(),
+      createdBy: 'author',
+    });
+    expect(
+      service
+        .resolveVariantDraft('tpl-store', 'variant-store-mcdonalds', 'page-store-1001')
+        .document.placements.map((placement) => placement.placementKey)
+    ).toEqual([...inheritedVariantOrder].reverse());
+    service.revertVariantOrder('tpl-store', 'variant-store-mcdonalds', {
+      revisionId: 'revision-store-mcdonalds-order-reverted',
+      createdBy: 'author',
+    });
+    expect(
+      service
+        .resolveVariantDraft('tpl-store', 'variant-store-mcdonalds', 'page-store-1001')
+        .document.placements.map((placement) => placement.placementKey)
+    ).toEqual(inheritedVariantOrder);
+    expect(
+      client.sqlite
+        .query<{ count: number }, [string]>(
+          `SELECT count(*) AS count
+           FROM variant_operations
+           WHERE variant_revision_id = ? AND operation_kind = 'order'`
+        )
+        .get(service.getVariant('tpl-store', 'variant-store-mcdonalds')?.activeRevisionId ?? '')
+        ?.count
+    ).toBe(0);
+    expect(
+      client.sqlite
+        .query<{ count: number }, []>('SELECT count(*) AS count FROM block_versions')
+        .get()?.count
+    ).toBe(versionCount);
     expect(() =>
       client.sqlite
         .query("UPDATE variant_operations SET order_index = 8 WHERE id = 'op-default-hero-order'")
@@ -830,13 +867,246 @@ describe('AUT-521/AUT-522/AUT-523 immutable blocks and variants', () => {
   });
 });
 
+describe('AUT-539 deterministic CEL authoring and publication', () => {
+  test('compiles on save, previews two page contexts, and persists only evaluated public content', () => {
+    const legacy = service.serve('tpl-store', '/en-US/store/1001');
+    expect(legacy).toMatchObject({ status: 200, publicationId: 'publication-store-1' });
+    if (legacy.status !== 200) {
+      throw new Error('Expected the legacy Store publication.');
+    }
+    expect(
+      legacy.document.placements.find((placement) => placement.placementKey === 'primary-hero')
+        ?.content
+    ).toEqual({ headline: "Buy now McDonald's Market — San Francisco" });
+
+    const rejectedSources = [
+      ['unknown-root', '{{ merchant.name }}'],
+      ['forbidden-root', '{{ request.path }}'],
+      ['forbidden-property', '{{ store.constructor }}'],
+      ['malformed', '{{ store.name + }}'],
+    ] as const;
+    for (const [id, label] of rejectedSources) {
+      expect(() =>
+        service.forkBlockVersion('tpl-store', {
+          id: `block-store-navigation-${id}`,
+          sourceVersionId: 'block-store-navigation-v1',
+          content: { label },
+          createdBy: 'author',
+        })
+      ).toThrow(CmsServiceError);
+      expect(service.getBlockVersion('tpl-store', `block-store-navigation-${id}`)).toBeNull();
+    }
+
+    const source =
+      '{{ store.name == "McDonald\'s Market" ? "Chain: " + page.context.store.name : "Local: " + context.store.name }} #{{ slots.store_id }}';
+    expect(
+      service.inspectBlockFieldInterpolation('tpl-store', 'page-store-1001', source)
+    ).toMatchObject({
+      success: true,
+      dependencies: [
+        'context.store.name',
+        'page.context.store.name',
+        'slots.store_id',
+        'store.name',
+      ],
+      evaluatedSample: "Chain: McDonald's Market #1001",
+    });
+    expect(
+      service.inspectBlockFieldInterpolation('tpl-store', 'page-store-1001', '{{ merchant.name }}')
+    ).toMatchObject({ success: false, error: { code: 'UNKNOWN_ROOT' } });
+    service.editDefaultPlacement('tpl-store', {
+      revisionId: 'tpl-store:default:cel-r2',
+      placementKey: 'navigation',
+      blockVersionId: 'block-store-navigation-cel-v2',
+      content: { label: source },
+      createdBy: 'author',
+    });
+    expect(service.getBlockVersion('tpl-store', 'block-store-navigation-cel-v2')?.content).toEqual({
+      label: source,
+    });
+
+    const firstPreview = service.resolvePage('tpl-store', 'page-store-1001');
+    const secondPreview = service.resolvePage('tpl-store', 'page-store-1002');
+    expect(
+      firstPreview.renderedPlacements.find((placement) => placement.placementKey === 'navigation')
+        ?.content
+    ).toEqual({ label: "Chain: McDonald's Market #1001" });
+    expect(
+      secondPreview.renderedPlacements.find((placement) => placement.placementKey === 'navigation')
+        ?.content
+    ).toEqual({ label: 'Local: Neighborhood Kitchen #1002' });
+
+    const publication = service.publish('tpl-store', {
+      id: 'publication-store-cel',
+      createdBy: 'author',
+    });
+    expect(publication).toMatchObject({
+      publicationId: 'publication-store-cel',
+      previousPublicationId: 'publication-store-1',
+      materializationMode: 'manifest',
+    });
+    const storedDocuments = client.sqlite
+      .query<{ resolvedDataJson: string; renderedDocumentJson: string | null }, []>(
+        `SELECT resolved_data_json AS resolvedDataJson,
+                rendered_document_json AS renderedDocumentJson
+         FROM published_page_documents
+         WHERE publication_id = 'publication-store-cel'
+         ORDER BY page_instance_id`
+      )
+      .all();
+    expect(storedDocuments).toHaveLength(2);
+    for (const row of storedDocuments) {
+      expect(row.renderedDocumentJson).toBeNull();
+      expect(row.resolvedDataJson).not.toContain('{{');
+      expect(JSON.parse(row.resolvedDataJson)).toMatchObject({
+        contract: 'cms-published-placement-content-v1',
+      });
+    }
+    expect(service.getServeReadQueryTexts('manifest').join('\n')).not.toMatch(
+      /content_json|context_json|selector_sql/i
+    );
+
+    const served = service.serve('tpl-store', '/en-US/store/1001');
+    if (served.status !== 200) {
+      throw new Error('Expected the CEL publication to serve.');
+    }
+    expect(
+      served.document.placements.find((placement) => placement.placementKey === 'navigation')
+        ?.content
+    ).toEqual({ label: "Chain: McDonald's Market #1001" });
+    expect(JSON.stringify(served.document)).not.toContain('{{');
+
+    service.publish('tpl-store', {
+      id: 'publication-store-cel-expanded',
+      createdBy: 'author',
+      materializationMode: 'expanded',
+    });
+    const expandedDocuments = client.sqlite
+      .query<{ renderedDocumentJson: string }, []>(
+        `SELECT rendered_document_json AS renderedDocumentJson
+         FROM published_page_documents
+         WHERE publication_id = 'publication-store-cel-expanded'
+         ORDER BY page_instance_id`
+      )
+      .all();
+    expect(expandedDocuments).toHaveLength(2);
+    expect(expandedDocuments.every((row) => !row.renderedDocumentJson.includes('{{'))).toBe(true);
+    expect(service.serve('tpl-store', '/en-US/store/1001')).toMatchObject({
+      status: 200,
+      publicationId: 'publication-store-cel-expanded',
+    });
+
+    const page = service.getPage('tpl-store', 'page-store-1001');
+    if (!page) {
+      throw new Error('Expected the seeded Store page.');
+    }
+    service.updatePage('tpl-store', page.id, {
+      ...page,
+      routeRevision: 'unpublished-context-change',
+      context: {
+        ...page.context,
+        store: { id: 1001, name: 'Unpublished Name', location: 'San Francisco' },
+      },
+    });
+    const servedAfterDraftChange = service.serve('tpl-store', '/en-US/store/1001');
+    if (servedAfterDraftChange.status !== 200) {
+      throw new Error('Expected the current publication to remain serveable.');
+    }
+    expect(
+      servedAfterDraftChange.document.placements.find(
+        (placement) => placement.placementKey === 'navigation'
+      )?.content
+    ).toEqual({ label: "Chain: McDonald's Market #1001" });
+  });
+
+  test('keeps the current pointer atomic when a saved expression is missing at publication', () => {
+    service.editDefaultPlacement('tpl-store', {
+      revisionId: 'tpl-store:default:cel-missing-r2',
+      placementKey: 'navigation',
+      blockVersionId: 'block-store-navigation-cel-missing',
+      content: { label: '{{ store.missing }}' },
+      createdBy: 'author',
+    });
+    expect(
+      service.getBlockVersion('tpl-store', 'block-store-navigation-cel-missing')
+    ).not.toBeNull();
+    expect(() => service.resolvePage('tpl-store', 'page-store-1001')).toThrow('MISSING_VALUE');
+    expect(() =>
+      service.publish('tpl-store', {
+        id: 'publication-store-cel-missing',
+        createdBy: 'author',
+      })
+    ).toThrow('MISSING_VALUE');
+    expect(
+      client.sqlite
+        .query<{ publicationId: string }, []>(
+          `SELECT publication_id AS publicationId
+           FROM current_publications
+           WHERE template_id = 'tpl-store'`
+        )
+        .get()
+    ).toEqual({ publicationId: 'publication-store-1' });
+    expect(
+      client.sqlite
+        .query<{ count: number }, []>(
+          `SELECT count(*) AS count
+           FROM publications
+           WHERE id = 'publication-store-cel-missing'`
+        )
+        .get()?.count
+    ).toBe(0);
+  });
+
+  test('validates evaluated CEL output against the block schema before activation', () => {
+    service.registerBlockType({
+      id: 'block-type-cel-tight-navigation',
+      key: 'cel-tight-navigation',
+      name: 'CEL tight navigation',
+      schemaVersion: 1,
+      schema: {
+        type: 'object',
+        required: ['label'],
+        properties: { label: { type: 'string', maxLength: 16 } },
+        additionalProperties: false,
+      },
+    });
+    service.editDefaultPlacement('tpl-store', {
+      revisionId: 'tpl-store:default:cel-schema-r2',
+      placementKey: 'navigation',
+      blockVersionId: 'block-store-navigation-cel-schema',
+      blockTypeKey: 'cel-tight-navigation',
+      content: { label: '{{ store.name }}' },
+      createdBy: 'author',
+    });
+    expect(() => service.resolvePage('tpl-store', 'page-store-1001')).toThrow(
+      'evaluated content failed schema validation'
+    );
+    expect(() =>
+      service.publish('tpl-store', {
+        id: 'publication-store-cel-schema-failure',
+        createdBy: 'author',
+      })
+    ).toThrow('evaluated content failed schema validation');
+    expect(
+      client.sqlite
+        .query<{ publicationId: string }, []>(
+          `SELECT publication_id AS publicationId
+           FROM current_publications
+           WHERE template_id = 'tpl-store'`
+        )
+        .get()
+    ).toEqual({ publicationId: 'publication-store-1' });
+  });
+});
+
 describe('AUT-524/AUT-525 atomic publication and serving', () => {
-  test('reports fixed selector-free read counts for manifest and expanded serving', () => {
+  test('reports fixed selector-free and CEL-free read counts for manifest and expanded serving', () => {
     expect(service.serveWithEvidence('tpl-store', '/en-US/store/1001')).toMatchObject({
       result: { status: 200, publicationId: 'publication-store-1' },
       materializationMode: 'manifest',
       sqlQueryCount: 2,
       selectorSqlExecutions: 0,
+      celEvaluations: 0,
     });
     const expandedPublication = service.publish('tpl-store', {
       id: 'publication-store-expanded',
@@ -859,6 +1129,7 @@ describe('AUT-524/AUT-525 atomic publication and serving', () => {
       materializationMode: 'expanded',
       sqlQueryCount: 1,
       selectorSqlExecutions: 0,
+      celEvaluations: 0,
     });
     expect(expanded.elapsedMilliseconds).toBeGreaterThan(0);
     expect(service.getServeReadQueryTexts('expanded')).toHaveLength(1);
@@ -1014,5 +1285,173 @@ describe('AUT-524/AUT-525 atomic publication and serving', () => {
       status: 404,
       reason: 'not_live',
     });
+  });
+});
+
+describe('AUT-543 publication lifecycle preflight', () => {
+  test('preflights without writes, compare-and-swaps publish, and rolls back the exact predecessor', () => {
+    const page = service.getPage('tpl-store', 'page-store-1002');
+    if (!page) throw new Error('Expected the second Store page.');
+    service.updatePage('tpl-store', page.id, {
+      ...page,
+      context: {
+        locale: 'en-US',
+        store: { id: 1002, name: 'Second Kitchen preflight draft', location: 'Oakland' },
+      },
+    });
+    const beforePointer = client.sqlite
+      .query<{ publicationId: string }, []>(
+        `SELECT publication_id AS publicationId
+         FROM current_publications WHERE template_id = 'tpl-store'`
+      )
+      .get();
+    const beforePublicationCount = client.sqlite
+      .query<{ count: number }, []>(
+        `SELECT count(*) AS count FROM publications WHERE template_id = 'tpl-store'`
+      )
+      .get()?.count;
+    const beforePublicBytes = JSON.stringify(service.serve('tpl-store', page.canonicalUrl));
+
+    const preflight = service.preflightPublication('tpl-store', { sampleLimit: 2 });
+    expect(preflight).toMatchObject({
+      templateId: 'tpl-store',
+      totalActivePages: 2,
+      affectedActivePages: {
+        count: 1,
+        sampleCanonicalUrls: ['/en-US/store/1002'],
+        truncated: false,
+      },
+      issues: [],
+      canPublish: true,
+      currentPublication: { id: beforePointer?.publicationId },
+    });
+    expect(preflight.inputHash).toMatch(/^[a-f0-9]{64}$/);
+    expect(
+      client.sqlite
+        .query<{ count: number }, []>(
+          `SELECT count(*) AS count FROM publications WHERE template_id = 'tpl-store'`
+        )
+        .get()?.count
+    ).toBe(beforePublicationCount);
+
+    expect(() =>
+      service.publish('tpl-store', {
+        createdBy: 'author',
+        expectedInputHash: '0'.repeat(64),
+        expectedCurrentPublicationId: beforePointer?.publicationId ?? null,
+      })
+    ).toThrow('Authoring input changed after preflight');
+    expect(JSON.stringify(service.serve('tpl-store', page.canonicalUrl))).toBe(beforePublicBytes);
+    expect(
+      client.sqlite
+        .query<{ publicationId: string }, []>(
+          `SELECT publication_id AS publicationId
+           FROM current_publications WHERE template_id = 'tpl-store'`
+        )
+        .get()
+    ).toEqual(beforePointer);
+
+    if (!preflight.inputHash) throw new Error('Expected a publishable input hash.');
+    const published = service.publish('tpl-store', {
+      createdBy: 'author',
+      expectedInputHash: preflight.inputHash,
+      expectedCurrentPublicationId: beforePointer?.publicationId ?? null,
+    });
+    expect(published.publication).toMatchObject({
+      id: published.publicationId,
+      previousPublicationId: beforePointer?.publicationId,
+      activatedBy: 'author',
+    });
+    expect(service.preflightPublication('tpl-store').affectedActivePages.count).toBe(0);
+    expect(service.serveWithEvidence('tpl-store', page.canonicalUrl)).toMatchObject({
+      selectorSqlExecutions: 0,
+      celEvaluations: 0,
+    });
+
+    expect(() =>
+      service.rollback('tpl-store', {
+        targetPublicationId: beforePointer?.publicationId ?? '',
+        expectedCurrentPublicationId: 'stale-publication',
+        activatedBy: 'operator',
+      })
+    ).toThrow('Serving pointer changed after preflight');
+    expect(() =>
+      service.rollback('tpl-store', {
+        targetPublicationId: 'not-the-retained-predecessor',
+        expectedCurrentPublicationId: published.publicationId,
+        activatedBy: 'operator',
+      })
+    ).toThrow('not the exact retained predecessor');
+    const rollback = service.rollback('tpl-store', {
+      targetPublicationId: beforePointer?.publicationId ?? '',
+      expectedCurrentPublicationId: published.publicationId,
+      activatedBy: 'operator',
+    });
+    expect(rollback).toMatchObject({
+      fromPublicationId: published.publicationId,
+      publicationId: beforePointer?.publicationId,
+      publication: { id: beforePointer?.publicationId, activatedBy: 'operator' },
+    });
+    expect(JSON.stringify(service.serve('tpl-store', page.canonicalUrl))).toBe(beforePublicBytes);
+  });
+
+  test('aggregates deterministic same-priority conflicts without moving the public pointer', () => {
+    for (const suffix of ['a', 'b'] as const) {
+      service.createVariant('tpl-store', {
+        id: `variant-preflight-conflict-${suffix}`,
+        revisionId: `revision-preflight-conflict-${suffix}-1`,
+        key: `preflight-conflict-${suffix}`,
+        name: `Preflight conflict ${suffix}`,
+        priority: 777,
+        status: 'active',
+        selector: "route_status = 'live'",
+        createdBy: 'author',
+      });
+      service.setVariantPlacement('tpl-store', `variant-preflight-conflict-${suffix}`, {
+        revisionId: `revision-preflight-conflict-${suffix}-2`,
+        placementKey: 'footer',
+        blockVersionId: 'block-store-footer-v1',
+        createdBy: 'author',
+      });
+    }
+    const pointer = client.sqlite
+      .query<{ publicationId: string }, []>(
+        `SELECT publication_id AS publicationId
+         FROM current_publications WHERE template_id = 'tpl-store'`
+      )
+      .get();
+    const publicationCount = client.sqlite
+      .query<{ count: number }, []>(
+        `SELECT count(*) AS count FROM publications WHERE template_id = 'tpl-store'`
+      )
+      .get()?.count;
+
+    const preflight = service.preflightPublication('tpl-store', { sampleLimit: 2 });
+    expect(preflight).toMatchObject({ canPublish: false, inputHash: null });
+    expect(preflight.issues).toEqual([
+      expect.objectContaining({
+        code: 'PRIORITY_CONFLICT',
+        placementKey: 'footer',
+        priority: 777,
+        affectedPageCount: 2,
+        sampleCanonicalUrls: ['/en-US/store/1001', '/en-US/store/1002'],
+        variantRevisionIds: ['revision-preflight-conflict-a-2', 'revision-preflight-conflict-b-2'],
+      }),
+    ]);
+    expect(
+      client.sqlite
+        .query<{ publicationId: string }, []>(
+          `SELECT publication_id AS publicationId
+           FROM current_publications WHERE template_id = 'tpl-store'`
+        )
+        .get()
+    ).toEqual(pointer);
+    expect(
+      client.sqlite
+        .query<{ count: number }, []>(
+          `SELECT count(*) AS count FROM publications WHERE template_id = 'tpl-store'`
+        )
+        .get()?.count
+    ).toBe(publicationCount);
   });
 });

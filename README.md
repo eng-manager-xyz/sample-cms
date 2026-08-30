@@ -65,8 +65,8 @@ Each public request matches a canonical route pattern, opens SQLite read-only, a
 `CmsService.serve`. The result must satisfy the strict `PublishedDocumentSchema` before the shared
 registry renders `navigation`, `hero`, `hero_alt`, `promo`, and `footer` blocks by stable placement
 key and type. Expanded publications take one SQLite read and manifest publications take two; both
-execute zero selector SQL. Public documents are immutable and non-editable, and a query such as
-`?edit_mode=true` never changes that lane or exposes a draft.
+execute zero selector SQL and zero CEL evaluation. Public documents are immutable and non-editable,
+and a query such as `?edit_mode=true` never changes that lane or exposes a draft.
 
 The website keeps Median/Profound's useful hybrid topology explicit without importing their data
 or authentication stacks:
@@ -76,6 +76,10 @@ or authentication stacks:
 - `/admin` is a no-store, noindex gateway page that links to the separate CMS origin. In local
   development it defaults to `http://localhost:3000`; other environments require a valid absolute
   HTTP(S) origin in `CMS_ADMIN_ORIGIN` with no credentials, path, query, or hash.
+- The CMS authoring studio's Preview and published-page links use a server-validated
+  `CMS_WEBSITE_ORIGIN`. Development and tests default to `http://localhost:3001`; other
+  environments render those links unavailable when the variable is missing or is not a bare
+  absolute HTTP(S) origin.
 - Preview is available automatically only in development and tests. Outside those environments,
   set `CMS_ENABLE_PREVIEW=true` and serve the request on the template's canonical host. The
   `CMS_ALLOW_LOCAL_PREVIEW_HOST=true` flag permits localhost only for an explicit production-mode
@@ -87,13 +91,28 @@ The gateway and preview routes prove separation and rendering, not production ac
 Authentication, deployment routing, CDN/cache invalidation, and the final production preview
 policy remain explicit follow-up decisions.
 
-Open any `/templates/:templateId` route and choose **Block authoring** for the persisted workbench.
-The HUD can add, reorder, version, replace, hide, and revert stable placements; create linked or
-explicitly empty variants; preview and revise selectors; change priority; publish atomically; and
-roll back the serving pointer. Its inputs are validated at the server-function boundary and then
-delegate to the same `CmsService` used by the executable proofs. The Store foundation and bounded
-Eligible Vehicles/structural workbenches are real SQLite rows; the projection, comparison, and
-million-cardinality panels remain clearly labeled explanatory fixtures.
+Open `/content` for the fixed-template content explorer. It projects the three provisioned SQLite
+templates and their concrete pages as a searchable tree/table; this milestone deliberately has no
+template-creation control. Choosing a page opens `/author/:templateId` with its exact canonical URL
+and selected authoring scope in route state.
+
+The authoring studio uses a Median-inspired three-pane layout: stable placement structure, an
+executable selected-scope canvas, and schema-driven Fields/Cascade/History inspection. Authors can
+add, reorder, version, replace, hide, and revert registered blocks; create linked, blank, or
+duplicated variants; build or write constrained selectors; and use bounded CEL expressions inside
+eligible block fields. Local field changes are explicitly **Unsaved** until Save validates the
+form, CEL, schema, exact page/scope, and whole-template resolution before appending immutable SQLite
+state. The isolated Preview link always resolves the persisted saved draft as the full active
+cascade, never unsaved browser form values.
+
+**Review publish** runs a read-only compiler preflight before any activation. It reports total and
+changed pages, bounded URL samples, deterministic conflicts or validation errors, manifest reuse,
+the current immutable publication, and the exact validated rollback target. Confirmation carries
+both the reviewed input hash and current publication ID into an atomic compare-and-swap Publish;
+Rollback likewise requires the exact reviewed predecessor and current pointer. A stale review or
+failed publication leaves the current website pointer, document hash, and rendered bytes unchanged.
+The legacy `/templates/:templateId` diagnostic workbench remains available, but `/content` and
+`/author/:templateId` are the production-shaped authoring workflow.
 
 The chaptered architecture tutorial lives at `/tutorial`. Its typed plan joins six Markdown
 chapters to exactly four sections each, enforces a three-hour-or-less uninterrupted path and a

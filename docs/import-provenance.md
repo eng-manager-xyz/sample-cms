@@ -32,6 +32,11 @@ audited pull-request head when the prototype was bootstrapped.
 - Median's reserved preview-route topology in `apps/docs/src/routes/[cms-preview_].tsx`,
   `[cms-preview_].index.tsx`, and `[cms-preview_].$.tsx`. Auteur retains the explicit prefix so a
   public route and an authoring preview cannot become the same request mode.
+- Median's CEL wrapper shape at the same audited head: compile and evaluate return discriminated
+  structured results, native CEL parsing supplies dependency metadata, and integer values are
+  normalized before crossing JSON. Auteur reimplements that shape in `@repo/cel-engine` with the
+  exact audited runtime version `@marcbachmann/cel-js@7.6.1` and its own page-only capability
+  policy, bounds, reusable compiled expressions, and deterministic output normalization.
 
 The implementation is pared down and recomposed from shadcn-style primitives instead of copying
 Median's entire product-specific component graph.
@@ -54,9 +59,10 @@ catch-all. It does **not** copy the guide as a framework-specific proxy recipe.
 
 - PostgreSQL, Supabase/PostgREST, RLS, Supavisor, and route-binding inheritance.
 - WorkOS authentication and organization/website tenancy.
-- Median's CEL field-expression runtime and document-fetch semantics. Auteur selectors remain the
-  constrained, template-scoped DSL compiled by `@repo/cms-service`; public rendering evaluates
-  neither CEL nor selector SQL.
+- Median's CEL document-fetch surface, asynchronous dependency resolution, clock helpers, and
+  request/user capabilities. Auteur CEL receives only approved synchronous page JSON, while
+  selectors remain the constrained, template-scoped DSL compiled by `@repo/cms-service`; public
+  rendering evaluates neither CEL nor selector SQL.
 - Vercel, Bunny, ImageKit, Sentry, GitHub deployment, and production API integrations.
 - Rust image/MCP/translation services, TensorZero, Terraform, and Docker deployment surfaces.
 - Louvre-style block multi-resolve and Median's existing document/route storage model.
