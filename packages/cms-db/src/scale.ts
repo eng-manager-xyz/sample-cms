@@ -133,7 +133,7 @@ export const seedStoreScale = async (
         const result = insertPage.run(
           pageId,
           canonicalUrl,
-          `camo-store-scale-${index}`,
+          `router-store-scale-${index}`,
           sourceRevision,
           ingestionId,
           sha256Hex(

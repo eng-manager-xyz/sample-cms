@@ -583,8 +583,8 @@ function verifyBounded(report: JsonRecord, envelope: JsonRecord): void {
     'bounded: Store database must be healthy'
   );
   assert(
-    number(report, 'store.databaseHealth.schemaVersion') === 6,
-    'bounded: Store evidence must use schema version 6'
+    number(report, 'store.databaseHealth.schemaVersion') === 7,
+    'bounded: Store evidence must use schema version 7'
   );
   assert(
     path(report, 'store.completeFiveClassCoverage') === true,
@@ -797,8 +797,8 @@ function verifyMillion(report: JsonRecord, envelope: JsonRecord): void {
     'million: database health must pass'
   );
   assert(
-    number(report, 'store.databaseHealth.schemaVersion') === 6,
-    'million: Store evidence must use schema version 6'
+    number(report, 'store.databaseHealth.schemaVersion') === 7,
+    'million: Store evidence must use schema version 7'
   );
   assert(
     number(report, 'store.databaseHealth.foreignKeyViolationCount') === 0,

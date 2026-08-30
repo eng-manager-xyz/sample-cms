@@ -78,8 +78,8 @@ export function NotFound() {
         <span className="system-state__code">404 · Published routes only</span>
         <h1>This page is not live.</h1>
         <p>
-          No active materialized publication exists for this canonical URL, or Camo Press does not
-          mark the route live.
+          No active materialized publication exists for this canonical URL, or RouterService does
+          not mark the route live.
         </p>
         <div className="system-state__actions">
           <Link className="system-state__primary" to="/">

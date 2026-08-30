@@ -108,7 +108,7 @@ function RequestTrace({ scenario }: Readonly<{ scenario: ScenarioFixture }>) {
   const steps = [
     {
       icon: Globe2,
-      owner: 'Camo Press',
+      owner: 'RouterService',
       title: 'Route authority',
       detail: `External route ${selectedCase.externalRouteId} is ${selectedCase.lifecycle.replace('_', ' ')}.`,
     },
@@ -148,7 +148,7 @@ function RequestTrace({ scenario }: Readonly<{ scenario: ScenarioFixture }>) {
               Serving boundary
             </p>
             <h2 id="request-trace-heading" className="mt-0.5 text-sm font-semibold text-ink">
-              Camo Press → Auteur request trace
+              RouterService → Auteur request trace
             </h2>
           </div>
           <Badge

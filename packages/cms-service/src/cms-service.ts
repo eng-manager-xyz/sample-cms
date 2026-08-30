@@ -112,7 +112,7 @@ interface TemplateRow {
   urlPattern: string;
   description: string;
   status: 'active' | 'archived';
-  routeAuthority: 'camo_press';
+  routeAuthority: 'router_service';
   createdAt: string;
   updatedAt: string;
 }
@@ -558,7 +558,7 @@ export class CmsService {
         `INSERT INTO templates (
           id, key, name, domain, url_pattern, description, status, route_authority,
           created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, 'camo_press', ?, ?)`,
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, 'router_service', ?, ?)`,
         [
           input.id,
           input.key,
@@ -1074,7 +1074,7 @@ export class CmsService {
     };
   }
 
-  importCamoPressRoutes(input: RouteImportInput): RouteImportResult {
+  importRouterServiceRoutes(input: RouteImportInput): RouteImportResult {
     this.requireTemplate(input.templateId, true);
     const sourceObservedAt = normalizeSourceObservedAt(input.observedAt);
     const routes = [...input.routes].sort(
@@ -1104,14 +1104,14 @@ export class CmsService {
       `SELECT id, checksum, status, row_count AS rowCount,
               source_observed_at AS sourceObservedAt
        FROM route_ingestions
-       WHERE template_id = ? AND source = 'camo_press' AND source_revision = ?`,
+       WHERE template_id = ? AND source = 'router_service' AND source_revision = ?`,
       [input.templateId, input.sourceRevision]
     );
     if (existingIngestion) {
       if (existingIngestion.checksum !== checksum || existingIngestion.status !== 'succeeded') {
         throw new CmsServiceError(
           'CONFLICT',
-          `Camo Press revision "${input.sourceRevision}" was already imported with different input.`
+          `RouterService revision "${input.sourceRevision}" was already imported with different input.`
         );
       }
       return {
@@ -1160,7 +1160,7 @@ export class CmsService {
           `INSERT INTO route_ingestions (
           id, template_id, source, source_revision, status, checksum, row_count,
           source_observed_at, started_at, completed_at, created_at
-        ) VALUES (?, ?, 'camo_press', ?, 'running', ?, 0, ?, ?, NULL, ?)`,
+        ) VALUES (?, ?, 'router_service', ?, 'running', ?, 0, ?, ?, NULL, ?)`,
           [
             input.id,
             input.templateId,
@@ -1262,7 +1262,7 @@ export class CmsService {
               previousStatus,
               nextStatus,
               stringifyJson({
-                source: 'camo_press',
+                source: 'router_service',
                 sourceRevision: input.sourceRevision,
                 sourceObservedAt,
                 outcome,
@@ -1287,7 +1287,7 @@ export class CmsService {
           `INSERT OR IGNORE INTO route_ingestions (
             id, template_id, source, source_revision, status, checksum, row_count,
             source_observed_at, started_at, completed_at, created_at
-          ) VALUES (?, ?, 'camo_press', ?, 'failed', ?, ?, ?, ?, ?, ?)`,
+          ) VALUES (?, ?, 'router_service', ?, 'failed', ?, ?, ?, ?, ?, ?)`,
           [
             input.id,
             input.templateId,
@@ -1311,7 +1311,7 @@ export class CmsService {
             firstRoute?.routeExternalId ?? '(batch)',
             firstRoute?.canonicalUrl ?? '/',
             stringifyJson({
-              source: 'camo_press',
+              source: 'router_service',
               sourceRevision: input.sourceRevision,
               sourceObservedAt,
               error: error instanceof Error ? error.message : 'Unknown ingestion error',

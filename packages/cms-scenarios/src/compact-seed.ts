@@ -150,7 +150,7 @@ function seedEligibleVehicles(client: CmsDatabaseClient): void {
   service.createPage(templateId, {
     id: 'eligible:en-US:CA:premium',
     canonicalUrl: '/en-US/eligible-vehicles/ca/premium',
-    routeExternalId: 'camo:eligible:en-US:CA:premium',
+    routeExternalId: 'router:eligible:en-US:CA:premium',
     routeStatus: 'live',
     routeRevision: 'editable-eligible-v1',
     context: { locale: 'en-US', state: 'CA', purpose: 'premium', country: 'US' },
@@ -166,7 +166,7 @@ function seedEligibleVehicles(client: CmsDatabaseClient): void {
   service.createPage(templateId, {
     id: 'eligible:es-US:TX:delivery',
     canonicalUrl: '/es-US/eligible-vehicles/tx/delivery',
-    routeExternalId: 'camo:eligible:es-US:TX:delivery',
+    routeExternalId: 'router:eligible:es-US:TX:delivery',
     routeStatus: 'live',
     routeRevision: 'editable-eligible-v1',
     context: { locale: 'es-US', state: 'TX', purpose: 'delivery', country: 'US' },
@@ -270,7 +270,7 @@ function seedStructuralProof(client: CmsDatabaseClient): void {
     service.createPage(templateId, {
       id: `structural-page:${slug}`,
       canonicalUrl: `/en-US/airport/${slug}`,
-      routeExternalId: `camo:structural:${slug}`,
+      routeExternalId: `router:structural:${slug}`,
       routeStatus: 'live',
       routeRevision: 'editable-structural-v1',
       context: { locale: 'en-US', slug, airportCode: code },

@@ -70,7 +70,7 @@ function catalogPage(
   return {
     id,
     canonicalUrl: `/en-US/${prefix}/${itemId}`,
-    routeExternalId: `camo:${id}`,
+    routeExternalId: `router:${id}`,
     routeStatus: status,
     routeRevision: 'manual-v1',
     context: { item: { id: itemId, title: `Item ${itemId}` } },
@@ -103,7 +103,7 @@ describe('AUT-517 template, ordered-slot, and page foundation', () => {
     expect(() =>
       service.createPage('tpl-catalog-a', {
         ...catalogPage('page-catalog-duplicate', 'shops', 7),
-        routeExternalId: 'camo:duplicate',
+        routeExternalId: 'router:duplicate',
       })
     ).toThrow();
 
@@ -191,15 +191,15 @@ describe('AUT-517 template, ordered-slot, and page foundation', () => {
   });
 });
 
-describe('AUT-518 Camo Press lifecycle ingestion', () => {
+describe('AUT-518 RouterService lifecycle ingestion', () => {
   test('is idempotent, classifies unchanged/status rows, retains missing rows, and never revives archives', () => {
     createCatalogTemplate('tpl-routes', 'routes', 'venues');
     const pageOne = catalogPage('page-route-1', 'venues', 1);
     const pageTwo = catalogPage('page-route-2', 'venues', 2, 'not_live');
-    const initial = service.importCamoPressRoutes({
+    const initial = service.importRouterServiceRoutes({
       id: 'ing-routes-1',
       templateId: 'tpl-routes',
-      sourceRevision: 'camo-v1',
+      sourceRevision: 'router-v1',
       observedAt: '2026-08-29T11:59:30-00:00',
       routes: [pageTwo, pageOne],
     });
@@ -219,53 +219,53 @@ describe('AUT-518 Camo Press lifecycle ingestion', () => {
         .get()
     ).toEqual({ sourceObservedAt: '2026-08-29T11:59:30.000Z' });
 
-    const replay = service.importCamoPressRoutes({
+    const replay = service.importRouterServiceRoutes({
       id: 'ignored-replay-id',
       templateId: 'tpl-routes',
-      sourceRevision: 'camo-v1',
+      sourceRevision: 'router-v1',
       observedAt: '2026-08-29T11:59:30Z',
       routes: [pageTwo, pageOne],
     });
     expect(replay).toMatchObject({ idempotent: true, ingestionId: 'ing-routes-1', unchanged: 2 });
     expect(() =>
-      service.importCamoPressRoutes({
+      service.importRouterServiceRoutes({
         id: 'different-observation',
         templateId: 'tpl-routes',
-        sourceRevision: 'camo-v1',
+        sourceRevision: 'router-v1',
         observedAt: '2026-08-29T12:00:00Z',
         routes: [pageTwo, pageOne],
       })
     ).toThrow('different input');
     expect(() =>
-      service.importCamoPressRoutes({
+      service.importRouterServiceRoutes({
         id: 'invalid-observation',
         templateId: 'tpl-routes',
-        sourceRevision: 'camo-invalid-time',
+        sourceRevision: 'router-invalid-time',
         observedAt: 'not-a-timestamp',
         routes: [],
       })
     ).toThrow('valid ISO-8601 timestamp');
 
-    const next = service.importCamoPressRoutes({
+    const next = service.importRouterServiceRoutes({
       id: 'ing-routes-2',
       templateId: 'tpl-routes',
-      sourceRevision: 'camo-v2',
+      sourceRevision: 'router-v2',
       routes: [{ ...pageOne, routeRevision: 'ignored' }],
     });
     expect(next).toMatchObject({ unchanged: 1, updated: 0 });
     expect(service.getPage('tpl-routes', 'page-route-2')).not.toBeNull();
 
-    const archived = service.importCamoPressRoutes({
+    const archived = service.importRouterServiceRoutes({
       id: 'ing-routes-3',
       templateId: 'tpl-routes',
-      sourceRevision: 'camo-v3',
+      sourceRevision: 'router-v3',
       routes: [{ ...pageOne, routeStatus: 'archived' }],
     });
     expect(archived).toMatchObject({ archived: 1, statusChanged: 1 });
-    const rejected = service.importCamoPressRoutes({
+    const rejected = service.importRouterServiceRoutes({
       id: 'ing-routes-4',
       templateId: 'tpl-routes',
-      sourceRevision: 'camo-v4',
+      sourceRevision: 'router-v4',
       routes: [pageOne],
     });
     expect(rejected).toMatchObject({ rejected: 1, skippedArchived: 1 });
@@ -298,10 +298,10 @@ describe('AUT-518 Camo Press lifecycle ingestion', () => {
     });
 
     expect(() =>
-      service.importCamoPressRoutes({
+      service.importRouterServiceRoutes({
         id: 'ing-routes-invalid',
         templateId: 'tpl-routes',
-        sourceRevision: 'camo-invalid',
+        sourceRevision: 'router-invalid',
         routes: [{ ...catalogPage('page-route-invalid', 'venues', 99), canonicalUrl: '/wrong' }],
       })
     ).toThrow('Canonical URL must be');
@@ -685,7 +685,7 @@ describe('AUT-521/AUT-522/AUT-523 immutable blocks and variants', () => {
     expect(
       service.resolvePage('tpl-store', 'page-store-1001').renderedPlacements[1]?.content
     ).toEqual({
-      headline: "Hello McDonald's Market / McDonald's Market / mcdonalds / camo-store-1001",
+      headline: "Hello McDonald's Market / McDonald's Market / mcdonalds / router-store-1001",
     });
     expect(
       client.sqlite
@@ -1141,7 +1141,7 @@ describe('AUT-524/AUT-525 atomic publication and serving', () => {
     service.createPage('tpl-store', {
       id: 'page-store-1003',
       canonicalUrl: '/en-US/store/1003',
-      routeExternalId: 'camo-store-1003',
+      routeExternalId: 'router-store-1003',
       routeStatus: 'live',
       routeRevision: 'store-seed-v1',
       context: {

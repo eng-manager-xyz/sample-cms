@@ -84,7 +84,7 @@ function WebsiteIndex() {
       </section>
 
       <footer className="index-footer">
-        <p>Serving only active, Camo-authorized publications.</p>
+        <p>Serving only active, RouterService-authorized publications.</p>
         <code>apps/website · TanStack Start · Bun · SQLite</code>
       </footer>
     </main>

@@ -19,7 +19,7 @@ const items = [
   {
     name: 'authority',
     required: true,
-    choices: [{ value: 'camo' }, { value: 'auteur' }],
+    choices: [{ value: 'router' }, { value: 'auteur' }],
   },
   {
     name: 'serve-path',
@@ -37,7 +37,7 @@ describe('Auteur shadcn questionnaire adapter', () => {
           <QuestionnaireTitle>Who owns canonical route status?</QuestionnaireTitle>
           <QuestionnaireDescription>Choose the authoritative system.</QuestionnaireDescription>
           <QuestionnaireChoices>
-            <QuestionnaireChoice value="camo">Camo Press</QuestionnaireChoice>
+            <QuestionnaireChoice value="router">RouterService</QuestionnaireChoice>
             <QuestionnaireChoice value="auteur">Auteur</QuestionnaireChoice>
           </QuestionnaireChoices>
           <QuestionnaireError>Please choose one answer.</QuestionnaireError>

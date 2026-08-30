@@ -31,9 +31,9 @@ review records a default 100 MB transaction-size limit (configurable, with memor
 which reinforces the hidden chunk namespace plus short activation transaction instead of making a
 million-page build depend on one transaction.
 
-During migration, Camo Press remains the authority for route identity and `live`, `not_live`, or
+During migration, RouterService remains the authority for route identity and `live`, `not_live`, or
 `archived` status. Auteur owns content, selector evaluation, materialization, and provenance. The
-new serving path removes Louvre `multiResolve` for content managed by Auteur.
+new serving path removes Content Service `multiResolve` for content managed by Auteur.
 
 ## Decision
 
@@ -70,7 +70,7 @@ the boundary; the named TiDB proof spikes remain prerequisites for production im
 - A partially written large publication must be invisible.
 - Activation and rollback must be bounded operations independent of publication cardinality.
 - Block and publication history must remain explainable through provenance.
-- The Camo route revision used by a publication must be recorded.
+- The RouterService route revision used by a publication must be recorded.
 - The design must work when a single database transaction is too large for the publication.
 - SQLite measurements compare data shapes; they do not establish TiDB production SLOs.
 
@@ -114,9 +114,8 @@ application instead of demonstrating it only inside the CMS HUD:
 - `/admin` validates `CMS_ADMIN_ORIGIN` and offers a handoff to the separately deployed CMS. It is
   not an iframe, reverse proxy, API gateway, or authentication endpoint.
 
-This local topology follows the useful separation shown by Median and the
-[Profound hybrid admin-panel proxy guide](https://cms.docs.tryprofound.com/hybrid/setup-admin-panel-proxy),
-but it is evidence for the data boundary, not a production deployment design. Production preview
+This local topology follows the useful separation shown by Median, but it is evidence for the data
+boundary, not a production deployment design. Production preview
 authentication and authorization, host/origin routing, serving/database credentials, CDN cache
 keys and invalidation, and rollback-aware edge purge behavior remain open decisions. Preview fails
 closed outside development/test unless explicitly enabled; localhost host exceptions exist only for
@@ -143,7 +142,7 @@ Because the prototype stores an absolute path in `page_instances.canonical_url` 
 lives on `templates`, production should materialize route ownership in a small unpartitioned
 `canonical_routes(domain, canonical_path, template_id, page_instance_id, route_external_id)` table.
 Its unique domain/path and route-identity keys replace SQLite's cross-table domain/path triggers;
-Camo remains the source of the values, and the ingestion transaction updates this ownership row
+RouterService remains the source of the values, and the ingestion transaction updates this ownership row
 together with the page instance. This is an invariant projection, not another editable route truth.
 
 ### Serving read model
@@ -215,7 +214,7 @@ revision, and immutable context used to render it.
 The compiler creates an immutable input descriptor containing at least:
 
 - template and slot definition revisions;
-- Camo route source revision;
+- RouterService route source revision;
 - page/context and tag-assignment watermark;
 - active variant IDs, priorities, revision IDs, normalized selector hashes, and operation hashes;
 - referenced block-version IDs and schema versions;
@@ -324,7 +323,7 @@ backend output; it is never the canonical selector identity.
 
 | Access path | Candidate TiDB index | Reason / validation |
 | --- | --- | --- |
-| Route identity | unique `canonical_routes(domain,canonical_path)`; unique `canonical_routes(route_external_id)`; unique `canonical_routes(page_instance_id)` | Enforces one normalized absolute URL, one Camo identity, and one ownership row per page without relying on a cross-table trigger. Explain domain/path lookup. |
+| Route identity | unique `canonical_routes(domain,canonical_path)`; unique `canonical_routes(route_external_id)`; unique `canonical_routes(page_instance_id)` | Enforces one normalized absolute URL, one RouterService identity, and one ownership row per page without relying on a cross-table trigger. Explain domain/path lookup. |
 | Template page scan | `page_instances(template_id, route_status, id)` | Stable keyset pagination and deterministic publication chunks. |
 | Scalar selector | `page_slot_values(template_id, slot_id, normalized_value, page_instance_id)` | Equality/`IN` membership restricted to one template. |
 | Tag definition | unique `tags(template_id, namespace, value)` | Resolves authored tag name to an ID. |
@@ -379,9 +378,9 @@ manifests, hashes, and provenance to that oracle.
 | Variant operation | Pages matching that variant; expand for same-placement conflict checks | Match set and operation-placement index | Full template |
 | New block version selected by an operation | Pages matching revisions that point to it | Block-version-to-operation reverse index | Full template |
 | Block schema/interpolation semantics | Every page using affected versions | Version/schema dependency and compiler version | Full template |
-| Camo route insert | New page if eligible | Route revision and complete slot/tag inputs | Rebuild page |
-| Camo status change | That route, with explicit `not_live`/`archived` policy | Route audit and revision | Rebuild or remove page pointer in next publication |
-| Camo canonical URL change | Old and new canonical identities; uniqueness revalidation | Stable external route identity | Full template if identity is ambiguous |
+| RouterService route insert | New page if eligible | Route revision and complete slot/tag inputs | Rebuild page |
+| RouterService status change | That route, with explicit `not_live`/`archived` policy | Route audit and revision | Rebuild or remove page pointer in next publication |
+| RouterService canonical URL change | Old and new canonical identities; uniqueness revalidation | Stable external route identity | Full template if identity is ambiguous |
 | Compiler version | Every page whose canonical encoding/semantics can change | Compiler compatibility declaration | Full template |
 
 Incremental publication is rejected until randomized equivalence tests compare it with full rebuilds
@@ -393,7 +392,7 @@ across overlapping selectors, tombstones, reorders, type replacements, tag chang
 | --- | --- | --- |
 | `@repo/cms-db` with `bun:sqlite` | Same repository boundary with a TiDB/MySQL-compatible driver | Keep domain/service interfaces; replace connection, transaction, and query-plan adapters. Browser code still crosses a TanStack/server API boundary. |
 | `templates`, `template_slots` | Same logical tables with revision/snapshot identity | Choose binary collation for IDs/keys; add explicit revision columns if snapshots cannot rely on watermarks. |
-| `route_ingestions`, `page_instances`, `route_audit_log` | Camo adapter/import tables, unpartitioned `canonical_routes` ownership projection, and append-only route events | Replace SQLite upsert syntax and domain/path triggers with a transactionally maintained unique ownership row; preserve immutable `source_observed_at`; define archived-reactivation authorization and source-revision idempotency. |
+| `route_ingestions`, `page_instances`, `route_audit_log` | RouterService adapter/import tables, unpartitioned `canonical_routes` ownership projection, and append-only route events | Replace SQLite upsert syntax and domain/path triggers with a transactionally maintained unique ownership row; preserve immutable `source_observed_at`; define archived-reactivation authorization and source-revision idempotency. |
 | `page_slot_values` | Normalized authoritative slots plus optional derived selector projection | Replace SQLite JSON/text assumptions; benchmark normalized joins versus generated/wide fields. |
 | `tags`, `page_tags` | Same M:N source-of-truth relations | Add both lookup-direction indexes and source/freshness policy. |
 | `variants`, `variant_revisions`, `variant_operations` | Same logical immutable-revision model | Replace SQLite partial unique default index with a `template_defaults` ownership table or transactional service invariant. Freeze operations with service permissions/audit, not trigger assumptions alone. |
@@ -455,7 +454,7 @@ Only explicit priority decides precedence; same-priority same-placement overlap 
 - Large writes can be chunked without exposing partial state.
 - Manifests can deduplicate sparse structures while page context remains explicit.
 - The normalized authoring model remains expressive and queryable.
-- Camo transition state and Auteur content state have a recorded revision seam.
+- RouterService transition state and Auteur content state have a recorded revision seam.
 
 ### Costs and risks
 
@@ -464,7 +463,7 @@ Only explicit priority decides precedence; same-priority same-placement overlap 
 - Chunk retries, sealing, retention, and cleanup need operational tooling.
 - Manifest reuse trades write savings for a second read/cache surface.
 - Database constraints and immutability enforcement differ between SQLite and TiDB.
-- Camo status drift requires an explicit serving and republish policy.
+- RouterService status drift requires an explicit serving and republish policy.
 - A large or skewed template can hotspot keys even when total row count is acceptable.
 - The local `/admin` handoff and `/cms-preview_/*` isolation do not supply production
   authentication, authorization, or tenant routing.
@@ -489,7 +488,7 @@ These are named blockers, not implied guarantees:
    and require byte equality with a full rebuild.
 6. **TIDB-CON-06 — Constraint/immutability proof:** map every SQLite check, partial unique index,
    composite FK, and trigger to verified TiDB DDL or explicit service/permission tests.
-7. **TIDB-CAMO-07 — Route revision seam:** define and test behavior for status changes during build,
+7. **TIDB-ROUTER-07 — Route revision seam:** define and test behavior for status changes during build,
    stale route revisions at request time, archived reactivation, and rollback.
 
 ## References
@@ -498,7 +497,6 @@ These are named blockers, not implied guarantees:
 - [TiDB transaction overview](https://docs.pingcap.com/tidb/stable/transaction-overview/)
 - [TiDB partitioning](https://docs.pingcap.com/tidb/stable/partitioned-table/)
 - [TiDB `CREATE TABLE` and global-index compatibility notes](https://docs.pingcap.com/tidb/stable/sql-statement-create-table/)
-- [Profound hybrid admin-panel proxy topology](https://cms.docs.tryprofound.com/hybrid/setup-admin-panel-proxy)
 - [CMS project](https://linear.app/harwood/project/cms-d9fccc6885e7/overview)
 
 ## Acceptance status

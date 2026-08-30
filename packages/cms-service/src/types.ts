@@ -26,7 +26,7 @@ export interface TemplateRecord {
   readonly urlPattern: string;
   readonly description: string;
   readonly status: 'active' | 'archived';
-  readonly routeAuthority: 'camo_press';
+  readonly routeAuthority: 'router_service';
   readonly createdAt: string;
   readonly updatedAt: string;
 }

@@ -63,7 +63,7 @@ Preserve these invariants:
   boundary before persistence or rendering. Placement order is contiguous,
   placement keys are unique and stable, and each placement carries its winning
   block version and provenance.
-- Camo Press remains the route-existence and serving-status authority at the
+- RouterService remains the route-existence and serving-status authority at the
   prototype's transition seam.
 
 The prototype must prove all three scenarios defined in Linear: dense Eligible

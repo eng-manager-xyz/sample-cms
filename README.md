@@ -68,7 +68,7 @@ key and type. Expanded publications take one SQLite read and manifest publicatio
 execute zero selector SQL and zero CEL evaluation. Public documents are immutable and non-editable,
 and a query such as `?edit_mode=true` never changes that lane or exposes a draft.
 
-The website keeps Median/Profound's useful hybrid topology explicit without importing their data
+The website keeps Median's useful hybrid topology explicit without importing its data
 or authentication stacks:
 
 - `/cms-preview_/*` resolves current authoring state through the read-only server boundary, returns

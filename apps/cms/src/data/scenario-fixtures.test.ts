@@ -133,7 +133,7 @@ describe('AUT-526 proof fixtures', () => {
     ).toBe(2);
   });
 
-  test('request fixtures keep Camo Press and Auteur states independent', () => {
+  test('request fixtures keep RouterService and Auteur states independent', () => {
     const stores = getScenarioFixture('stores');
     expect(stores.requestCases.map((requestCase) => requestCase.outcome)).toEqual([
       200, 404, 404, 503,

@@ -138,7 +138,7 @@ describe('CMS database foundation', () => {
             id, template_id, canonical_url, route_external_id, route_status,
             route_revision, last_ingestion_id, slot_value_hash, context_json
           ) VALUES (
-            'page-duplicate-url', 'tpl-store', '/en-US/store/1001', 'camo-duplicate-url',
+            'page-duplicate-url', 'tpl-store', '/en-US/store/1001', 'router-duplicate-url',
             'live', 'store-seed-v1', 'ing-store-seed-1',
             'b9911814e741ca3fdc14c783616a6b144edc0a4e5792517eef975d488fc6fe07', '{}'
           )
@@ -151,20 +151,20 @@ describe('CMS database foundation', () => {
         id, key, name, domain, url_pattern, description, status, route_authority
       ) VALUES (
         'tpl-other-domain', 'other-domain', 'Other domain', 'example.test',
-        '/{locale}/store/{store_id}', '', 'active', 'camo_press'
+        '/{locale}/store/{store_id}', '', 'active', 'router_service'
       );
       INSERT INTO page_instances (
         id, template_id, canonical_url, route_external_id, route_status,
         route_revision, slot_value_hash, context_json
       ) VALUES (
         'page-other-domain', 'tpl-other-domain', '/en-US/store/1001',
-        'camo-other-domain', 'live', 'other-v1', 'other-domain-slot-hash', '{}'
+        'router-other-domain', 'live', 'other-v1', 'other-domain-slot-hash', '{}'
       );
       INSERT INTO templates (
         id, key, name, domain, url_pattern, description, status, route_authority
       ) VALUES (
         'tpl-same-domain-overlap', 'same-domain-overlap', 'Same domain overlap',
-        'www.ubereats.com', '/en-US/store/{store_id}', '', 'active', 'camo_press'
+        'www.ubereats.com', '/en-US/store/{store_id}', '', 'active', 'router_service'
       );
     `);
     expect(() =>
@@ -174,7 +174,7 @@ describe('CMS database foundation', () => {
           route_revision, slot_value_hash, context_json
         ) VALUES (
           'page-same-domain-overlap', 'tpl-same-domain-overlap', '/en-US/store/1001',
-          'camo-same-domain-overlap', 'live', 'overlap-v1', 'overlap-slot-hash', '{}'
+          'router-same-domain-overlap', 'live', 'overlap-v1', 'overlap-slot-hash', '{}'
         )
       `)
     ).toThrow('canonical domain and path');

@@ -20,7 +20,7 @@ describe('TutorialSemanticFigures', () => {
     expect(markup).toContain('apps/website/src/components/block-renderer.tsx');
     expect(markup).toContain('public serving evaluates no selectors');
     expect(markup).toContain('manifest mode replays bounded interpolation');
-    expect(markup).not.toMatch(/legacy|route.tree|old world|median|profound|louvre/i);
+    expect(markup).not.toMatch(/legacy|route.tree|old world|median/i);
   });
 
   test('renders two labelled figures with explanatory captions', () => {
