@@ -1,12 +1,28 @@
 import { describe, expect, test } from 'bun:test';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { TutorialSemanticFigures } from './tutorial-semantic-figures';
+import { CurrentCodeFlowFigure, TutorialSemanticFigures } from './tutorial-semantic-figures';
 
 function renderFigures(): string {
   return renderToStaticMarkup(<TutorialSemanticFigures />);
 }
 
 describe('TutorialSemanticFigures', () => {
+  test('traces the current executable code path without historical comparison framing', () => {
+    const markup = renderToStaticMarkup(<CurrentCodeFlowFigure />);
+
+    expect(markup).toContain('One repository, two applications, one publication boundary');
+    expect(markup).toContain('aria-label="Current Auteur code path"');
+    expect(markup).toContain('apps/cms/src/routes/templates.$templateId.tsx');
+    expect(markup).toContain('apps/cms/src/server-functions/cms.functions.ts');
+    expect(markup).toContain('packages/cms-service/src/cms-service.ts');
+    expect(markup).toContain('packages/cms-db/src/schema/index.ts');
+    expect(markup).toContain('apps/website/src/server-functions/published-page.functions.ts');
+    expect(markup).toContain('apps/website/src/components/block-renderer.tsx');
+    expect(markup).toContain('public serving evaluates no selectors');
+    expect(markup).toContain('manifest mode replays bounded interpolation');
+    expect(markup).not.toMatch(/legacy|route.tree|old world|median|profound|louvre/i);
+  });
+
   test('renders two labelled figures with explanatory captions', () => {
     const markup = renderFigures();
 

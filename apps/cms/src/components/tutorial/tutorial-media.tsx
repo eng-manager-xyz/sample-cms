@@ -2,6 +2,7 @@ import { Box, CirclePlay, Image, Layers3 } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
 import { PixiProjection } from '@/components/tutorial/pixi-projection';
 import { ThreeResolutionPin } from '@/components/tutorial/three-resolution-pin';
+import { CurrentCodeFlowFigure } from '@/components/tutorial/tutorial-semantic-figures';
 import { TutorialVideo, type TutorialVideoProps } from '@/components/tutorial/tutorial-video';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -94,28 +95,6 @@ const wallNavigationVideo: TutorialVideoProps = {
     'Primary navigation returns to the Wall with the Store filter retained for orientation.',
     'Clearing search restores the complete three-map inventory without changing the information architecture.',
     'The tutorial and operational workspace remain adjacent routes inside the same HUD shell.',
-  ],
-};
-
-const pinInspectionVideo: TutorialVideoProps = {
-  id: 'pin-inspection-v1',
-  title: 'Resolution pin · URL to layers, provenance, and serving seam',
-  description:
-    "A real 35-second production-build walkthrough: select one McDonald's point, inspect its four matching sheets and winning placement, then verify selector SQL stays off the public path.",
-  duration: '0:35',
-  evidenceLabel: 'Reviewed UI capture',
-  poster: '/media/tutorial/flows/pin-inspection-v1-poster.webp',
-  mp4: '/media/tutorial/flows/pin-inspection-v1.mp4',
-  webm: '/media/tutorial/flows/pin-inspection-v1.webm',
-  descriptionsVtt: '/media/tutorial/flows/pin-inspection-v1.vtt',
-  transcript: [
-    'The Store projection exposes sparse selector sheets in explicit priority order.',
-    "The P30 McDonald's sheet and one concrete page point are selected; that page matches four sheets.",
-    'The resolution pin shows the canonical URL, tags, Camo route live, Auteur content published, and HTTP 200.',
-    "Matching sheets stay visible from the P0 template default through P10 chain, P20 fast food, and P30 McDonald's.",
-    "Expanding primary-hero shows the inherited version and the winning McDonald's replacement as complete provenance.",
-    'The exact approved selector SQL is inspectible, with an explicit warning that it runs only during preview or publication.',
-    'Returning to Trace restores the independent Camo Press and Auteur serving status for the selected point.',
   ],
 };
 
@@ -347,15 +326,8 @@ export function TutorialSectionMedia({
   onActiveVisualChange: (visualId: string | null) => void;
 }>) {
   switch (section.visual) {
-    case 'generated-old-world-cutaway':
-      return (
-        <EditorialImage
-          src="/media/tutorial/old-world-to-wall-of-maps-v1.webp"
-          title="From route-tree assembly to a queryable wall of maps"
-          alt="Editorial cutaway comparing a branching legacy route tree and block-resolution pipeline on the left with a calm grid of selector sheets, page points, and one pinned document on the right."
-          caption="A conceptual bridge generated for this tutorial. Repository models and measured evidence—not the illustration—remain authoritative."
-        />
-      );
+    case 'current-code-flow':
+      return <CurrentCodeFlowFigure />;
     case 'pixi-wall-intro':
       return (
         <MediaFrame
@@ -442,7 +414,17 @@ export function TutorialSectionMedia({
     case 'wall-ui-walkthrough':
       return <TutorialVideo {...wallNavigationVideo} />;
     case 'pin-ui-walkthrough':
-      return <TutorialVideo {...pinInspectionVideo} />;
+      return (
+        <MediaFrame
+          visualId={section.visual}
+          title="Inspect the current Store resolution pin"
+          description="Use the live code-backed view to follow one canonical URL through stored route status, matching layers, winning provenance, and the immutable document."
+          active={activeVisual === section.visual}
+          onActiveChange={onActiveVisualChange}
+        >
+          <ThreeResolutionPin scenario={storeScenario} />
+        </MediaFrame>
+      );
     case 'shape-comparison':
       return (
         <figure className="my-6 overflow-hidden rounded-xl border border-line bg-surface-subtle">

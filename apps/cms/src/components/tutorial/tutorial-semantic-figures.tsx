@@ -1,6 +1,51 @@
 import { useId } from 'react';
 import { Badge } from '@/components/ui/badge';
 
+const currentCodeSteps = [
+  {
+    number: '01',
+    phase: 'Author',
+    path: 'apps/cms/src/routes/templates.$templateId.tsx',
+    detail:
+      'The TanStack HUD reads and mutates authoring state through validated server functions.',
+  },
+  {
+    number: '02',
+    phase: 'Cross the server boundary',
+    path: 'apps/cms/src/server-functions/cms.functions.ts',
+    detail:
+      'Zod-checked inputs reach server-only orchestration; browser modules never open SQLite.',
+  },
+  {
+    number: '03',
+    phase: 'Resolve and publish',
+    path: 'packages/cms-service/src/cms-service.ts',
+    detail:
+      'CmsService evaluates validated selectors, folds sparse operations, validates interpolated page output, and publishes atomically.',
+  },
+  {
+    number: '04',
+    phase: 'Persist contracts',
+    path: 'packages/cms-db/src/schema/index.ts',
+    detail:
+      'Drizzle describes template-scoped authoring rows, immutable publications, manifests, documents, and the active pointer.',
+  },
+  {
+    number: '05',
+    phase: 'Serve read-only',
+    path: 'apps/website/src/server-functions/published-page.functions.ts',
+    detail:
+      'The public server function opens SQLite read-only and calls CmsService.serve for one canonical URL.',
+  },
+  {
+    number: '06',
+    phase: 'Validate and render',
+    path: 'apps/website/src/components/block-renderer.tsx',
+    detail:
+      'PublishedDocumentSchema protects the boundary before the synchronous registry renders placements in order.',
+  },
+] as const;
+
 const anatomyParts = [
   {
     number: '01',
@@ -65,6 +110,64 @@ const scenarioComparisons = [
     explanation: 'One set replaces the hero type and one tombstone hides the promo.',
   },
 ] as const;
+
+export function CurrentCodeFlowFigure() {
+  const titleId = useId();
+  const captionId = useId();
+
+  return (
+    <figure
+      aria-describedby={captionId}
+      aria-labelledby={titleId}
+      className="my-6 overflow-hidden rounded-2xl border border-line bg-canvas shadow-[0_1px_3px_rgba(22,22,26,0.035)]"
+    >
+      <header className="border-b border-line bg-surface-subtle px-4 py-4 sm:px-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <Badge tone="info">Executable code path</Badge>
+          <span className="font-mono text-[10px] text-ink-faint">author → publish → serve</span>
+        </div>
+        <h4 id={titleId} className="mt-3 font-display text-base font-semibold text-ink">
+          One repository, two applications, one publication boundary
+        </h4>
+        <p className="mt-1 max-w-3xl font-serif text-[11px] leading-5 text-ink-muted">
+          Read these files in order to follow a change from the CMS HUD into SQLite and back out as
+          a validated, immutable website document.
+        </p>
+      </header>
+
+      <ol
+        className="grid gap-px bg-line sm:grid-cols-2 xl:grid-cols-3"
+        aria-label="Current Auteur code path"
+      >
+        {currentCodeSteps.map((step) => (
+          <li key={step.path} className="bg-canvas p-4 sm:p-5">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.11em] text-accent-strong">
+                {step.phase}
+              </span>
+              <span className="font-mono text-[9px] text-ink-faint" aria-hidden="true">
+                {step.number}
+              </span>
+            </div>
+            <code className="mt-2 block break-words font-mono text-[10px] font-semibold leading-5 text-ink">
+              {step.path}
+            </code>
+            <p className="mt-2 text-[10px] leading-4 text-ink-muted">{step.detail}</p>
+          </li>
+        ))}
+      </ol>
+
+      <figcaption
+        id={captionId}
+        className="border-t border-line bg-surface-subtle px-4 py-3 text-[10px] italic leading-5 text-ink-muted sm:px-5"
+      >
+        Authoring crosses a validated server boundary; publication writes immutable serving data;
+        public serving evaluates no selectors, while manifest mode replays bounded interpolation
+        from immutable page context.
+      </figcaption>
+    </figure>
+  );
+}
 
 export function ContentAnatomyFigure() {
   const titleId = useId();

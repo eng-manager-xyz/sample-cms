@@ -19,19 +19,19 @@ Successful compilation makes the density equally visible. The run writes 24 mate
 
 Those numbers require disciplined interpretation. A content-addressed manifest is still useful because it gives the publication a stable, immutable structure and preserves per-placement lineage. Yet this shape has zero structural reuse: 24 pages produce 24 manifests. Saying “manifests saved space” here would be false. Dense variation is the counterweight to the Store scenario that follows; it prevents a storage strategy from being justified by a single favorable distribution.
 
-> **Prototype choice** — The Bun/SQLite compiler resolves the complete bounded template, canonicalizes each effective document, writes immutable publication rows, and swaps one current pointer inside the local service transaction.
+> **Current implementation** — The Bun/SQLite compiler resolves the complete bounded template, canonicalizes each effective document, writes immutable publication rows, and swaps one current pointer inside the local service transaction.
 >
 > **Measured finding** — 24 pages, 17 active variants, 100 selector matches, four exact intersections, 24 unique manifests, 168/168 expanded/stored placements, and 22,024/22,024 canonical manifest bytes. A `legal-notice` conflict at priority `60` is rejected with no partial rows.
 >
-> **Open decision** — The production compiler still needs TiDB measurements for dense scalar distributions, chunk sizing, write amplification, and whether an expanded hot-serving payload is preferable when manifest reuse is zero.
+> **Current evidence boundary** — The dense fixture demonstrates correctness and zero manifest reuse for its exact inputs. It does not generalize that distribution to another template.
 
 In the HUD, open the Eligible Vehicles map from the root Wall of Maps, then choose the two projection axes and filter the remaining dimensions. Selecting a point moves the resolution pin without changing the projection itself. In the right-hand pin, read the Trace from the default layer upward; then compare Selector SQL and Draft diff. The author-facing route is assembled by `apps/cms/src/routes/templates.$templateId.tsx`, while the three-column workspace behavior lives in `apps/cms/src/components/template-workspace.tsx`. The selector text shown in the HUD is an inspected compilation artifact, not SQL that will run during a public request.
 
-For the one-minute media, show the five conceptual layers as labeled sheets—country, language, state, purpose, exact—then lower a vertical pin through `eligible:en-US:CA:premium`. Narrate the labels and winner changes; do not rely on color alone. End on the conflict state: two priority-60 arrows converge on `legal-notice`, publication stops, and the old pointer remains labeled “current.” Captions should state that the exact intersection overrides every placement and that the result has no manifest reuse.
+For the one-minute media, show the five conceptual layers as labeled sheets—country, language, state, purpose, exact—then lower a vertical pin through `eligible:en-US:CA:premium`. Narrate the labels and winner changes; do not rely on color alone. End on the conflict state: two priority-60 arrows converge on `legal-notice`, publication stops, and the prior pointer remains labeled “current.” Captions should state that the exact intersection overrides every placement and that the result has no manifest reuse.
 
-The serving side completes the proof. Camo Press remains responsible for route existence and lifecycle status. Once a route is confirmed `live`, Auteur reads the already-published page and immutable structure. No country, language, state, purpose, or exact selector is evaluated in that request. This boundary is described in `docs/process-engineering-guide.md` and enforced by the service path in `packages/cms-service/src/cms-service.ts`.
+The serving side completes the proof. `page_instances.route_status` supplies the persisted lifecycle value. For a published `live` page, `CmsService.serve` reads the active immutable structure; for `not_live` or `archived`, it returns `404`. No country, language, state, purpose, or exact selector is evaluated in that request. The executable branch is `serveWithEvidence` in `packages/cms-service/src/cms-service.ts`.
 
-> **Digest prompt:** If a future implementation produced only 23 manifests for these 24 pages, what evidence would you request before calling it an optimization? Your answer should distinguish legitimate content identity from accidental canonicalization, and it should name the placement-level provenance that must remain inspectable.
+> **Digest prompt:** If a fresh run produced only 23 manifests for these 24 pages, what current inputs, hashes, and placement winners would you inspect before accepting the result? Distinguish legitimate shared structure from accidental canonicalization, and name the placement-level provenance that must remain inspectable.
 
 ## 4.2 Sparse Stores at one million
 
@@ -42,25 +42,25 @@ The Store map changes the distribution without changing the resolution rules. It
 
 The standalone proof route is `http://localhost:3001/en-US/store/1001`. The compact seed points it at `publication-store-1` with document hash `173f0c8b8cfaff9425c595896e3e1d9f4d39bb5b3f73a358582ba17198d6306d`. The rendered hero contains the page-specific interpolated store context even when multiple Store pages reuse its structural manifest; the public registry sees only the final content and provenance, never tags or selector text.
 
-The bounded fixture makes the five outcomes easy to inspect. It requests 1,000 scale pages and retains two foundation pages, for 1,002 documents. Those pages carry 4,008 scalar slot rows and 1,304 tag memberships. The four selectors match 501 chain stores, 201 fast-food stores, 50 Burger Kings, and 51 McDonald’s stores. Although the two brand layers share priority `30` and both target `primary-hero`, their match sets are disjoint. The overlap diagnostic still names the potential conflict surface. That matters operationally: a future classification error that assigns both brand tags must fail rather than acquire an arbitrary winner.
+The bounded fixture makes the five outcomes easy to inspect. It requests 1,000 scale pages and retains two foundation pages, for 1,002 documents. Those pages carry 4,008 scalar slot rows and 1,304 tag memberships. The four selectors match 501 chain stores, 201 fast-food stores, 50 Burger Kings, and 51 McDonald’s stores. Although the two brand layers share priority `30` and both target `primary-hero`, their match sets are disjoint. The overlap diagnostic still names the potential conflict surface: assigning both brand tags to one page causes conflict failure rather than an arbitrary winner.
 
 Only five structural manifests are needed for the 1,002 bounded pages. Thus 997 pages reuse an existing manifest, a 99.50% deduplicated-page ratio. The structure contains 4,008 logical placements but just 20 stored manifest items. Canonical structure falls from 830,021 logical bytes to 4,214 stored bytes, removing 825,807 repeated bytes. Yet the fully expanded rendered documents occupy 1,142,964 logical bytes, the manifest-plus-page estimate is 858,229 bytes, and the actual SQLite publication allocation grows by 1,294,336 bytes, or 1,291.75 per document. Table pages, indexes, immutable page JSON, and context do not disappear when structure is shared.
 
 > **Requirement** — Sparse selectors must compose when they write different placements, and same-priority selectors that ever overlap on one placement must conflict. Publication and serving must preserve the page’s exact structural and interpolation result.
 >
-> **Prototype choice** — Structural manifest identity excludes page interpolation values. Per-page context supplies deterministic rendered text, so two McDonald’s pages can share a manifest while producing different hero text and document hashes.
+> **Current implementation** — Structural manifest identity excludes page interpolation values. Per-page context supplies deterministic rendered text, so two McDonald’s pages can share a manifest while producing different hero text and document hashes.
 >
 > **Measured finding** — The bounded proof has 1,002 documents, five manifests, 997 reused pages, 4,008/20 logical/stored placements, and 830,021/4,214 canonical structure bytes. Its actual database delta is 1,294,336 bytes, so the prototype does not claim an end-to-end allocation saving at this scale.
 
-The committed million-page envelope tests whether that relational shape remains executable rather than extrapolating the bounded ratios. It records clean scratch source commit `37b789b26e0116ce1fa95321ad4b6b3d95cd3453`, an ancestor of the AUT-533 transfer source `1c227cf28eabd3a1ddf86768d5767a0fecbbdfe1`, plus lock digest `1a6e0ed8bfdb74dfb8048560186c64bee2eaa5416a0f68442c0ddc609ad46670`, package pin `bun@1.3.14`, actual Bun `1.3.11`, and SQLite `3.43.2`. The governed checkout transfers the artifacts rather than the scratch Git history, so AUT-533 is the durable provenance anchor. The host was an Apple M4 Max with 16 logical CPUs and 48 GiB of memory. The completed process took 995,049.950 ms wall time and reached 591,757,312 bytes—564.34 MiB—maximum resident memory. These provenance fields, not a rounded anecdote, let another reviewer decide whether a comparison is meaningful; see `docs/evidence/store-1m.json`.
+The committed million-page envelope tests whether that relational shape remains executable rather than extrapolating the bounded ratios. `docs/evidence/store-1m.json` records the exact command, source commit and dirty state, lockfile digest, Bun and SQLite versions, host resources, elapsed time, memory, database size, counts, hashes, and scenario results. Read those fields directly when comparing runs; a copied number without its envelope is not evidence.
 
 The run inserts 1,000,000 scale pages plus two foundation pages, with 4,000,008 slot rows and 1,300,004 tag memberships. Its five classes include 500,001 chain and 500,001 independent pages, 200,001 fast-food pages, 100,000 generic fast-food pages, 50,001 McDonald’s pages, 50,000 Burger Kings, and 300,000 chain/non-fast-food pages. The seed takes 69,115.674 ms. Replaying it takes 188.719 ms, inserts zero pages, and preserves identity and counts. Schema version 6 passes integrity with zero foreign-key violations.
 
 Publishing all 1,000,002 pages takes 594,347.476 ms, or 1,682.52 documents per second locally. An identical republish takes 262,674.584 ms, retains the publication and input hash, and adds no page rows. Five manifests serve every page; 999,997 pages reuse a structure. That is a 99.999500001% deduplication ratio, with 4,000,008 logical placements represented by 20 stored items. Canonical structure is 828,401,621 logical bytes versus 4,214 stored bytes, a difference of 828,397,407. Fully expanded rendered documents total 1,143,681,174 bytes, while the manifest-plus-page estimate is 862,480,639. SQLite nevertheless allocates 1,310,748,672 publication bytes and ends at 3,205,939,200 bytes—2.986 GiB.
 
-The read measurements describe local, hot-cache behavior only. Canonical lookup p50/p95 is 0.007667/0.009417 ms. Manifest reconstruction uses two fixed SQL statements and zero selectors at 0.164250/0.304500 ms p50/p95. The expanded fixture uses one statement and zero selectors at 0.014292/0.019500 ms. The benchmark report at `docs/benchmarks.md` explicitly refuses to turn these values into a production service-level objective.
+The read measurements describe the recorded local, hot-cache run. Manifest reconstruction uses two fixed SQL statements and zero selectors; the expanded fixture uses one statement and zero selectors. Consult the current envelope for its p50/p95 values and `docs/benchmarks.md` for their interpretation instead of memorizing host-specific timings.
 
-> **Open decision** — TiDB must compare manifest, expanded, and hybrid payloads with real cache behavior, context sizes, compression, secondary indexes, Region distribution, and hot keys. Local SQLite throughput and latency settle none of those production choices.
+> **Current evidence boundary** — Logical structural reuse, SQLite file allocation, and local read timing are different measurements. The report preserves all three so the tutorial does not substitute one favorable ratio for another.
 
 In the HUD, select a McDonald’s point and inspect how three sparse layers contribute three different placements while `navigation` remains inherited. Then select another McDonald’s point: the manifest stays shared, but interpolated hero text and the document hash change. The one-minute media should narrate those stable and changing fields explicitly, then zoom out from 1,002 to 1,000,002 pages without implying that tile area represents cardinality. The authoring controls used later are implemented in `apps/cms/src/components/sqlite-authoring-workbench.tsx`; the generic scenario and evidence path is documented by `docs/benchmarks.md`.
 
@@ -85,17 +85,17 @@ The measured scenario begins with 24 default placements and resolves to 23 visib
 
 The persisted proof gives this sparse story a publication boundary. It creates one new variant block version and keeps two active sparse operations. Across the scenario, there are two domain publication pages, two domain manifests, and 47 domain items. The persisted state records two publications, four page documents, two manifests, and 47 manifest items, adding 20,480 allocated database bytes. Rollback moves the current pointer to the retained baseline publication and restores its exact document hash. It does not reconstruct a plausible prior state by undoing rows.
 
-> **Prototype choice** — The SQLite service represents type replacement as a new typed immutable block version plus a `set` operation at the existing placement key. Tombstones and reverts become new variant revisions rather than destructive updates.
+> **Current implementation** — The SQLite service represents type replacement as a new typed immutable block version plus a `set` operation at the existing placement key. Tombstones and reverts become new variant revisions rather than destructive updates.
 >
 > **Measured finding** — 24 default placements become 23 effective placements; 22 pointers remain unchanged (`91.67%` inheritance); `primary-hero` changes `hero` → `hero_alt`; two sparse operations are active; persisted rollback restores the baseline hash; publication adds 20,480 allocated bytes.
 >
-> **Open decision** — Production still needs a policy for block-schema evolution, renderer compatibility, editorial approval, and cache invalidation when a type contract changes. TiDB must also prove that immutable-version and same-template constraints remain enforceable through DDL, service permissions, and audits.
+> **Current boundary** — The checked-in registry supports `navigation`, `hero`, `hero_alt`, `promo`, and `footer`. An unsupported published block type renders an explicit unsupported-block panel instead of disappearing silently.
 
 Use the HUD to make the difference visible. Open the Structural map, select the matched point, and inspect the Document tab. The visible count should be 23, the type label for `primary-hero` should be `hero_alt`, and the pin should show 22 inherited winners plus the local decisions. In Block authoring, change the variant scope and compare Hide with Revert: Hide creates the tombstone; Revert removes the current draft’s local operation. The mutation commands cross the server-function boundary in `apps/cms/src/server-functions/cms.functions.ts`, execute through `apps/cms/src/server/sqlite-authoring.server.ts`, and are rendered by `apps/cms/src/components/sqlite-authoring-workbench.tsx`.
 
 The one-minute media should use shape as well as labels: keep a fixed slot outline named `primary-hero`, remove a rectangular `hero` card, and insert a visibly different but equally bounded `hero_alt` card. Next, place a crossed-out marker over `announcement-promo`; then show hero Revert removing only the local hero card while the crossed-out marker remains. A textual transcript should state the counts—24 default, 23 visible, 22 unchanged—and finish with rollback selecting the exact baseline hash.
 
-The result is more than a UI trick. Because manifests store placement key, ordinal, block-version pointer, winning revision, operation, and priority, the serving document remains explainable after the type changes. A renderer can dispatch on the immutable block type while editorial review can trace why that type won. The scenario’s authoritative measurements are in `docs/benchmarks.md` and `docs/evidence/bounded-report.json`; the migration consequences are recorded in `docs/adr/0001-tidb-materialization.md`.
+The result is more than a UI trick. Because manifests store placement key, ordinal, block-version pointer, winning `set` revision, operation, and priority, the serving document remains explainable after the type changes. A renderer can dispatch on the immutable block type while the authoring trace retains the richer hide and order story. The scenario’s authoritative measurements are in `docs/benchmarks.md` and `docs/evidence/bounded-report.json`.
 
 > **Digest prompt:** Describe the final state after the hero has been reverted but the promo has not. Name the visible hero type, the status of `announcement-promo`, and why neither result requires updating or deleting an old block version.
 
@@ -109,24 +109,24 @@ The three scenarios are deliberately unlike one another. Together they form a sm
 | Shape | Public proof route | Rendered shape | Headline evidence | What it does **not** prove |
 | --- | --- | --- | --- | --- |
 | Dense Eligible Vehicles | `/en-US/eligible-vehicles/ca/premium` | Seven placements combine dense regional winners into one ordered page | 24 pages, 24 manifests, 168/168 placements, conflict at `legal-notice` priority `60` | That manifests reduce storage for every template |
-| Sparse Stores | `/en-US/store/1001` | Shared structure plus page context renders brand hero, category promo, and footer | 1,000,002 pages, five manifests, 999,997 reused pages, zero selectors on serve | A TiDB latency SLO or an end-to-end physical byte saving |
-| Structural replacement | `/en-US/airport/hero-alt` | The stable `primary-hero` placement dispatches to `hero_alt` while siblings inherit | `hero` → `hero_alt`, 22/24 unchanged pointers, 91.67% inheritance, exact-hash rollback | A complete production block-schema governance policy |
+| Sparse Stores | `/en-US/store/1001` | Shared structure plus page context renders brand hero, category promo, and footer | 1,000,002 pages, five manifests, 999,997 reused pages, zero selectors on serve | That logical reuse equals SQLite file-byte savings |
+| Structural replacement | `/en-US/airport/hero-alt` | The stable `primary-hero` placement dispatches to `hero_alt` while siblings inherit | `hero` → `hero_alt`, 22/24 unchanged pointers, 91.67% inheritance, exact-hash rollback | A renderer beyond the five registered block types |
 
-Start with what is invariant. One canonical URL maps to one template and one page instance. Every template owns exactly one default; variants never cross that boundary. Selectors operate on approved fields, and author literals are bound parameters. A matched layer contributes sparse operations to placement keys. Explicit priority is the only legal precedence input, and a same-priority same-placement collision fails. Publication writes an immutable, content-addressed result and moves a current pointer atomically. Camo remains the route existence and status authority during the transition. Serving reads publication state and executes zero selectors. These requirements are stated in `AGENTS.md` and expanded in `docs/process-engineering-guide.md`.
+Start with what is invariant. One canonical URL maps to one template and one page instance. Every template owns exactly one default; variants never cross that boundary. Selectors operate on approved fields, and author literals are bound parameters. A matched layer contributes sparse operations to placement keys. Explicit priority is the only legal precedence input, and a same-priority same-placement collision fails. Publication writes an immutable, content-addressed result and moves a current pointer atomically. Persisted route status gates the response, while serving reads publication state and executes zero selectors. These requirements are stated in `AGENTS.md` and expanded in `docs/process-engineering-guide.md`.
 
 Now separate the workload-dependent findings. Dense Eligible produces no structural reuse: 22,024 canonical bytes are both logical and stored. Sparse Store produces dramatic structural reuse: at one million, 828,401,621 canonical bytes become 4,214 stored structure bytes, and 4,000,008 logical placements become 20 manifest items. Structural replacement is primarily an inheritance metric: 22 of 24 pointers remain unchanged. None of those ratios can be transferred to another template without measuring its distribution, content size, interpolation context, and serving behavior.
 
 > **Requirement** — Correctness cannot depend on whether a template is dense, sparse, small, large, content-only, or structurally varied. The same inputs must yield byte-stable hashes and provenance independent of database row order.
 >
-> **Prototype choice** — All three proofs run through the shared domain and service paths, with SQLite-specific migrations, transactions, and evidence runners isolated behind repository boundaries.
+> **Current implementation** — All three proofs run through the shared domain and service paths, with SQLite-specific migrations, transactions, and evidence runners isolated behind repository boundaries.
 >
 > **Measured finding** — Dense variation yields zero manifest reuse; sparse Store yields 99.999500001% reused pages at one million; structural replacement yields 91.67% inherited default pointers. These percentages measure different denominators and must never be added or ranked as one score.
 >
-> **Open decision** — Production must choose payload shape, publication chunking, caching, partitioning, schema governance, and incremental invalidation from workload-specific TiDB proofs—not from whichever prototype ratio looks most impressive.
+> **Current comparison rule** — Choose between the executable expanded and manifest modes from the template's measured distribution. Do not treat the most impressive ratio from one scenario as a universal result.
 
 The comparison also clarifies what “scale” means. Eligible has only 24 pages but is combinatorially difficult because 17 variants create 100 matches and exact intersections can override every placement. Store has 1,000,002 pages but only five effective structural classes. Structural has 24 default placements but tests two semantic operations that could break long-lived content identity. Page count, selector density, unique manifests, block-schema diversity, and write volume are independent axes. A useful architecture review names the axis under discussion instead of using “complex” as a catch-all.
 
-Evidence discipline matters just as much. `docs/benchmarks.md` is the readable index; `docs/evidence/bounded-report.json` and `docs/evidence/store-1m.json` are the machine-readable envelopes. Every local time records a commit, lock digest, runtime, host, and invocation. The Store publication’s 1,682.52 local documents per second and sub-millisecond hot-cache reads describe one run, not a promise to production users. Likewise, saving repeated canonical structure does not mean SQLite allocated fewer bytes overall: at bounded scale its 1,294,336-byte publication delta exceeds the logical estimates.
+Evidence discipline matters just as much. `docs/benchmarks.md` is the readable index; `docs/evidence/bounded-report.json` and `docs/evidence/store-1m.json` are the machine-readable envelopes. Every local time records a commit, lock digest, runtime, host, and invocation. Read the current throughput and latency from that envelope. Saving repeated canonical structure does not itself mean SQLite allocated fewer bytes overall, so the report keeps logical and physical measures separate.
 
 The rendered comparison has one more invariant: all three pages travel through the same `PublishedDocumentSchema` and synchronous registry. `navigation`, `hero`, `hero_alt`, `promo`, and `footer` are ordinary registered block types, and stable placement keys remain the list identity. An unknown type produces a visible unsupported-block panel, so a missing renderer cannot turn a valid publication placement into silent data loss. This registry is deliberately smaller than the authoring model; it consumes only the immutable publication contract.
 
@@ -134,7 +134,7 @@ The one-minute comparison media should present a table or three aligned lanes, n
 
 This comparison prepares you to operate the HUD. You now know which observations are semantic and which are measurements. On the Wall of Maps, the cards and metrics are entry points into these shapes, not a scoreboard. Once inside a template, the projection, layer stack, resolution pin, document, authoring controls, and publication history expose the same pipeline at different stages. Their component boundaries are visible in `apps/cms/src/components/wall-of-maps.tsx`, `apps/cms/src/components/template-workspace.tsx`, and `apps/cms/src/components/publication-inspection.tsx`.
 
-> **Digest prompt:** For a proposed fourth template, list the minimum measurements needed before choosing structural manifests, expanded payloads, or a hybrid. Include at least one variation metric, one logical-byte metric, one physical-allocation metric, one read-shape metric, and one provenance check.
+> **Digest prompt:** For a fourth local template, list the measurements needed to choose between the current manifest and expanded modes. Include one variation metric, one logical-byte metric, one physical-allocation metric, one read-shape metric, and one provenance check.
 
 # Chapter 5 — Operate the HUD as an author
 
@@ -155,13 +155,13 @@ Read a template card in a fixed sequence. First confirm its name, domain, and ro
 
 > **Requirement** — A map is a template boundary. One canonical URL belongs to one template and one page instance, and the template owns exactly one default layer.
 >
-> **Prototype choice** — The root UI renders three deterministic scenario fixtures and uses client-side TanStack Query state for search and pagination. It labels those cards as demo fixtures while linking into server-backed workspaces.
+> **Current implementation** — The root UI renders three deterministic scenario fixtures and uses client-side TanStack Query state for search and pagination. It labels those cards as demo fixtures while linking into server-backed workspaces.
 >
 > **Measured finding** — The required proof set contains all three shapes already examined: 24 dense Eligible pages, 1,000,002 pages in the committed Store stress envelope, and 91.67% default-pointer inheritance in Structural replacement. The card scale cues summarize these shapes; `docs/benchmarks.md` remains the evidence source.
 >
-> **Open decision** — A production wall still needs product policy for discovery, permissions, ownership, freshness, and which health or publication metrics belong on a global index. The prototype does not establish a cross-template ranking or operational dashboard.
+> **Current boundary** — The Wall of Maps is a three-scenario orientation surface. It does not rank templates or present itself as an operational monitoring dashboard.
 
-At the bottom, use the “Relational legend · how to read this prototype” before opening a map if any term is unfamiliar. Its definition list distinguishes Template, Point, Selector sheet, Resolution pin, and Projection. Because the legend is structured as terms and definitions, it remains usable without icon recognition. A projection is a selectable two-axis view of higher-dimensional data; it is not the complete template. A resolution pin explains one point; it is not a stored route-tree path. Those distinctions will determine how you interpret the workspace in the next section.
+At the bottom, use the “Relational legend · how to read this prototype” before opening a map if any term is unfamiliar. Its definition list distinguishes Template, Point, Selector sheet, Resolution pin, and Projection. Because the legend is structured as terms and definitions, it remains usable without icon recognition. A projection is a selectable two-axis view of higher-dimensional data; it is not the complete template. A resolution pin is a current resolution explanation for one point. Those distinctions will determine how you interpret the workspace in the next section.
 
 To enter, activate the template card’s map link. The destination follows `/templates/$templateId`, defined by `apps/cms/src/routes/templates.$templateId.tsx`. That route loads health and authoring-workspace data through server functions before it renders the template shell. The root never imports the SQLite client, and the browser does not gain database access by following the link. Data crosses the same validated server boundary used by tests.
 
@@ -186,19 +186,19 @@ Now read the resolution pin. **Trace** begins with the canonical URL, scalar dim
 
 > **Requirement** — Every effective placement must have one content source and one order source. The trace must explain inheritance, local operations, tombstones, and conflicts without relying on row order.
 >
-> **Prototype choice** — The HUD resolves deterministic fixture points in the browser for the explanatory projection while its Block authoring tab displays live server-backed SQLite state. The two surfaces are labeled and kept conceptually separate.
+> **Current implementation** — The HUD resolves deterministic fixture points in the browser for the explanatory projection while its Block authoring tab displays live server-backed SQLite state. The two surfaces are labeled and kept conceptually separate.
 >
 > **Measured finding** — Store’s bounded selectors match exactly 501 chain, 201 fast-food, 50 Burger King, and 51 McDonald’s pages. Structural exposes 23 visible placements, one tombstone, one `hero_alt`, and 22 inherited pointers. Eligible’s exact-intersection page has provenance for all seven winners.
 
-Switch to **Selector SQL** to inspect the authored expression, normalized form, parameters, match count, and plan cue. Values must remain parameters, and identifiers must come from a template-owned allowlist. The SQL is allowed during bounded preview and publication only. The panel says this explicitly: public requests read the immutable manifest. Use **Draft diff** last to compare the current preview with the publication rather than treating unsaved or unpublished intent as live content.
+Switch to **Selector SQL** to inspect the authored expression, normalized form, parameters, match count, and plan cue. Values remain parameters, and identifiers come from a template-owned allowlist. This SQL path is preview-only. Draft resolution and publication evaluate the already-validated selector AST in Bun; public requests read the immutable publication. Use **Draft diff** last to compare the current preview with the publication rather than treating unsaved or unpublished intent as live content.
 
-The pin also crosses the Camo–Auteur seam. Camo supplies lifecycle status; Auteur supplies publication availability. A `live` route with a published document yields `200`. `not_live` and `archived` yield `404`. A `live` route missing an active Auteur document is an unsafe state and yields `503`, not a silent empty page. These outcomes appear as text in the pin, not color alone. Their transition contract is described in `docs/process-engineering-guide.md` and implemented in the service path at `packages/cms-service/src/cms-service.ts`.
+The pin also combines the two persisted facts used by serving: `page_instances.route_status` and active publication availability. A `live` page with a published document yields `200`. Missing, `not_live`, `archived`, and live-but-unpublished pages yield `404` with distinct service reasons. These outcomes appear as text in the pin, not color alone. The exact branches live in `CmsService.serveWithEvidence`.
 
-> **Open decision** — Production must define how stale Camo revisions, mid-build status changes, tag freshness, and author permissions appear in this trace. It must also decide whether `not_live` pages are precompiled, retained, or omitted; the current `404` behavior does not settle publication policy.
+> **Current implementation** — Publication compiles `live` and `not_live` pages and omits `archived` pages. Serving checks the current route status before returning a schema-valid published document.
 
-The one-minute media should select one McDonald’s point and narrate the pin top to bottom. Highlight the three matched non-default layers, then read the four final placement sources. Switch to Selector SQL long enough to say “preview/publication only,” and finish on the Camo/Auteur outcome. Every animated highlight needs a spoken label and persistent focus indicator; provide a transcript with the canonical URL and priority sequence.
+The one-minute media should select one McDonald’s point and narrate the pin top to bottom. Highlight the three matched non-default layers, then read the four final placement sources. Switch to Selector SQL long enough to say “preview only,” and finish on route status plus publication availability. Every animated highlight needs a spoken label and persistent focus indicator; provide a transcript with the canonical URL and priority sequence.
 
-> **Digest prompt:** For a selected page that returns `503`, write the two facts the pin must show. Then explain why changing selector priority cannot repair a missing active publication on the public request path.
+> **Digest prompt:** For a selected live page that returns `404` with reason `unpublished`, write the two facts the pin must show. Then explain why changing selector priority cannot repair a missing active publication on the public request path.
 
 ## 5.3 Perform block and variant CRUD
 
@@ -219,13 +219,13 @@ Order is independent from content. **Move up** and **Move down** add an order de
 
 Deletion depends on scope. In the default, **Delete** removes the placement from the new default revision’s effective document; it does not delete historic published versions. In a non-default variant, the same action is labeled **Hide here** and creates a tombstone. A hidden placement appears in “Scoped tombstones,” where selecting its revert control removes the local absence decision in a new revision. **Revert override** on a visible local winner likewise removes that local operation and exposes the lower winner. Revert is not a compensating content write and does not erase history.
 
-> **Prototype choice** — Each authoring command runs in a SQLite transaction, creates immutable revisions and versions, then re-resolves the sample workspace. If resolution reports a conflict, the mutation is rolled back rather than leaving a broken draft partially persisted.
+> **Current implementation** — Each authoring command runs in a SQLite transaction, creates immutable revisions and versions, then re-resolves the sample workspace. If resolution reports a conflict, the mutation is rolled back rather than leaving a broken draft partially persisted.
 >
 > **Measured finding** — The structural workflow proves one new variant block version, two active sparse operations, 22 unchanged pointers, one tombstone, and an exact restoration of the inherited hero after revert. Store mutation tests prove a fast-food promo change reaches both named brands while a McDonald’s hero edit leaves Burger King and default unchanged.
 
 Use priority and selector changes carefully. A priority edit affects every page matching the layer and can expose a same-priority same-placement conflict elsewhere. A selector revision can change its entire match set. The HUD’s bounded point is useful feedback, but publication is the authority because it evaluates every eligible page and rejects conflicts atomically. Tests in `apps/cms/src/server/sqlite-authoring.server.test.ts` cover command validation, transactions, and rollback of conflicting changes; domain and service suites provide the broader invariant proof listed in `docs/benchmarks.md`.
 
-> **Open decision** — Production needs roles, approvals, audit retention, content review, tag-ownership conflict policy, and safe handling for high-impact selector or priority edits. The prototype proves CRUD semantics, not who may perform each operation or when a draft is eligible to publish.
+> **Current boundary** — These controls prove CRUD and transactional semantics. The local HUD does not implement user identity, roles, approvals, or an editorial review workflow.
 
 The one-minute media should perform one narrow sequence: create a linked Store variant, preview its exact match count, edit an inherited placement to create a new version, move it, hide it, then revert the tombstone. Keep the stable placement key on screen and announce every content and order source change. Do not compress the sequence so much that Hide and Revert look interchangeable; captions should name the new immutable revision created at each step.
 
@@ -246,17 +246,17 @@ The history area lets you select candidate, active, and retained rollback snapsh
 
 > **Requirement** — Publication is atomic, immutable, versioned, and reversible. A conflict or write failure exposes no partial result. Rollback restores an existing validated publication and its exact hashes; it never recompiles an approximation.
 >
-> **Prototype choice** — The local SQLite service performs the bounded write and pointer activation transactionally. The inspection page combines clearly labeled scenario communication cards with live server-function actions.
+> **Current implementation** — The local SQLite service performs the bounded write and pointer activation transactionally. The inspection page combines clearly labeled scenario communication cards with live server-function actions.
 >
 > **Measured finding** — Dense conflict injection leaves no failed publication rows; Store and Structural failure proofs retain the prior pointer; persisted Structural rollback restores the exact baseline hash. The million Store identical republish adds no page rows and keeps the same publication/input hash.
 
-Inspect the **Camo Press → Auteur request trace** before rollback. Choose each request case and read the owner, status, publication lookup, and outcome. A `live` Camo route plus an active Auteur page produces `200`. `not_live` or `archived` produces `404`. A `live` route with no active document produces `503`, exposing unsafe drift instead of returning invented content. The trace is a serving explanation: it never runs selector SQL and never invokes Louvre `multiResolve` for Auteur-managed content.
+Inspect the **Route status → publication request trace** before rollback. Choose each request case and read the persisted status, publication lookup, and outcome. A `live` page plus an active publication produces `200`. Missing, `not_live`, `archived`, and live-but-unpublished pages produce `404` with distinct reasons. The trace is a serving explanation: it calls the materialized `CmsService.serve` path and never runs selector SQL.
 
 Now verify the same boundary in the two-app interface. Keep `apps/cms` on `http://localhost:3000` and `apps/website` on `http://localhost:3001`, then use the Store route as a controlled comparison:
 
 1. Open `/en-US/store/1001` in the website. It must report published, non-editable state and the active publication hash.
 2. Open `/en-US/store/1001?edit_mode=true`. It must return the same published state and hash. The public route's empty search validator means the query cannot elevate the request.
-3. Make and save an authoring change without publishing it, then open `/cms-preview_/en-US/store/1001`. The explicit preview must show the draft resolution, matched variants, tombstones, and authoring provenance through the shared renderers while the two public URLs continue to show the old publication.
+3. Make and save an authoring change without publishing it, then open `/cms-preview_/en-US/store/1001`. The explicit preview must show the draft resolution, matched variants, tombstones, and authoring provenance through the shared renderers while the two public URLs continue to show the active publication.
 4. Inspect the preview response for `Cache-Control: private, no-store` and `X-Robots-Tag: noindex, nofollow, noarchive`. The HTML metadata carries the same noindex intent.
 5. Open `/admin`. A configured, valid `CMS_ADMIN_ORIGIN` exposes one direct handoff link; missing or malformed production configuration fails closed with an actionable message. The website does not proxy arbitrary paths, embed the CMS in an iframe, or invent `/api/auth` behavior.
 
@@ -264,7 +264,7 @@ Local development permits the explicit preview route. A non-development proof en
 
 To roll back, open **Preview rollback**. The panel names `workspace.rollbackPublicationId`, the actual retained predecessor. Confirm that it is present and that the expected current publication has not changed. **Confirm rollback** repoints serving to that immutable namespace; no publication page or manifest row is rewritten. After the mutation, verify the active ID and document hash in both the workspace and publication route. The former current publication remains history and can support investigation or a later explicit action.
 
-> **Open decision** — Production must define rollback authorization, retention windows, cleanup, concurrent activation behavior, stale Camo-revision policy, and incident audit requirements. The accepted ADR proposes a compare-and-swap pointer transaction, but TiDB failure, retry, and reader-visibility behavior still requires `TIDB-MAT-01` and `TIDB-CAMO-07`.
+> **Current boundary** — Rollback selects the retained `previous_publication_id` and repoints `current_publications` transactionally. The local command does not add an approval or authorization workflow around that operation.
 
 The server boundary is part of the safety story. TanStack `createServerFn` endpoints validate command shapes; browser code never imports `bun:sqlite` or a database client. Cross-site request protections and service validation run before the transactional command. The backend path in `apps/cms/src/server/sqlite-authoring.server.ts` delegates to the shared compiler in `packages/cms-service/src/cms-service.ts`, so the HUD does not have a weaker publication implementation than the tests. Website public and preview loaders likewise cross server functions, but only the explicitly named preview function may call draft resolution.
 
@@ -272,156 +272,172 @@ The one-minute media should show a hash-centered workflow. Capture the active ID
 
 > **Digest prompt:** You lose the network response immediately after confirming publication. Describe the safe verification sequence across the CMS, public route, `edit_mode` query, explicit preview, and active hash before retrying, and explain why neither a draft preview nor a blind second activation proves which publication became current.
 
-# Chapter 6 — Interpret tradeoffs and unfinished production work
+# Chapter 6 — Verify the Executable Architecture
 
-*Evidence → decisions*
+*Inspect → test → explain*
 
-## 6.1 Expanded payloads versus manifests
+## 6.1 Expanded Documents and Shared Manifests
 
 > **Estimated time:** Read 5 min · Media 1 min · Digest 3 min
-> **Learning outcome:** Compare expanded and manifest serving shapes with the correct logical, physical, and read-path measures, then recommend a hybrid only as an evidence-gated production option.
+> **Learning outcome:** You can compare the two materialization modes implemented by `CmsService`, explain their exact read shapes, and verify that both return the same strict published-document contract.
 
-Publication can store a page in two useful shapes. An expanded row contains the page’s complete rendered document, making a request close to one indexed lookup. A structural manifest stores the ordered placement keys, immutable block-version pointers, and winning provenance once, while each page points to that structure and retains its own context and hash. The request reconstructs the document from the page pointer and manifest. Both shapes obey the same non-negotiable rule: selectors have already run before serving.
+Auteur implements two publication storage shapes: `expanded` and `manifest`. The caller selects the mode through `CmsService.publish`. Both begin with the same template-scoped authoring state, selector evaluation, deterministic fold, bounded interpolation, block-schema checks, and public-document validation. They differ in what is persisted and how `CmsService.serve` reconstructs the validated result.
 
-The scenarios show why this is a distribution-dependent choice. Dense Eligible Vehicles produces 24 pages and 24 manifests. Its seven placements per document yield 168 logical and 168 stored items; canonical structure is 22,024 bytes either way. Here, manifest indirection preserves content addressing and provenance but removes no repeated structure. A fully expanded hot payload may be attractive because there is nothing structural to share. That is a hypothesis for production measurement, not a conclusion from the bounded fixture.
+In **expanded mode**, each `published_page_documents` row carries `rendered_document_json`. `CmsService.serve` reads the active publication and parses that JSON after one SQLite statement.
 
-Sparse Store provides the opposite input. At bounded scale, 1,002 pages collapse to five manifests. Its 4,008 logical placement rows become 20 stored items, and 830,021 canonical structure bytes become 4,214. That removes 825,807 repeated canonical bytes. Yet expanded rendered documents total 1,142,964 logical bytes, the manifest-plus-page estimate is 858,229, and actual SQLite allocation grows by 1,294,336. The physical database includes page context, immutable JSON, indexes, table pages, and allocator overhead that the structural ratio does not count.
+In **manifest mode**, pages that have the same ordered structural winners point to one `document_manifests` row. `document_manifest_items` stores the stable placement key, ordinal, immutable block-version pointer, and winning `set` provenance for each structural position. The page document links that manifest to one page and stores its immutable `resolved_data_json` context. Serving reads the page/publication row and shared manifest in two statements, calls `interpolateJson` for each winning block against that context, then constructs the same strict document value.
 
-At one million scale, the structural pattern is unmistakable: 1,000,002 pages still use five manifests, so 999,997 pages reuse one. There are 4,000,008 logical placements and 20 stored items. Canonical structure is 828,401,621 logical bytes versus 4,214 stored, removing 828,397,407 repeated bytes. Fully expanded rendered documents total 1,143,681,174 bytes; the manifest-plus-page estimate is 862,480,639. Actual publication allocation is 1,310,748,672 bytes, and the database ends at 3,205,939,200 bytes. Structural sharing is real; an end-to-end physical saving equal to 99.999500001% is not.
+The public boundary is smaller than draft resolution. `PublishedDocumentSchema` contains visible placements in one ordered list:
 
-> **Requirement** — Every canonical URL resolves to one immutable effective result with a stable hash and provenance, and the public request path executes zero selector statements regardless of storage shape.
->
-> **Prototype choice** — The baseline stores content-addressed structural manifests plus per-page context and document hashes. A separate expanded fixture proves the one-query read shape, preserving a hybrid option.
->
-> **Measured finding** — Million-scale manifest reconstruction uses two fixed SQL statements and zero selectors at 0.164250/0.304500 ms p50/p95 locally. The expanded fixture uses one statement and zero selectors at 0.014292/0.019500 ms. Canonical lookup is 0.007667/0.009417 ms. These hot-cache SQLite timings compare shapes; they are not production SLOs.
+```text
+templateId
+pageId
+placements[]:
+  placementKey, contiguous order, blockType, blockVersionId,
+  materialized content,
+  winning set revision/operation/priority
+```
 
-The manifest hash intentionally excludes interpolation values that vary by page. Two McDonald’s pages can therefore share the same `primary-hero` block pointer and manifest while their store names produce different rendered hero text and document hashes. This improves structural reuse but means the serving system must apply deterministic interpolation or cache the expanded result with the correct context dependency. A manifest hit alone is not a complete rendered-page hit.
+It does not contain matching selector text, tombstones, the full resolution trace, or separate order provenance. Those remain available in authoring and preview models, where they explain how the effective list was formed. Public rendering needs the final visible list and the exact content winner for each placement.
 
-Read complexity is equally concrete. The structural path needs one current-publication/page lookup and one ordered manifest/block lookup before caches. An expanded serving row can be one query. Manifests create two cacheable identities—a page pointer/context and a shared structure—while expansion creates a larger page-specific object. Compression, cache key design, eviction, context size, network transfer, renderer cost, secondary indexes, and update amplification can reverse a result that looks obvious from canonical bytes alone.
+The Store scenario demonstrates structural sharing. Many pages can point to the same manifest because they select the same stable block-version structure. In `packages/cms-domain/src/interpolation.ts`, `interpolateJson` uses immutable page context to evaluate bounded `{{ dotted.path }}` expressions. Publication evaluates and validates the page-specific result for both modes. Expanded mode stores it; manifest serving deterministically reproduces it from immutable context. Shared structure therefore does not erase page-specific rendered values.
 
-> **Open decision** — `TIDB-STO-04` must compare fully expanded, manifest-only, and hybrid rows using real block/context distributions, compression, cache behavior, write amplification, and read latency. Dense and sparse templates may legitimately choose different hot-serving representations while retaining one publication contract.
+Eligible Vehicles demonstrates the opposite distribution: each representative page can have a distinct manifest. The structural scenario shows why the same machinery is useful at small scale: it preserves the `primary-hero` placement while the winning block type changes to `hero_alt` and unrelated pointers stay unchanged.
 
-The accepted direction in `docs/adr/0001-tidb-materialization.md` therefore keeps `expanded_payload_json` optional on `published_pages`. The evidence ledger is `docs/benchmarks.md`, with raw values in `docs/evidence/bounded-report.json` and `docs/evidence/store-1m.json`. A reviewer should request all three layers of evidence: logical structure, actual allocated storage, and request behavior. Reporting only the most favorable ratio is not architecture work.
+> **Current serving contract** — The request path performs one expanded read or two manifest reads. In the evidence vocabulary, that is `1–2 SQLite reads and zero selector statements`. Both modes return a `PublishedDocumentSchema` value and dispatch through `apps/website/src/components/block-renderer.tsx`.
 
-The one-minute media should present three labeled columns—logical structure, physical allocation, request reads—and move each scenario’s numbers into the proper column. Use text and spoken values, not proportional bars alone. End with two page arrows sharing one Store manifest but carrying different context and document hashes, then show the optional expanded payload as a measured cache/output choice rather than a replacement for immutable publication identity.
+The evidence files keep unlike measurements separate. Logical expanded placements count repeated structure per page. Stored manifest items count unique structure. Serialized document bytes include materialized page content. SQLite allocation includes table pages and indexes. Read the current values in `docs/evidence/bounded-report.json`, `docs/evidence/store-1m.json`, and `docs/benchmarks.md`; do not use a structural-reuse percentage as a file-size claim.
 
-> **Digest prompt:** Recommend a serving shape for dense Eligible and sparse Store separately. For each recommendation, cite one exact byte result, one request-shape fact, and one measurement still required before production approval.
+For the one-minute media, place one schema-valid document above two storage lanes. The expanded lane should show the complete JSON on the page row and one read arrow. The manifest lane should show several page rows pointing to one ordered manifest and two read arrows. End with both lanes feeding the same `PublishedDocumentSchema` card and the same block registry. Label every count as text rather than relying on color or geometry.
 
-## 6.2 Full rebuild versus production publication
+**Digest prompt:** Compare the expanded and manifest path for `/en-US/store/1001`. Name the persistence rows, SQL statement count, interpolation point, schema boundary, excluded draft-only fields, and final renderer. Then explain why manifest reuse and page-specific rendered content are compatible.
+
+## 6.2 The Synchronous Publication Transaction
 
 > **Estimated time:** Read 6 min · Media 1 min · Digest 3 min
-> **Learning outcome:** Explain why a full-template rebuild remains the correctness oracle while production publication uses resumable hidden chunks and a short compare-and-swap activation transaction.
+> **Learning outcome:** You can walk through `CmsService.publish` in execution order and explain compilation, idempotency, atomic activation, failure behavior, and rollback using the tables the code writes today.
 
-The SQLite prototype compiles a whole template because complete recomputation is the clearest correctness baseline. Given one authoring snapshot, it evaluates approved selectors, detects conflicts, resolves every eligible page, canonicalizes manifests and hashes, writes immutable rows, and activates the result atomically. At one million scale that generic path completed in 594,347.476 ms at a measured local 1,682.52 documents per second. An identical-input compile took 262,674.584 ms, returned the same publication ID and input hash, reproduced 1,143,681,174 expanded logical bytes, and added no page-document rows. This proves executability and idempotency on the recorded host, not a distributed publication SLO.
+The complete database publisher is the `publish` method in `packages/cms-service/src/cms-service.ts`. It is synchronous and runs inside one SQLite transaction. Its `batchSize` controls how many page inputs are prepared at a time; it does not create independent commits or background jobs.
 
-Production cannot simply wrap the million-page write in one huge transaction. The accepted analysis in `docs/adr/0001-tidb-materialization.md` rechecked TiDB Self-Managed v8.5 documentation on 2026-08-29: ordinary views are virtual, materialized views are unsupported for the assumed contract, and the documented default total transaction limit is 100 MB, configurable with memory consequences. Auteur therefore owns publication tables and refresh lifecycle. Database-side set operations such as `INSERT … SELECT` may help, but they do not own snapshot choice, selector validation, conflict policy, retry, sealing, activation, or rollback.
+Read the method in this order:
 
-The production protocol separates building from visibility. First, create a `publication_run` identified by template, canonical input hash, compiler version, route revision, and immutable snapshot metadata. Then compile deterministic page-key ranges into a hidden `publication_id` namespace. Each chunk transaction inserts or verifies rows whose keys include that ID, appends a checkpoint event, and can be retried idempotently. If an existing key has a different hash, the run fails as corruption rather than overwriting it.
+1. `requireTemplate` confirms that the template exists and has an active default.
+2. `prepareResolutionState` loads the default, active variant revisions, validated selector expressions, operations, block versions, and schema information once for the template.
+3. `publicationPageBatches` visits every `page_instances` row whose status is not `archived`. Both `live` and `not_live` pages are compiled.
+4. Publication calls `evaluateSelector` for each prepared page and active selector AST, then calls the deterministic resolver.
+5. `interpolateJson` materializes bounded expressions from immutable page context and the block schema validates the result.
+6. `preparedMaterializedPlacements` requires an exact winning `set` operation for each visible placement. Missing provenance is a conflict, not a best-effort result.
+7. `publishedDocumentValue` creates and parses the strict public document before it can be stored.
+8. Canonical hashes identify the complete input, each structural manifest, each page document, and the publication.
+9. Immutable publication, manifest, manifest-item, and page-document rows are inserted, then `current_publications` changes to the completed publication.
 
-After all chunks arrive, validation recomputes page and manifest counts, rejects duplicate canonical URLs or placement keys, checks winner provenance, confirms the intended Camo route revision and authoring snapshot, and samples full hashes. Only a validated run can activate. Activation is a short compare-and-swap transaction on the template’s single current-publication pointer: update from the expected previous ID to the new ID and require exactly one affected row. Readers see either the former complete namespace or the new complete namespace, never a mixture. Rollback performs the same bounded pointer operation to a retained validated predecessor.
+Selector SQL is for bounded preview only. `packages/cms-service/src/selector-sql.ts` compiles approved expressions into parameterized preview queries that return counts, sample URLs, and an inspectable plan. Publication calls `evaluateSelector` from `packages/cms-domain/src/selector.ts`; public serving performs neither SQL preview nor AST evaluation.
 
-> **Requirement** — Partial publications are invisible; activation and rollback are atomic and independent of page cardinality; retries cannot create competing results for identical inputs; failed conflicts and writes leave the current pointer unchanged.
->
-> **Prototype choice** — Local SQLite uses a full bounded transaction and current pointer. The repository ADR translates that invariant into an application-orchestrated TiDB protocol rather than claiming the local mechanism ports unchanged.
->
-> **Measured finding** — The one-million full rebuild completed with 1,000,002 pages, five manifests, 564.34 MiB maximum resident memory, and a 2.986 GiB final SQLite database. Bounded failure injection and rollback prove pointer behavior; million-scale TiDB chunks and reader visibility remain unmeasured.
+The pure scenario compiler is also worth reading. `compilePublication` in `packages/cms-domain/src/publication.ts` canonicalizes resolved page inputs, rejects duplicate page/canonical identities and cross-template input, creates shared manifests, and reports structural metrics. Scenario proofs call it directly. `CmsService.publish` applies the database transaction and serving-table behavior around the same published invariants.
 
-The proposed serving schema makes that lifecycle explicit. `canonical_routes` records Camo-owned domain/path identity and revision. `publication_runs` carries input identity, build state, chunks, and validation. `publication_manifests` and `publication_manifest_items` retain shared structure and winner provenance. `published_pages` maps each canonical page to a manifest, context, document hash, and optional expanded payload within a publication namespace. `current_publications` is the one-row activation pointer. `publication_events` records start, chunk, validation, activation, rollback, and failure observations. The detailed column and key proposal is in `docs/adr/0001-tidb-materialization.md`.
+Input hashing makes an unchanged current publication request idempotent. The hash includes the template, materialization mode, active revisions, page identity and status, route revision, context/slot hashes, explicit tags, resolved content hash, and manifest hash. When that complete input matches the current publication, the service returns the current immutable result instead of inserting another set of page rows.
 
-Incremental publication comes later. A full rebuild is the oracle because it has no hidden dependency omissions. An incremental compiler must capture selector fields and tags, old and new match sets, placement overlap, interpolation paths, block-version references, route revisions, schema/compiler versions, and inheritance. Every incremental result must be byte-identical to a full rebuild in pages, manifests, hashes, and provenance. If dependency information is absent or ambiguous, the safe fallback is the whole template.
+Atomicity is visible at the database boundary. The mutable seam is one `current_publications` pointer per template. That pointer changes only after every non-archived page compiles, every conflict check passes, every block payload validates, every public document parses, and all immutable rows exist. Any thrown error rolls back the transaction, so public readers continue to see the prior complete publication.
 
-> **Open decision** — Chunk size, concurrency, retry backoff, database-side set-operation boundaries, snapshot isolation, retention, cleanup, partitioning, hot-key mitigation, and activation permissions require the named TiDB spikes. Incremental mode remains blocked on `TIDB-INV-05` equivalence evidence.
+Rollback is another synchronous transaction. It validates the requested retained publication, then repoints `current_publications`; it does not rerun selector evaluation, rebuild documents, or mutate either publication. This is why comparing the active document hash before publication, after publication, and after rollback is a strong browser proof.
 
-The one-minute media should animate two lanes. The first is a full rebuild labeled “correctness oracle.” The second writes three deterministic chunks into a hidden namespace, retries the middle chunk with matching hashes, validates the whole set, and moves one pointer. During every build frame, a reader arrow must continue to the old publication. Only after the pointer move should it reach the new one. Include a transcript and label the 100 MB figure as a documented default reviewed in the ADR, not a measured prototype limit.
+> **Current transaction contract** — One call either commits a complete immutable publication and its active pointer or commits nothing. Batch iteration is an in-transaction memory detail, not a separate visibility boundary.
 
-> **Digest prompt:** A chunk worker dies after writing half a publication. Describe what is retained, what remains publicly visible, how the worker resumes, which validation gates run, and the exact condition required for activation.
+The one-minute media should follow a single Store publication call. Show active revision IDs entering the input hash, non-archived pages passing through `evaluateSelector` and resolution, `PublishedDocumentSchema` accepting each page, immutable rows filling, and the pointer moving last. Then inject a same-priority conflict and show the whole transaction roll back while the prior pointer and hash remain current. Finish with rollback selecting the retained predecessor.
 
-## 6.3 Explicitly unresolved policies
+**Digest prompt:** A conflict appears on the final page in the last batch. Explain why no partial page set becomes visible, which pointer stays current, why `batchSize` does not weaken atomicity, and what a successful retry must change in the authored input.
+
+## 6.3 Current Runtime Guardrails
 
 > **Estimated time:** Read 5 min · Media 0 min · Digest 3 min
-> **Learning outcome:** Maintain an explicit production decision ledger that separates established invariants and prototype behavior from policies that need owners, evidence, and approval.
+> **Learning outcome:** You can verify the current database, host, route-status, preview, admin, schema, and browser-import guardrails directly in the two TanStack applications.
 
-A prototype becomes dangerous when its convenient behavior is mistaken for settled policy. Auteur avoids that by carrying unresolved questions as named decisions. The process guide’s four labels are not decorative; they tell a reviewer what may safely carry forward. **Requirement** names an invariant. **Prototype choice** names a local implementation. **Measured finding** names reproducible evidence with provenance. **Open decision** names work that remains. If a sentence cannot be assigned one of those labels, its authority is unclear.
+The public website starts with `apps/website/src/routes/$.tsx` and `apps/website/src/server-functions/published-page.functions.ts`. `PublicPageRequestSchema` accepts only a canonical path. `resolvePublicTemplate` recognizes the three checked-in URL patterns, and `publicHostMatchesTemplate` checks the configured canonical host while allowing loopback during development. The loader opens SQLite read-only with creation disabled.
 
-The route seam is the first policy group. Camo remains authoritative for canonical route identity and `live`, `not_live`, or `archived` state. The prototype serves `200` for `live`, `404` for `not_live` and `archived`, and `503` for an unsafe live route with no active Auteur document. It also records the route revision used at publication. Production must still decide whether `not_live` pages are precompiled, retained from an earlier publication, or omitted; what happens when Camo changes status or canonical URL during a build; whether a stale revision blocks activation or only serving; and who may reactivate an archived route. `TIDB-CAMO-07` owns that proof.
+`CmsService.serveWithEvidence` implements the response matrix from persisted state:
 
-Editorial routing is a separate policy group. The prototype borrows the explicit `/cms-preview_/*` and admin topology from Median and Profound, but only as an interface boundary. Preview is no-store/noindex and disabled in production unless explicitly enabled, yet it has no production identity, session, role, or authorization layer. `/admin` validates one HTTP(S) origin with no credentials, path, query, or hash and fails closed when production configuration is absent or invalid. That makes it safer than a blind redirect, but it is still only a handoff link—not the authenticated reverse proxy, cookie policy, or deployment contract a production hybrid CMS requires.
+| Stored state | Current result |
+| --- | --- |
+| No matching page row | `404 missing` |
+| `archived` page | `404 archived` |
+| `not_live` page | `404 not_live` |
+| Live page without a complete active document | `404 unpublished` |
+| Live page with an active schema-valid document | `200` plus publication ID, hash, and document |
 
-Classification is the next group. Tags are explicit, template-scoped many-to-many memberships with a source such as `pipeline`, `author`, or `seed`; no hierarchy is inferred from naming. The unresolved policy is who owns each namespace, how freshness is measured, whether author and pipeline assignments can conflict, which source wins, and how a stale or corrected tag invalidates affected pages. Store demonstrates mutation isolation—removing a fast-food tag leaves brand and store-type membership—but it does not define organizational ownership.
+The repository models external route identity, status, and revision in SQLite and deterministic inputs. No public request performs a network call to obtain those values. The service reads the persisted page state and active publication together.
 
-| Decision area | Established baseline | Production evidence or policy still needed |
-| --- | --- | --- |
-| Route lifecycle | Camo owns identity/status; Auteur records compiled revision | `not_live` materialization, drift, archived reactivation, mid-build changes |
-| Preview and admin access | Explicit no-store/noindex preview; validated `CMS_ADMIN_ORIGIN`; public query cannot elevate | Authentication, authorization, session/cookie boundaries, CSP, trusted-host handling, deployment ownership |
-| Tag ownership | Explicit membership and source; no hidden hierarchy | Namespace owner, freshness objective, source conflict and override rules |
-| Payload shape | One immutable result; zero selectors on serve | Expanded/manifest/hybrid by measured cache, bytes, and latency |
-| Publication mode | Full rebuild is correctness oracle | Complete dependencies and byte-equivalent incremental results |
-| Physical layout | Template scope and canonical uniqueness are mandatory | TiDB Region distribution, partitions, global indexes, hot keys |
-| Governance | Immutable history and rollback target exist | Roles, approvals, audit retention, rollback authorization, cleanup |
+Public query parameters cannot change lanes. `?edit_mode=true` is not part of `PublicPageRequestSchema`, so the query cannot elevate the request. The catch-all still calls only `CmsService.serve`, and `CmsService.serve` reads the active publication. A successful response is parsed through `PublishedDocumentSchema`, gets public cache headers plus an ETag and publication header, and renders with `editable: false`.
 
-> **Requirement** — Uncertainty may change an implementation plan, but it may not weaken canonical identity, one default per template, explicit priority, selector safety, immutability, provenance, atomic activation, rollback, or selector-free serving.
+Draft rendering starts at the explicit `/cms-preview_/<canonical-path>` route. Its server function applies host/environment checks, opens SQLite read-only, and calls `resolveDraftByCanonicalUrl`. Preview responses set `Cache-Control: private, no-store` and `X-Robots-Tag: noindex, nofollow, noarchive`. Their view model can include matched variants, tombstones, and authoring provenance because it is not the public published-document shape.
 
-Storage and computation require separate decisions. `TIDB-STO-04` must choose expanded, manifest, or hybrid serving rows from real cache and compression evidence. `TIDB-INV-05` must prove incremental equivalence for every mutation type in the ADR’s invalidation matrix. Slot and tag storage may remain normalized or gain measured derived/wide read surfaces for hot dimensions, but the authoritative relation and template isolation must stay explicit. Interpolation may happen at publish time, render time, or in a hybrid; its semantics and dependencies must be versioned either way.
+The `/admin` route calls `readAdminGatewayState`. `CMS_ADMIN_ORIGIN` must be a bare absolute HTTP(S) origin with no credentials, path, query, or fragment. In required environments, missing or malformed production configuration fails closed and produces no handoff link. A valid value produces one direct link; the page does not proxy requests or embed the CMS.
 
-Physical TiDB design is not a mechanical Drizzle migration. The selected version must be verified for checks, foreign keys, JSON, partial-unique alternatives, triggers, partitioned uniqueness, and global indexes. The initial proof uses ordinary tables and measures before partitioning. A large or skewed template can create Region or hot-key pressure even when aggregate row counts look acceptable. `TIDB-SEL-02`, `TIDB-IDX-03`, and `TIDB-CON-06` turn these assumptions into named experiments.
+The package boundary is enforced structurally. Browser modules do not import `bun:sqlite`, `@repo/cms-db`, or `@repo/cms-service`. Server functions dynamically import server-only database, domain, and service code. `bun run five-phase-pass` includes cross-workspace checks for these import boundaries.
 
-Editorial governance is also unfinished product work. Who may enter preview, follow the admin handoff, create a high-priority selector, change a default inherited by every page, replace a renderer contract, publish, or roll back? Which changes require review? How long are failed builds and former publications retained? What author content may appear in diagnostics? The ADR requires useful run, chunk, conflict, validation, pointer, and actor observability while prohibiting unrestricted author content or page context in logs. The local HUD and website prove route isolation and operations, not their authorization model.
+> **Current boundary — isolation is observable.** Preview host and header checks, public read-only serving, and the validated admin handoff are implemented and tested. They are route-separation mechanisms; the repository does not turn them into a user-account or role system.
 
-> **Prototype choice** — The repository records open items in `docs/process-engineering-guide.md` and makes the accepted technical direction and proof spikes explicit in `docs/adr/0001-tidb-materialization.md`. Linear remains the planning source of truth.
->
-> **Measured finding** — The current prototype has enough evidence to expose the tradeoffs: dense zero reuse, sparse 99.999500001% page reuse, 91.67% structural inheritance, bounded failure/rollback proofs, and a completed million-page SQLite run. None resolves ownership or distributed-database policy by itself.
->
-> **Open decision** — Every item in the ledger needs an accountable owner, chosen option, decision date, required evidence, rollback/revisit condition, and link to its Linear issue. “Use the prototype behavior” is not an acceptable default rationale. In particular, `CMS_ENABLE_PREVIEW=true` is a proof switch, not permission to expose drafts on the public internet.
+There is no media allocation for this section. Verify the guardrails with code and tests: `apps/website/src/data/public-path.test.ts`, `server-functions/published-page.integration.test.tsx`, `server/preview-page.server.test.ts`, `server-functions/preview-page.functions.test.ts`, and `components/admin-gateway.test.tsx`.
 
-There is no media allocation for this section. Make the ledger itself accessible: use real table headers, concise language, text status in addition to color, and links to evidence. During review, read unresolved rows aloud rather than skipping them as caveats. A visible open decision is evidence of engineering control, not failure to finish.
+**Digest prompt:** Explain why `/en-US/store/1001?edit_mode=true`, `/cms-preview_/en-US/store/1001`, and `/admin` are three different contracts. Name each loader, database mode, content source, response policy, and failure shape.
 
-> **Digest prompt:** Choose one row from the ledger and write a decision record stub with owner, options, required proof, invariant guardrails, decision deadline, and a condition that would reopen the choice.
-
-## 6.4 Architecture review and handoff
+## 6.4 Verify and Re-explain the Code
 
 > **Estimated time:** Read 5 min · Media 0 min · Digest 4 min
-> **Learning outcome:** Conduct a traceable architecture review, distinguish prototype completion from production readiness, and hand off the implementation with exact Linear, test, benchmark, browser, and open-decision evidence.
+> **Learning outcome:** You can verify one vertical slice across schema, service, applications, tests, evidence, and browser output, then re-explain the architecture using only implemented components.
 
-A strong handoff lets another person reconstruct the argument without trusting the presenter. Start with scope: the CMS project in Linear is authoritative, beginning at `AUT-514`, and every substantive change maps to an issue and acceptance criteria. The current delivery slice is `AUT-534` through `AUT-536`: standalone published rendering, isolated preview/admin topology, and documentation alignment. `AGENTS.md` records the repository-wide contract and workflow. `docs/process-engineering-guide.md` explains the model and editorial operations. `docs/benchmarks.md` indexes correctness and scale evidence. `docs/evidence/bounded-report.json` and `docs/evidence/store-1m.json` preserve machine-readable provenance. `docs/adr/0001-tidb-materialization.md` states the accepted production direction and its blockers.
+Begin every review with one canonical page. `/en-US/store/1001` is useful because three sparse variants compose while a default placement remains visible. `/en-US/eligible-vehicles/ca/premium` stresses dense precedence. `/en-US/airport/hero-alt` proves type replacement under a stable placement key. All three end at the same `PublishedDocumentSchema` and block renderer.
 
-Review one vertical slice before reviewing totals. Choose a canonical URL. Confirm that Camo owns its identity and status, one template owns its page instance and default, and the page’s scalar slots and explicit tags are template-scoped. Inspect each matched selector revision and normalized hash. Fold operations by explicit priority, reject any same-priority write to the same placement, and record content and order winners. Confirm block schemas and immutable version pointers. Follow the page into a sealed publication, manifest, current pointer, and request result. The trace should contain no selector evaluation or Louvre `multiResolve` after activation.
+For one route, reconstruct this chain:
 
-Then answer the process guide’s review questions:
+```text
+selector-driven authoring → atomic immutable publication → read-only public serve → synchronous block registry
 
-- Can every row in the trace be assigned to one template?
-- Can the reviewer explain why Hide and Revert produce opposite outcomes?
-- Can a block type change without changing the placement identity?
-- Is explicit priority the only precedence input?
-- Does every visible placement have one content source and one order source?
-- Does a failed publication leave the former current pointer unchanged?
-- Can a public request be traced without selector SQL or Louvre `multiResolve`?
-- Does `?edit_mode=true` return the same publication as the query-free public URL?
-- Is draft resolution reachable only through `/cms-preview_/*`, with no-store/noindex policy?
-- Does `/admin` validate `CMS_ADMIN_ORIGIN` and fail closed instead of forwarding arbitrary input?
-- Can every claim be identified as a **Requirement**, **Prototype choice**, **Measured finding**, or **Open decision**?
+Drizzle schema + deterministic seed
+  → template/page/slot/tag/variant/block rows
+  → evaluateSelector + resolveDocument + interpolateJson
+  → CmsService.publish transaction
+  → publication/manifests/page documents/current pointer
+  → read-only CmsService.serve
+  → PublishedDocumentSchema
+  → PublishedPage + PublishedBlock
+```
 
-The automated gate supplies broad evidence after that human trace. Run `bun run five-phase-pass` from a clean implementation tree and report its exact test/assertion totals in the handoff rather than freezing them in prose that will drift as coverage grows. The gate verifies the frozen install, skill-import digest, schema-v6 reset and repeatable compact seed, migrations, Biome, TypeScript, database/domain/service/scenario tests, both TanStack applications, evidence envelopes, client/SSR/Nitro builds, Fallow, and cross-workspace boundaries.
+Ask concrete questions at each boundary:
 
-The three newest issues add focused acceptance layers. `AUT-534` proves that the compact SQLite seed publishes all three patterns and that `apps/website` reads only active immutable documents through the strict `PublishedDocumentSchema` and synchronous registry. `AUT-535` proves public/draft isolation, including an unpublished edit visible on `/cms-preview_/*` but not on the canonical route or its `edit_mode` query, plus preview headers and the validated `/admin` gateway. `AUT-536` adds tutorial current-content assertions for these routes and contracts, then requires the full gate again.
+- Can every authoring row be assigned to one template?
+- Does the template have exactly one default at priority `0`?
+- Are non-default priorities positive and explicit?
+- Do same-priority operations on the same placement fail for an overlapping page?
+- Does every visible resolved placement have one content winner and one order winner?
+- Does every published placement have a unique key, contiguous order, immutable block-version pointer, materialized content, and winning `set` provenance?
+- Are tombstones, full trace, and separate order provenance absent from the strict public document?
+- Does publication include `live` and `not_live`, omit `archived`, and move the pointer only after complete validation?
+- Does serving return `404 unpublished` for a live page without an active document?
+- Do expanded and manifest serving use one and two statements respectively, with zero selector SQL?
+- Does the explicit preview show an unpublished edit while both canonical URLs retain the active publication?
+- Does rollback restore a retained exact hash without rewriting publication rows?
 
-> **Requirement** — A handoff names the Linear issue, acceptance criteria, validation performed, evidence provenance, known limitations, and accurate status. “Tests pass” cannot replace an invariant-by-invariant review.
->
-> **Prototype choice** — The five-phase pass sequences shell and database foundation, relational model, resolution/publication, HUD/scenarios, and cross-workspace audit under Bun and Turborepo.
->
-> **Measured finding** — The compact seed deterministically serves `/en-US/eligible-vehicles/ca/premium`, `/en-US/store/1001`, and `/en-US/airport/hero-alt` from their active publications. Focused browser evidence checks the gallery, all three public pages, explicit Store preview, the unchanged Store public page with `edit_mode=true`, `/admin`, response headers, missing-route behavior, and a clean console; the final handoff records the gate's current exact totals.
+Run focused checks while following the code. `packages/cms-domain/src/selector.test.ts`, `packages/cms-domain/src/resolution.test.ts`, `packages/cms-domain/src/publication.test.ts`, `packages/cms-domain/src/published-document.test.ts`, and `packages/cms-domain/src/interpolation.test.ts` isolate pure behavior. `packages/cms-service/src/cms-service.integration.test.ts` covers transactions, lifecycle, publication, serving, and rollback. CMS server tests exercise validated authoring commands. Website integration tests exercise public/preview isolation and block dispatch. Scenario tests prove the three distributions.
 
-Browser evidence connects the suites to both an author’s and a reader’s experience. Store persists an authoring edit and preview shows it immediately, while `/en-US/store/1001` and `/en-US/store/1001?edit_mode=true` retain the former publication until activation. Eligible renders seven published placements at `/en-US/eligible-vehicles/ca/premium`. Structural renders `hero_alt` at the stable `primary-hero` key on `/en-US/airport/hero-alt` while unrelated placements remain inherited. The `/admin` state names whether its origin came from validated configuration or the local-development default; an unavailable production state provides no handoff link.
+Then run the repository gate:
 
-The tutorial audit rendered six native player instances from five distinct reviewed capture bundles: the three scenario proofs, Wall navigation, resolution-pin inspection, and one in-place Chapter 5 replay. Every instance exposed two source formats and one description track; all 65 rendered IDs were unique. Switching the Chapter 5 selector replaced its player in place, retained keyboard-visible pressed state, and left no backward scenario-player links. MP4/WebM probes, monotonic WebVTT timing, exact transcript text, byte counts, SHA-256 integrity, posters, and manifest/schema-state coherence remain checked by the media suite. The clips remain visibly labeled reviewed previews, while approved integration stays fail-closed until explicit final-capture and governed-release approval.
+```bash
+bun run five-phase-pass
+```
 
-Do not overstate this closure. The clean local gate proves the prototype contract on its recorded environment. It does not prove TiDB throughput, distributed transactions, Region behavior, cache topology, production Camo traffic, operational ownership, or authorization for preview and admin access. The ADR’s seven spikes remain blockers: chunk/activation, selector plans, partition/global index, manifest storage, incremental equivalence, constraints/immutability, and the Camo revision seam. Local timing and allocation numbers remain **Measured finding**, never production SLO. Likewise, no-store/noindex and an environment flag are not substitutes for production authentication.
+The gate resets and seeds a fresh database, runs formatting and type checks, exercises database/domain/service/scenario/application tests, verifies committed evidence, builds both TanStack applications, and checks workspace boundaries. Report the command's current totals rather than copying numbers into the tutorial, because the suite grows with the code.
 
-> **Open decision** — Production readiness depends on completing the named TiDB spikes and policy ledger, then updating Linear and the ADR with results. A prototype issue may be Done while those explicitly separate production issues remain open.
+Browser verification connects those checks to what a teammate can see. Confirm the Store public route and its `edit_mode` query share the same publication hash. Save a draft change and confirm only the explicit preview changes. Confirm Eligible renders seven placements. Confirm Structural renders `hero_alt` at `primary-hero`. Publish, inspect the new active ID/hash, roll back, and confirm the retained hash returns.
 
-Use a consistent handoff paragraph for each issue: “`AUT-___` — acceptance result; files and migrations changed; focused checks; full-gate result; benchmark/evidence links; browser observation; remaining open decisions; final Linear status.” If Linear is unavailable or read-only, include the exact intended comment and status change rather than silently diverging. Mark Done only after acceptance passes; otherwise leave a concise statement of what remains.
+Use this teach-back structure:
 
-The architecture’s durable conclusion is narrow and valuable. Relational, selector-scoped authoring can remain expressive while publication compiles one deterministic, immutable, cacheable document per URL. A standalone TanStack website can serve that document from local SQLite with one or two reads, zero selectors, and a synchronous registry. Stable placement keys preserve editorial identity across content, order, hiding, and type replacement. Explicit preview and admin routes can support the prototype without allowing a public query to acquire draft state. Camo can remain route authority during the transition. Structural manifests are promising for sparse templates but not dogma. Full rebuild remains the oracle while production publication becomes chunked and pointer-atomic. Everything beyond those claims stays attached to evidence or an owner.
+1. **Invariant:** state the rule in one sentence.
+2. **Mechanism:** name the current schema and function that enforce it.
+3. **Evidence:** name the focused test, scenario report field, or browser observation.
+4. **Boundary:** state exactly what data is excluded from the next runtime lane.
 
-There is no media allocation for this section. The review artifact should be the checklist, evidence links, and decision ledger in accessible Markdown. Read counts and limitations with equal emphasis. A successful handoff is one in which the next team can reproduce the proof, challenge a claim at its source, and continue the remaining work without reverse-engineering hidden assumptions.
+For example: “Public requests never evaluate selectors. `loadPublishedPage` opens SQLite read-only and calls `CmsService.serve`; `serveWithEvidence` reports zero selector SQL and parses the active published document. Website integration tests exercise all three representative routes. Selector text, tags, tombstones, and the full draft trace never cross `PublishedDocumentSchema`.”
 
-> **Digest prompt:** Draft the final review note for one scenario. Include its Linear issue, one invariant, two exact measured results, the relevant repository evidence paths, the validation gate, one browser observation, one open production decision, and the correct issue status.
+> **Current review contract — every claim has a path.** A useful explanation names the current table or schema, implementation function, validation evidence, and runtime boundary. If one is missing, return to the code before teaching the claim.
+
+**Digest prompt:** Give a five-minute architecture explanation using one Store page. Include the authoring rows, selector AST, deterministic fold, interpolation, synchronous publication transaction, strict public schema, one/two-read serving modes, block registry, explicit preview isolation, rollback, and the exact tests you would run to verify the story.

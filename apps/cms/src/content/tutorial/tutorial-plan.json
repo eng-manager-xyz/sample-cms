@@ -1,50 +1,50 @@
 {
-  "title": "From Route Trees to the Wall of Maps",
-  "subtitle": "A progressive field guide to Auteur's selector-scoped content architecture",
+  "title": "Learn the Auteur CMS from the Running Code",
+  "subtitle": "A progressive field guide to Auteur's current SQLite, selector, publication, and rendering architecture",
   "audience": "Designers, content architects, engineers, and product partners",
   "readingSpeedWordsPerMinute": 190,
   "totalBudgetMinutes": 180,
   "chapters": [
     {
-      "id": "why-the-architecture-changes",
+      "id": "trace-current-system",
       "number": 1,
-      "title": "Why the architecture changes",
-      "kicker": "Old world → transition",
+      "title": "Trace the current system",
+      "kicker": "Code → data → document",
       "sections": [
         {
-          "id": "old-request-path",
+          "id": "repository-map",
           "number": "1.1",
-          "title": "The old request path",
+          "title": "The executable repository map",
           "readMinutes": 5,
           "mediaMinutes": 1,
           "digestMinutes": 2,
           "prerequisite": null,
-          "visual": "generated-old-world-cutaway"
+          "visual": "current-code-flow"
         },
         {
-          "id": "route-tree-trap",
+          "id": "canonical-url-trace",
           "number": "1.2",
-          "title": "The route-tree inheritance trap",
+          "title": "Trace one canonical URL",
           "readMinutes": 6,
           "mediaMinutes": 1,
           "digestMinutes": 2,
           "prerequisite": "1.1",
-          "visual": "route-tree-comparison"
+          "visual": "canonical-url-flow"
         },
         {
-          "id": "transition-not-replacement",
+          "id": "runtime-boundaries",
           "number": "1.3",
-          "title": "Transition, not replacement",
+          "title": "Authoring, publication, serving, and preview",
           "readMinutes": 6,
           "mediaMinutes": 1,
           "digestMinutes": 2,
           "prerequisite": "1.2",
-          "visual": "camo-auteur-seam"
+          "visual": "runtime-lanes"
         },
         {
-          "id": "what-proof-means",
+          "id": "evidence-workflow",
           "number": "1.4",
-          "title": "What the prototype can prove",
+          "title": "Learn from contracts and executable evidence",
           "readMinutes": 5,
           "mediaMinutes": 0,
           "digestMinutes": 2,
@@ -246,50 +246,50 @@
       ]
     },
     {
-      "id": "tradeoffs",
+      "id": "verify-current-system",
       "number": 6,
-      "title": "Interpret tradeoffs and unfinished production work",
-      "kicker": "Evidence → decisions",
+      "title": "Verify the executable architecture",
+      "kicker": "Inspect → test → explain",
       "sections": [
         {
           "id": "payloads-manifests",
           "number": "6.1",
-          "title": "Expanded payloads versus manifests",
+          "title": "Expanded documents and shared manifests",
           "readMinutes": 5,
           "mediaMinutes": 1,
           "digestMinutes": 3,
           "prerequisite": "5.4",
-          "visual": "byte-evidence"
+          "visual": "serving-shapes"
         },
         {
-          "id": "rebuild-production",
+          "id": "publication-transaction",
           "number": "6.2",
-          "title": "Full rebuild versus production publication",
+          "title": "The synchronous publication transaction",
           "readMinutes": 6,
           "mediaMinutes": 1,
           "digestMinutes": 3,
           "prerequisite": "6.1",
-          "visual": "tidb-protocol"
+          "visual": "publication-transaction"
         },
         {
-          "id": "open-policies",
+          "id": "verify-boundaries",
           "number": "6.3",
-          "title": "Explicitly unresolved policies",
+          "title": "Current runtime guardrails",
           "readMinutes": 5,
           "mediaMinutes": 0,
           "digestMinutes": 3,
           "prerequisite": "6.2",
-          "visual": "decision-ledger"
+          "visual": "runtime-guardrails"
         },
         {
           "id": "review-handoff",
           "number": "6.4",
-          "title": "Architecture review and handoff",
+          "title": "Verify and re-explain the code",
           "readMinutes": 5,
           "mediaMinutes": 0,
           "digestMinutes": 4,
           "prerequisite": "6.3",
-          "visual": "review-checklist"
+          "visual": "verification-checklist"
         }
       ]
     }
