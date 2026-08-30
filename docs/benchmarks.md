@@ -1,6 +1,6 @@
 # Prototype correctness and benchmark report
 
-Linear issue: [AUT-530](https://linear.app/harwood/issue/AUT-530/prove-determinism-crud-semantics-selector-safety-and-scale)
+Linear issues: [AUT-530](https://linear.app/harwood/issue/AUT-530/prove-determinism-crud-semantics-selector-safety-and-scale) for the proof ledger and [AUT-533](https://linear.app/harwood/issue/AUT-533/build-the-chaptered-architecture-tutorial-and-reviewed-ui-walkthroughs) for the governed tutorial transfer.
 
 This is the human-readable index for two machine-readable evidence envelopes:
 
@@ -62,6 +62,10 @@ The envelope's `run` object is the authoritative environment record. It includes
 | Process | wall time, user/system CPU, maximum resident bytes |
 | Storage | database path, file bytes, SQLite allocated bytes and page size |
 | Inputs | page/sample/case counts and deterministic seed in `invocation` |
+
+The current bounded envelope was generated from clean governed commit
+`f2e7fba8392ab37546291b9867e44116dd171595`; unlike the retained million-row scratch evidence,
+this revision resolves directly in the AUT-533 branch.
 
 The evidence runner records the exact pre-run tree state instead of assuming it was clean. The
 delivery verifier requires committed evidence to have an empty pre-run dirty-state record and the
