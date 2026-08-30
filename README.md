@@ -98,7 +98,11 @@ million-cardinality panels remain clearly labeled explanatory fixtures.
 The chaptered architecture tutorial lives at `/tutorial`. Its typed plan joins six Markdown
 chapters to exactly four sections each, enforces a three-hour-or-less uninterrupted path and a
 30-minute per-section ceiling, and requires every section to build on the immediately preceding
-one. Five reviewed UI-flow capture bundles provide MP4/WebM, posters, timed descriptions, complete
+one. The AUT-545 curriculum starts at the executable repository map and teaches only the current
+SQLite authoring, deterministic resolution, publication, website serving, preview, and HUD code
+paths. Historical donor and migration material remains in engineering provenance records rather
+than the reader-facing learning sequence. Four reviewed UI-flow capture bundles provide MP4/WebM,
+posters, timed descriptions, complete
 transcripts, and SHA-256 provenance under `apps/cms/public/media/tutorial/flows/`. They are embedded
 only as visibly labeled reviewed previews; approved integration remains fail-closed pending final
 Linear/source approval. Editorial-image provenance is separate in `illustrations.manifest.json`;
@@ -110,7 +114,7 @@ blob. Inline math uses `$...$`; display math uses `$$...$$`. `remark-math` parse
 delimiters and KaTeX emits the visual expression plus its MathML representation, so raw TeX is not
 the intended reader experience. The renderer gives headings, emphasis, highlights, code, quotes,
 figures, captions, tables, and display equations distinct semantic typography across the display,
-sans, serif, and mono font roles. Architecture figures pair their visual comparison with labels,
+sans, serif, and mono font roles. Architecture figures pair current-code diagrams and scenario comparisons with labels,
 captions, and a readable data table instead of making color or geometry the only source of meaning.
 
 Each chapter ends with an official shadcn Questionnaire knowledge check, and the tutorial includes

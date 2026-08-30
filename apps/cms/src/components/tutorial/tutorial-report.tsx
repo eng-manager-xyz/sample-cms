@@ -373,7 +373,7 @@ export function TutorialReport({ health }: Readonly<{ health: CmsHealthSummary }
           <div className="mt-6 grid items-end gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
             <div>
               <p className="font-mono text-[11px] font-[600] uppercase tracking-[0.14em] text-accent-strong">
-                From route trees to the wall of maps
+                Read the running system from authoring to render
               </p>
               <h1 className="font-display mt-2 max-w-4xl text-3xl font-[800] tracking-[-0.045em] text-ink sm:text-4xl lg:text-5xl">
                 {tutorialCurriculum.title}
@@ -448,15 +448,15 @@ export function TutorialReport({ health }: Readonly<{ health: CmsHealthSummary }
           icon={BookOpenText}
         />
         <MetricCard
-          label="Route seam"
-          value="Camo → Auteur"
-          detail="Route authority remains distinct from content resolution"
+          label="Runtime path"
+          value="CMS → publication → website"
+          detail="Validated server functions keep SQLite outside browser modules"
           icon={Route}
         />
         <MetricCard
           label="Compiler rule"
           value="Selectors off serve"
-          detail="Preview and publication only; immutable reads in public"
+          detail="Preview SQL, server-side resolution, expanded reads or manifest reconstruction"
           icon={ShieldCheck}
         />
         <MetricCard
@@ -515,8 +515,7 @@ export function TutorialReport({ health }: Readonly<{ health: CmsHealthSummary }
                   </h2>
                   <p className="mt-2 max-w-2xl text-[13px] leading-6 text-ink-muted">
                     Reproduce the bounded and million-row ledgers, inspect the live workbenches, and
-                    carry unresolved TiDB and policy choices forward as named decisions rather than
-                    hidden assumptions.
+                    trace each result back through the current SQLite publication and serving code.
                   </p>
                 </div>
               </div>

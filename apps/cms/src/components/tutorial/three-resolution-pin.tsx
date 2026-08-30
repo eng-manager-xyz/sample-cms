@@ -39,7 +39,7 @@ interface ResolutionRuntime {
   observer: ResizeObserver;
   layerPlanes: LayerPlaneRecord[];
   operationTokens: OperationTokenRecord[];
-  camoGate: ThreeGroup;
+  routeGate: ThreeGroup;
   pin: ThreeMesh;
   conflictStop: ThreeMesh;
   manifest: ThreeGroup;
@@ -55,7 +55,7 @@ interface RuntimeState {
 }
 
 const beatCopy = [
-  'Camo Press decides whether this canonical route may serve.',
+  'Stored route status decides whether this canonical route may serve.',
   'The template default and selector-scoped variants form one ordered stack.',
   'A pin isolates the matching layers for exactly one canonical page.',
   'Operations resolve by stable placement key; inheritance remains visible.',
@@ -94,7 +94,7 @@ function resizeRuntime(runtime: ResolutionRuntime, host: HTMLElement) {
 }
 
 function updateRuntime(runtime: ResolutionRuntime, state: RuntimeState, scenario: ScenarioFixture) {
-  runtime.camoGate.visible = state.beat >= 1;
+  runtime.routeGate.visible = state.beat >= 1;
   runtime.layerPlanes.forEach((record) => {
     record.mesh.visible = state.beat >= 2 && (record.matching || state.showNonmatching);
     record.material.opacity = record.matching ? 0.22 : 0.045;
@@ -219,14 +219,14 @@ function buildRuntime(
   });
   geometries.add(gateGeometry);
   materials.add(gateMaterial);
-  const camoGate = new three.Group();
+  const routeGate = new three.Group();
   const gateLeft = new three.Mesh(gateGeometry, gateMaterial);
   const gateRight = new three.Mesh(gateGeometry, gateMaterial);
   gateLeft.position.x = -0.68;
   gateRight.position.x = 0.68;
-  camoGate.add(gateLeft, gateRight);
-  camoGate.position.set(-4.45, -0.65, 0);
-  scene.add(camoGate);
+  routeGate.add(gateLeft, gateRight);
+  routeGate.position.set(-4.45, -0.65, 0);
+  scene.add(routeGate);
 
   const stopGeometry = new three.BoxGeometry(6.35, 0.16, 3.7);
   const stopMaterial = new three.MeshBasicMaterial({
@@ -272,7 +272,7 @@ function buildRuntime(
     observer,
     layerPlanes,
     operationTokens,
-    camoGate,
+    routeGate,
     pin,
     conflictStop,
     manifest,
@@ -318,7 +318,7 @@ export function ThreeResolutionPin({ scenario }: Readonly<{ scenario: ScenarioFi
   const matchingLayers = scenario.layers.filter(
     (layer, index) => index === 0 || matchingLayerIds.has(layer.id)
   );
-  const camoCase = scenario.requestCases.find((requestCase) => requestCase.lifecycle === 'live');
+  const routeCase = scenario.requestCases.find((requestCase) => requestCase.lifecycle === 'live');
   const currentBeatCopy =
     conflict && beat === 6
       ? 'Publication stays blocked; no immutable manifest is created.'
@@ -389,8 +389,8 @@ export function ThreeResolutionPin({ scenario }: Readonly<{ scenario: ScenarioFi
             Layers to manifest · {scenario.name}
           </h4>
           <p className="mt-1 max-w-2xl text-sm leading-6 text-ink-muted">
-            One canonical URL passes the Camo gate, crosses matching layers, resolves stable
-            placement keys, and either stops or becomes an immutable document.
+            One canonical URL passes the stored route-status gate, crosses matching layers, resolves
+            stable placement keys, and either stops or becomes an immutable document.
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={reset}>
@@ -462,7 +462,7 @@ export function ThreeResolutionPin({ scenario }: Readonly<{ scenario: ScenarioFi
           <canvas ref={canvasRef} className="block size-full" />
           <div className="pointer-events-none absolute inset-x-4 top-3 flex items-start justify-between gap-3 text-[11px]">
             <span className="rounded-md border border-success/25 bg-success-soft/95 px-2 py-1 font-semibold text-success-strong shadow-sm">
-              Camo · {camoCase?.lifecycle ?? 'unknown'} · {camoCase?.outcome ?? '—'}
+              Route status · {routeCase?.lifecycle ?? 'unknown'} · {routeCase?.outcome ?? '—'}
             </span>
             <code className="max-w-[62%] truncate rounded-md border border-line bg-canvas/95 px-2 py-1 font-mono text-ink-muted shadow-sm">
               {scenario.pin.canonicalUrl}
@@ -498,8 +498,9 @@ export function ThreeResolutionPin({ scenario }: Readonly<{ scenario: ScenarioFi
             <li className="grid grid-cols-[20px_1fr] gap-2">
               <span className="font-mono text-ink-faint">1</span>
               <span>
-                Camo route <strong className="font-semibold text-ink">{camoCase?.lifecycle}</strong>{' '}
-                yields {camoCase?.outcome} before content resolution.
+                Stored route status{' '}
+                <strong className="font-semibold text-ink">{routeCase?.lifecycle}</strong> yields{' '}
+                {routeCase?.outcome} before content resolution.
               </span>
             </li>
             <li className="grid grid-cols-[20px_1fr] gap-2">

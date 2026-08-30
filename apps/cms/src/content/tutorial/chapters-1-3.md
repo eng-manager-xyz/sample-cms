@@ -1,196 +1,158 @@
-# Chapter 1 — Why the Architecture Changes
+# Chapter 1 — Trace the Current System
 
-## 1.1 — The Old Request Path: Route, Resolve, Render
+## 1.1 — The Executable Repository Map
 
 > **Estimated time:** Read 5 min · Media 1 min · Digest 2 min
-> **Learning outcome:** You can reconstruct the legacy request path, name the responsibility of each service, and explain why a successful page request did not come from one coherent content model.
+> **Learning outcome:** You can locate each runtime responsibility in the repository, start both applications, and explain why SQLite access stays behind server-only boundaries.
 
-Before learning Auteur, it helps to understand the system it is meant to change. The older architecture solved a real problem: Uber-operated sites contain many concrete URLs, while authors need reusable page structures and reusable blocks. The system divided that work across specialized services instead of treating a page as one relational object.
+Auteur is a Bun workspace with two TanStack Start applications and four domain packages. Start by learning those boundaries as executable code, not as abstract boxes:
 
-A **template** played two roles at once. It was a URL grammar—something like `/{locale}/store/{store_id}`—and a page blueprint containing an ordered list of block references. Supplying values produced a concrete route such as `/en-US/store/1234`. That distinction is important: the template described the family, while the evaluated route described one member of the family.
-
-The historical request path can be read as three verbs:
-
-```text
-route → resolve → render
-```
-
-**Route.** Camo Press determined whether the concrete URL existed. Its route data carried a stable identity and lifecycle state. A `live` route was eligible to return content. A `not_live` route still existed in the system but intentionally returned `404`. An `archived` route represented a guarded soft deletion rather than a casual on/off switch. In other words, Camo Press did more than parse a path: it was the authority for whether the path should be served.
-
-**Resolve.** The route row supplied the ordered block identifiers associated with the page. A separate content service, Louvre, received those identifiers through a `multiResolve` call and returned block content. Route storage knew which blocks were needed; block storage knew what those blocks contained. The two stores were useful in their own domains, but neither alone represented the final page.
-
-**Render.** A rendering service folded the template structure together with Louvre's resolved content and produced the response. The effective document therefore emerged during a request from coordination among route data, block references, content resolution, and template code.
-
-The repository's current process guide describes the replacement boundary explicitly: Camo Press remains the route authority during transition, while Auteur owns content resolution and removes Louvre's `multiResolve` from the new content path. See `docs/process-engineering-guide.md`, especially sections 1 and 8. The deliberate removal of Louvre-style block resolution and the prior document/route storage model is also recorded in `docs/import-provenance.md` under “Replaced intentionally.” The more detailed legacy walk-through comes from the design-origin conversation summary; where it and the checked-in guide differ, the checked-in guide is authoritative.
-
-This older division was not irrational. It made route lifecycle a separate concern, allowed blocks to be reused, and kept each service's storage model relatively constrained. It also created a conceptual cost: there was no single persisted record you could point to and say, “This is the exact document served for this URL under this version of the authoring state.” The final answer was assembled across boundaries.
-
-That cost becomes visible when you ask ordinary operational questions:
-
-- Which source won for the hero on this URL?
-- If an inherited block changes, exactly which pages change?
-- Can two different override paths produce competing answers?
-- Which route revision and content revision were combined?
-- Can the currently served result be rolled back as one immutable unit?
-
-The legacy path could often answer these questions indirectly, but not through one uniform relational trace. That is the design pressure behind Auteur.
-
-> **Requirement — route truth remains explicit.** The new content model is not allowed to pretend that route existence and content selection are the same concern. During transition, Camo Press still decides the lifecycle outcome.
-
-The first lesson is therefore not “the old system was bad.” It is that its boundaries optimized for a different model. Camo Press routed, Louvre resolved blocks, and the renderer assembled the page. Auteur begins by making the content side relational, inspectable, deterministic, and publishable as one artifact—without silently taking ownership of route policy on day one.
-
-**Digest prompt:** Given `/en-US/store/1234`, say aloud which system answers “Does it exist?”, which system historically answered “What do these block IDs contain?”, and where the final page was assembled. If those three answers are distinct, you have the starting architecture in view.
-
-## 1.2 — Why Route-Tree Inheritance Became a Design Trap
-
-> **Estimated time:** Read 6 min · Media 1 min · Digest 2 min
-> **Learning outcome:** You can separate URL hierarchy from content precedence and explain why a tree that is convenient for a few dimensions becomes difficult to inspect and extend.
-
-The older authoring model organized content overrides hierarchically. Content placed near the root flowed downward; an author could navigate to a branch such as a country and language combination and override a block there. This matched a familiar picture: a page inherited from its ancestors unless a closer node supplied a replacement.
-
-For a small, stable set of dimensions, that picture is attractive. The path itself provides an ordering. “More specific” often means “deeper.” A root value can cover many pages, and a branch can narrow the effect without repeating the whole document. The trouble begins when the business dimensions are not actually one tree.
-
-Consider a Store page. It may have a locale and store ID in its URL, but the content team may also care whether the store is a chain, whether it serves fast food, and which brand it belongs to. Those classifications do not form a single parent-child path:
-
-```text
-locale = en-US
-store_type = chain_store
-category = fast_food
-brand = mcdonalds
-```
-
-McDonald's is simultaneously a chain, fast food, and a named brand. Making one property the parent of another smuggles a business taxonomy into the route tree. Choosing a different order changes what “inherits from above” means. Worse, the URL may not contain these classifications at all.
-
-Tree inheritance then creates four kinds of friction.
-
-**Origin becomes a navigation problem.** An author sees a hero but may have to climb an unfamiliar hierarchy to discover where it came from. The visible page does not, by itself, explain the winning source.
-
-**The available segmentation is fixed by the tree.** Country and language fit naturally if those are the predefined branches. A later requirement for state, purpose, store type, or an imported tag either distorts the hierarchy or requires a parallel mechanism.
-
-**Impact becomes hard to communicate.** Changing a parent affects descendants, but the set of affected concrete URLs may be irregular. Authors need a match count and representative pages, not merely a statement that “everything below this node inherits it.”
-
-**Precedence becomes accidental.** The tree supplies an implicit notion of specificity. Once cross-cutting rules arrive, it is tempting to break ties using depth, creation time, row order, or selector complexity. Those are implementation details, not an author-approved correctness rule.
-
-Auteur makes a sharp correction: a URL path is still represented by ordered slots, but parent/child path position does **not** determine content precedence. `docs/data-model.md` states this in its opening boundary: there is no route-tree content inheritance. Inheritance comes from one template-owned default plus matching selector variants with explicit integer priority. The same distinction anchors sections 1 and 2 of `docs/process-engineering-guide.md`.
-
-This gives us a clean separation:
-
-| Concern | What determines it? |
+| Path | Current responsibility |
 | --- | --- |
-| Canonical URL shape | The template's ordered path slots |
-| Concrete route identity | The page instance and Camo identity |
-| Whether the route is served | Camo lifecycle state |
-| Which content layers match | Selectors over slots and tags |
-| Which matching layer wins | Explicit priority and placement-level conflict rules |
+| `apps/cms` | Authoring HUD, selector preview, publication controls, rollback, and this tutorial |
+| `apps/website` | Published page delivery, explicit draft preview, admin handoff, and block rendering |
+| `packages/cms-db` | SQLite client, Drizzle schema, migrations, reset, and deterministic seed |
+| `packages/cms-domain` | Selector parsing/evaluation, resolution, hashing, interpolation, and published-document schemas |
+| `packages/cms-service` | Validated authoring operations, draft resolution, publication transactions, rollback, and serving reads |
+| `packages/cms-scenarios` | Store, Eligible Vehicles, and structural proof fixtures and evidence |
 
-Notice what this table does not say. It does not say the deepest route wins. It does not say the selector with the most clauses wins. It does not say the newest row wins.
+The repository root scripts make that map runnable. `bun run db:reset` recreates the local database from committed migrations. `bun run db:seed` writes repeatable representative data and publishes the three proof templates. `bun run dev:cms` serves the HUD at `http://localhost:3000`; `bun run dev:website` serves webpages at `http://localhost:3001`.
 
-> **Requirement — precedence is authored, not inferred.** Same-priority variants may compose when they touch different placements. If they touch the same placement for the same page, publication fails. Creation timestamps, row identifiers, SQL return order, and selector “specificity” never choose a winner.
+The CMS file routes live in `apps/cms/src/routes`. `/` renders the Wall of Maps, `/templates/$templateId` opens one template workspace, `/publications/$templateId` inspects immutable publication history, and `/tutorial` renders this course. Their browser components call functions declared in `apps/cms/src/server-functions/cms.functions.ts`. Those functions validate inputs and dynamically load `apps/cms/src/server/sqlite-authoring.server.ts`, where `CmsService` receives a database client.
 
-The new model retains the useful part of inheritance: authors do not clone a whole document for every variation. But it replaces the tree with sparse, independently selectable layers. A chain-store layer can own the footer. A fast-food layer can own the promo. A McDonald's layer can own the hero. One page can receive all three because the rules describe intersecting sets rather than ancestry.
-
-The shift is subtle but profound. In the tree model, an author asks, “Where in the hierarchy should this override live?” In the selector model, the author asks two more direct questions: “Which pages should this layer match?” and “Which placements does it intentionally change?” The first becomes a previewable query; the second becomes a small list of operations.
-
-This is why the route tree is a design trap rather than merely an outdated data structure. Routing remains hierarchical where the URL grammar requires it. Content inheritance no longer borrows that hierarchy as an implicit policy engine.
-
-**Digest prompt:** Imagine adding `has_drive_through = true`. If your first instinct is to decide where “drive through” belongs in a country/language/store tree, pause. In Auteur it is a selectable dimension, and its content effect is an explicit sparse layer.
-
-## 1.3 — A Transition Architecture, Not a Big-Bang Rewrite
-
-> **Estimated time:** Read 6 min · Media 1 min · Digest 2 min
-> **Learning outcome:** You can draw the transitional Camo-to-Auteur request path, distinguish authoring, preview, and public delivery, and identify the revision seam that prevents route state and published content from becoming an untraceable mixture.
-
-Auteur is designed to grow into a larger role, but the prototype deliberately avoids a big-bang migration. The cleanest architecture is not always the safest migration plan. Route existence, route lifecycle, content authoring, publication, and rendering move on different timelines and carry different operational risks.
-
-The transitional public request path is:
+The website has an equally direct route map:
 
 ```text
-public URL
-  → Camo Press: route identity, canonical path, lifecycle status, route revision
-  → Auteur website: current immutable publication for that page
-  → PublishedDocumentSchema: validate the persisted boundary
-  → synchronous block registry: deterministic React output
+apps/website/src/routes/$.tsx                    public catch-all
+apps/website/src/routes/[cms-preview_].$.tsx    explicit draft preview
+apps/website/src/routes/admin.tsx                CMS-origin handoff
 ```
 
-Camo Press remains intact. It answers whether the URL exists and whether policy allows a `200` or requires a `404`. Auteur begins owning the relational content model: templates, slots, tags, variants, blocks, effective-document resolution, publications, manifests, and provenance. Louvre is removed from the new content path because Auteur's publication already identifies the exact winning block versions.
+Each route calls a TanStack server function. Server-only modules open SQLite; browser modules receive parsed view models. The public loader in `apps/website/src/server-functions/published-page.functions.ts` opens the database with `{ readonly: true, create: false }`, calls `CmsService.serve`, parses the returned document, and closes the connection. The browser never imports `bun:sqlite`, `@repo/cms-db`, or the database client.
 
-The sequence diagram in section 8 of `docs/process-engineering-guide.md` is the canonical picture. For a `not_live` or `archived` route, Camo returns the policy result. For a live route, it passes stable route information to Auteur. `apps/website` opens SQLite read-only, calls `CmsService.serve`, validates the materialized document, and dispatches each placement through the synchronous registry. Manifest mode uses two fixed reads and expanded mode uses one; both execute zero selector statements and never call Louvre `multiResolve`.
+Within the packages, dependencies flow in one direction. `@repo/cms-db` owns persistence. `@repo/cms-domain` owns pure rules and strict data contracts. `@repo/cms-service` combines those rules with transactions. Both applications consume the service through server-only code. `@repo/cms-scenarios` exercises the same public domain and service APIs used by the applications.
 
-The local application topology makes the separation executable. `apps/cms` runs on `http://localhost:3000` and owns authoring, selector inspection, publication controls, and rollback. `apps/website` runs on `http://localhost:3001` and owns reader-facing rendering. A normal canonical route in the website app is always published and non-editable. Even `?edit_mode=true` cannot elevate that route: the public catch-all discards search input and still reads the active publication.
+> **Current contract — one implementation path.** The HUD, seed, integration tests, scenario reports, preview, publication, and public website all meet at the same domain and service code. A UI panel does not carry a second interpretation of selection or resolution.
 
-Draft preview has a different, explicit namespace. `/cms-preview_/<canonical-path>` resolves current authoring state and renders it through the same block components, with visible “Unpublished authoring preview” chrome, authoring provenance, `Cache-Control: private, no-store`, and `X-Robots-Tag: noindex, nofollow, noarchive`. `/admin` is a third boundary: it validates the server-only `CMS_ADMIN_ORIGIN` and offers a handoff link to the separate CMS. It is not an iframe, an authentication endpoint, or a blind open redirect. Keeping these routes distinct is how the prototype proves that a convenient query parameter cannot leak draft state onto the public path.
+The local database contains route identity, status, and revision fields, but this repository does not make a network call to an external route service. Deterministic seed and integration inputs exercise that seam locally. When explaining what runs today, point to the committed adapter, tables, and tests rather than implying an unimplemented remote dependency.
 
-The handoff needs more than a URL string. At minimum it carries:
+**Digest prompt:** Starting at `apps/cms/src/routes/templates.$templateId.tsx`, trace the import boundary into a server function, the SQLite authoring adapter, `CmsService`, the domain package, and `@repo/cms-db`. Then trace `apps/website/src/routes/$.tsx` to its read-only serving call. Name the first file in each path that is allowed to open SQLite.
 
-- a stable external route or page identity;
-- the normalized canonical URL;
-- lifecycle state;
-- a route revision or equivalent source revision.
+## 1.2 — Trace One Canonical URL
 
-That final item creates the **revision seam**. A publication records the route input revision it compiled. If Camo later reports a newer or incompatible revision, the system must follow an explicit stale-content policy. It must not silently combine yesterday's content publication with today's route facts and present the result as if it were one traceable version.
+> **Estimated time:** Read 6 min · Media 1 min · Digest 2 min
+> **Learning outcome:** You can trace `/en-US/store/1001` from route matching and relational authoring rows through publication validation to the exact React block components that render it.
 
-The database model supports this seam. `route_ingestions` records one source import attempt and its immutable `source_observed_at`. `page_instances` carries stable identity, canonical path, status, context, and the last ingestion. `route_audit_log` records insert, update, transition, skip, and error actions. These are tables 3, 4, and 8 in `docs/data-model.md`. Their purpose is not merely record keeping: together they let an investigator say which external state Auteur observed and how it transformed that state.
+Use the seeded Store representative as a concrete thread:
 
-Canonical identity also becomes explicit. One normalized `domain + canonical path` belongs to one page and one template. The stored `canonical_url` is an absolute path; the domain comes from the template. The same path may exist on a different domain, but the same domain/path pair may not have competing owners. This prevents the content system from compiling two equally plausible documents for one public URL.
+```text
+http://localhost:3001/en-US/store/1001
+```
 
-> **Requirement — one URL, one answer.** One canonical domain/path maps to exactly one template and one page instance, and an active publication maps that page to one immutable effective document.
+`apps/website/src/routes/$.tsx` converts the TanStack splat into `/en-US/store/1001` and calls `loadPublishedPage`. In `apps/website/src/data/public-path.ts`, `resolvePublicTemplate` matches the path to scenario `stores`, template `tpl-store`, and canonical host `www.ubereats.com`. Local development accepts a loopback host; the normal host check requires the template's configured canonical host.
 
-> **Prototype choice — local route adapter and isolated preview.** The prototype models Camo ingestion and lifecycle through deterministic local inputs and service integration tests. The explicit preview route is enabled for local development and can be deliberately enabled for a controlled proof environment; it is not a production authentication design. `docs/benchmarks.md` lists those boundaries among the known limitations.
+The page's authoring identity lives in normalized SQLite rows. `packages/cms-db/src/schema/index.ts` defines `templates`, `template_slots`, `page_instances`, `page_slot_values`, `tags`, and `page_tags`. For this URL, the template supplies the path grammar, the page instance supplies stable identity and lifecycle, scalar slot values include locale and store ID, and explicit tag memberships can describe store type, category, and brand.
 
-> **Open decision — stale-route policy.** Production still needs a policy for Camo revision drift, including what happens when route state changes during a long publication build and whether `not_live` pages are precompiled, retained, or omitted. The unresolved decision appears in section 9 of the process guide and in the TiDB proof spikes in `docs/adr/0001-tidb-materialization.md`.
+Those facts answer different questions:
 
-This staged ownership is a feature. Auteur can replace the content-resolution half while leaving route authority untouched. Later, a different adapter—or an Auteur-owned route subsystem—can implement the same contract. The relational content and publication invariants do not depend on pretending that takeover has already happened, and the preview convenience does not weaken the published request contract.
+| Current fact | What it controls |
+| --- | --- |
+| Template and ordered slots | Canonical URL shape and template boundary |
+| Page instance | Stable identity, canonical URL, route status, revision, and immutable context |
+| Slot values and tags | Approved selector inputs |
+| One template default | Baseline placements for every page in the template |
+| Active variant revisions | Sparse `set`, `tombstone`, and `order` decisions |
+| Variant priority | The order in which matching layers are folded |
 
-The transition also clarifies failure domains. An authoring edit does not mutate the current publication. A route ingestion does not automatically rewrite the served document. A failed publication does not advance the current pointer. A rollback repoints Auteur to a retained publication without rewriting Camo state. Each boundary has an owner and an observable revision.
+The Store page can match independent chain, fast-food, and brand selectors at the same time. `packages/cms-domain/src/selector.ts` parses, normalizes, validates, and evaluates their approved expressions. `packages/cms-domain/src/resolution.ts` starts with the template default, rejects same-priority operations that touch the same placement, then applies the matching sparse operations in ascending explicit priority. Creation time, row ID, selector length, and iteration order never choose a winner.
 
-**Digest prompt:** Draw Camo, `apps/cms`, and `apps/website`. Put route identity/status/revision in Camo; put variants, blocks, and publication controls in the CMS; put read-only publication lookup and the registry in the website. Add the explicit preview and admin lanes. If a selector or `edit_mode` query reaches the public request arrow, you have crossed the boundary incorrectly.
+Stable placement keys such as `primary-hero` identify document positions. A winning `set` points to an immutable block version and carries source revision, operation, and priority provenance. An `order` operation changes position without changing content. The HUD's Hide action writes a `tombstone` operation in draft resolution; a higher-priority `set` can reintroduce that placement. Revert removes the local operation so the lower winner is visible again.
 
-## 1.4 — The Prototype as an Evidence Instrument
+Publication turns the resolved draft into a smaller serving contract. `CmsService.publish` compiles every non-archived page in the template, including both `live` and `not_live` rows. It evaluates each validated selector AST in Bun, resolves placements, evaluates bounded `{{ dotted.path }}` expressions from immutable page context, and validates the exact page output. Expanded mode persists that rendered document; manifest mode persists shared structural winners plus the page's immutable context. The exact output crosses `PublishedDocumentSchema` from `packages/cms-domain/src/published-document.ts` during compilation.
+
+That schema is intentionally narrow. A published document contains the template ID, page ID, and an ordered placement list. Each placement contains a unique stable key, contiguous order, block type, immutable block-version ID, materialized content, and the provenance of the winning `set`. Tombstones, the full resolution trace, and separate order provenance remain authoring/debug information; they are not part of the public document.
+
+On request, `CmsService.serve` reads the active publication. Expanded mode uses one SQLite query and parses the stored rendered JSON. Manifest mode reads the page row and shared manifest in two queries, then calls `interpolateJson` against the stored immutable page context before validating the same document shape. Both paths execute zero selector SQL or AST evaluation. A missing, archived, `not_live`, or unpublished page returns `404`. A successful result is parsed through `PublishedDocumentSchema`, transformed into a website view model, and rendered by `apps/website/src/components/published-page.tsx` and `block-renderer.tsx`. The registry selects `navigation`, `hero`, `hero_alt`, `promo`, or `footer` synchronously from the published `blockType`.
+
+> **Current contract — one URL, one document.** One canonical domain/path belongs to one template and page instance. When that live page has an active publication, the request returns one schema-valid immutable document whose placements identify their exact winning block versions.
+
+**Digest prompt:** Trace `/en-US/store/1001` aloud using eight nouns: route pattern, template, page instance, selector inputs, matching variants, resolved placements, active publication, and block renderer. At each step, name the file or table that makes the claim inspectable.
+
+## 1.3 — Authoring, Publication, Serving, and Preview
+
+> **Estimated time:** Read 6 min · Media 1 min · Digest 2 min
+> **Learning outcome:** You can separate the four executable runtime lanes, identify where selectors are evaluated, and explain why a draft edit cannot appear on a public URL before publication.
+
+The current system has four lanes with distinct inputs and outputs:
+
+```text
+authoring mutation → normalized SQLite authoring rows
+draft preview      → current resolved authoring document
+publication        → validated immutable documents + active pointer
+public serve       → active document → synchronous React blocks
+```
+
+**Authoring.** `apps/cms` runs on port `3000`. The template workspace submits validated commands through `executeCmsMutation` in `apps/cms/src/server-functions/cms.functions.ts`. `executeCmsCommand` in `apps/cms/src/server/sqlite-authoring.server.ts` delegates to `CmsService` methods that create revisions instead of editing published values. Authors can add or version blocks, replace a block type under a stable placement key, hide or revert a variant placement, reorder, edit selectors and priorities, publish, and roll back.
+
+**Draft preview.** Selector preview in the CMS compiles approved selector text to parameterized SQL and returns a bounded count, sample URLs, warnings, and query plan. A full draft page uses `CmsService.resolveDraftByCanonicalUrl`, which evaluates the validated selector AST and calls the domain resolver. The website exposes that result only below `/cms-preview_/<canonical-path>`. `apps/website/src/server/preview-page.server.ts` opens the database read-only and creates a preview view model from current authoring state.
+
+**Publication.** `CmsService.publish` runs synchronously inside one SQLite transaction. It prepares template-scoped resolution state, compiles every non-archived page, evaluates interpolation to validate each exact public document, writes immutable publication/manifests/page rows, and changes `current_publications` only after the complete result is valid. Expanded rows keep the rendered JSON; manifest rows keep immutable context for deterministic reconstruction. A conflict or validation failure rolls back the transaction and leaves the current pointer unchanged. An input identical to the current publication reuses that result instead of adding duplicate page rows.
+
+**Public serving.** The website's canonical catch-all opens SQLite read-only and calls only `CmsService.serve`. It never resolves authoring layers and never executes selector SQL. The request's search input is not part of `PublicPageRequestSchema`, so `/en-US/store/1001?edit_mode=true` returns the same active publication as `/en-US/store/1001`.
+
+The preview response is deliberately private. Its server function sets:
+
+```text
+Cache-Control: private, no-store
+X-Robots-Tag: noindex, nofollow, noarchive
+```
+
+Preview is available automatically in development and tests. Outside those environments it requires `CMS_ENABLE_PREVIEW=true`, a matching canonical host, and an explicit localhost exception only for a local production-mode smoke test. These checks isolate the prototype route, but they do not implement user identity, roles, sessions, or authorization.
+
+`/admin` is a separate no-store handoff page. `apps/website/src/server/admin-gateway.server.ts` accepts `CMS_ADMIN_ORIGIN` only when it is a bare absolute HTTP(S) origin with no credentials, path, query, or hash. It renders a direct link to the CMS; it does not proxy, iframe, or authenticate the authoring application.
+
+Route status is also local and explicit. The seeded `page_instances.route_status` value controls the serving result: `live` may return `200` when published, `not_live` and `archived` return `404`, and a live page without an active document returns `404` with reason `unpublished`. Publication includes `not_live` pages so their compiled result can share the immutable publication, but serving still enforces their status.
+
+The four lanes share block schemas and renderers without sharing authority. Preview may show draft provenance and tombstones. Publication validates the narrow `PublishedDocumentSchema`; expanded mode stores it directly, while manifest mode stores the immutable inputs required to reconstruct it. The React registry receives only the final validated placement list. Rollback moves the active pointer to a retained immutable publication; it does not mutate either snapshot.
+
+> **Current contract — draft state has one explicit entrance.** Authoring resolution is reachable through CMS tools and the `/cms-preview_/*` namespace. A canonical public route, with or without query parameters, reads only the active publication.
+
+**Digest prompt:** Draw four arrows for authoring, draft preview, publication, and public serving. Label selector SQL as preview-only, selector AST evaluation as draft/publication work, expanded serving as a stored-document read, and manifest serving as deterministic interpolation from immutable context. Then explain where an unpublished hero edit is visible and where it is impossible to observe.
+
+## 1.4 — Learn from Contracts and Executable Evidence
 
 > **Estimated time:** Read 5 min · Media 0 min · Digest 2 min
-> **Learning outcome:** You can classify a statement as a requirement, prototype choice, measured finding, or open decision—and avoid promoting local implementation details into production architecture by accident.
+> **Learning outcome:** You can verify an architectural claim by locating its schema, implementation, focused test, scenario proof, and cross-workspace gate instead of relying on tutorial prose alone.
 
-The Auteur repository is an executable architecture prototype. Its primary job is to make a model concrete enough that engineers, authors, and product partners can inspect it, break it, measure it, and argue about the remaining decisions using the same vocabulary. It is not a disguised attempt to ship the full production CMS from a laptop database.
+Treat the repository as a connected learning instrument. Every important sentence in this tutorial should lead to executable evidence. A useful reading order is:
 
-The process guide opens with four labels. They are the reading discipline for the rest of this tutorial.
+1. **Start at a boundary.** Open `packages/cms-domain/src/published-document.ts`, `packages/cms-domain/src/types.ts`, or `packages/cms-db/src/schema/index.ts` and state what values are legal.
+2. **Follow the implementation.** Read the corresponding method in `packages/cms-service/src/cms-service.ts`, then follow its calls into selector, resolution, hashing, interpolation, or publication helpers.
+3. **Read the focused test.** Domain tests isolate pure invariants; service integration tests prove transactions and SQL behavior; application tests prove route and rendering boundaries.
+4. **Run a representative scenario.** `packages/cms-scenarios` assembles Store, Eligible Vehicles, and structural replacement through the same service APIs.
+5. **Finish with the gate.** `bun run five-phase-pass` checks migrations, seed repeatability, formatting, types, tests, evidence, both TanStack builds, and cross-workspace boundaries.
 
-> **Requirement** — a product invariant that carries forward. Examples include one canonical URL mapping to one effective document, explicit priority, immutable published block versions, selector-free public serving, and atomic publication activation.
+Use four evidence labels while reading:
 
-> **Prototype choice** — a current implementation selected to prove the model. Bun, local SQLite through `bun:sqlite`, Drizzle migrations, a full-template compiler, and a wireframe TanStack HUD belong here. A production system may implement the same requirement differently.
+> **Invariant** — a rule enforced by schemas or behavior, such as unique placement keys, explicit priority, immutable published versions, atomic activation, or zero selector SQL on public serving.
 
-> **Measured finding** — a result reproduced by an evidence command under a recorded environment. Counts, hashes, query plans, timings, memory, and allocated bytes live in evidence envelopes. A measured local result is not automatically a service-level objective.
+> **Implementation** — the checked-in mechanism that satisfies an invariant today, such as Bun workspaces, `bun:sqlite`, Drizzle migrations, one synchronous publication transaction, or the TanStack server-function boundary.
 
-> **Open decision** — a production question the prototype exposes but does not settle. TiDB chunk size, cache topology, incremental invalidation, `not_live` materialization, tag ownership policy, and expanded-versus-manifest serving are examples.
+> **Measured result** — output tied to a command, commit, database shape, runtime, and host. `docs/evidence/bounded-report.json` and `docs/evidence/store-1m.json` preserve those facts; `docs/benchmarks.md` interprets them.
 
-This classification prevents a common architecture failure: treating whatever the prototype happens to do as the only acceptable production design. It also prevents the opposite failure: dismissing executable results as “just a prototype” when they demonstrate a genuine invariant.
+> **Runtime boundary** — an explicit limit visible in current code. Examples include browser-local tutorial progress, read-only website connections, preview environment/host checks, and the fact that the admin gateway is a link rather than an authorization system.
 
-The application shell has its own provenance. `README.md` and `docs/import-provenance.md` record that Median pull request 15 donated the Bun/Turborepo structure, TanStack Start catch-all routing and server-function boundary, synchronous block-registry pattern, React/TypeScript conventions, and compact administrative visual language. [Profound's hybrid admin-panel proxy guide](https://cms.docs.tryprofound.com/hybrid/setup-admin-panel-proxy) supplied a second useful topology clue: keep the normal route published while reserving explicit `/cms-preview_/*` and admin surfaces for editorial traffic. Auteur adapts those interface ideas to its relational compiler; it does not copy their storage or trust assumptions.
+These labels keep explanations precise. “Public serving executes zero selector statements” is an invariant with service evidence. “Manifest serving executes two SQLite statements” is the current implementation and a measured result. “Every published page must use two statements” would be inaccurate because expanded mode uses one.
 
-Median did **not** donate the Auteur domain. PostgreSQL/Supabase integration, authentication, deployment surfaces, route-binding inheritance, existing document storage, and Louvre-style resolution were intentionally removed. The prototype also does not pretend to have Profound's framework-specific API/auth proxy: `/admin` is only a validated handoff to `CMS_ADMIN_ORIGIN`, and `/cms-preview_/*` calls Auteur's local draft resolver. The public catch-all never rewrites to preview because `edit_mode` appears in its query string.
+The strongest way to learn a mechanism is to triangulate it. To understand conflict handling, read `detectVariantConflicts` and `resolveDocument` in `packages/cms-domain/src/resolution.ts`, then the permutation and conflict cases in `resolution.test.ts`, then a service publication failure test. To understand public rendering, read `PublishedDocumentSchema`, `CmsService.serveWithEvidence`, `loadPublishedPage`, and `block-renderer.tsx`, then run the website integration tests.
 
-That distinction matters when reading the UI. A familiar sidebar or table may have Median ancestry, but the wall of maps, layer stack, vertical provenance pin, selector overlays, and publication trace express the new model. Appearance is not authority; the domain contracts and evidence are.
+The checked-in evidence envelopes make scale claims reproducible. They record invocation, commit and dirty state, lockfile digest, Bun and SQLite versions, host resources, scenario counts, timings, and hashes. Never detach a benchmark number from that provenance. The compact seed is the fastest way to understand behavior; the evidence envelopes show that the same contracts were exercised at their recorded scale.
 
-The stack is intentionally small:
+When re-explaining Auteur to a teammate, use one vertical slice before summarizing the whole repository. Start with `/en-US/store/1001`, point to its template/page/selector inputs, resolve its placements, publish its immutable document, serve it read-only, and name the React component for each block type. Then use the Eligible Vehicles and structural routes to show how the same code handles different variation shapes.
 
-- Bun workspaces and Turborepo coordinate the repository.
-- `apps/cms` on port `3000` provides the TanStack authoring HUD; `apps/website` on port `3001` provides the standalone TanStack renderer.
-- TanStack Start, Router, Query, and Table provide the application boundaries.
-- React and TypeScript implement the HUD.
-- SQLite, isolated behind `@repo/cms-db`, makes the relational model locally executable.
-- Drizzle definitions and committed SQL migrations own schema change.
-- `@repo/cms-domain`, `@repo/cms-service`, and `@repo/cms-scenarios` separate pure rules, transactions, and proofs.
+> **Current contract — prose is a map, code is the authority.** If this tutorial, a test, and an implementation disagree, inspect the shared schemas and current executable path, correct the stale explanation, and keep the test guarding the contract that users actually run.
 
-Browser modules never import the database client. Mutations cross a validated TanStack server function and delegate to the same `CmsService` used by integration and scenario proofs. This is both a boundary test and a teaching aid: the HUD does not need a separate, friendlier interpretation of the model.
-
-Evidence is similarly layered. `docs/evidence/bounded-report.json` contains a fast development-scale proof. `docs/evidence/store-1m.json` contains the explicit million-row Store run. Each envelope records its command, Git commit and dirty state, lockfile digest, runtime and SQLite versions, host resources, timings, raw counts, and scenario results. `docs/benchmarks.md` interprets those ledgers without copying host-dependent numbers into architectural promises.
-
-> **Measured finding — evidence is reproducible, not anonymous.** A number without its source commit, invocation, database shape, and host context is not accepted as benchmark evidence.
-
-The repository's five-phase gate reinforces the same idea. A buildable UI is not enough. The shell, schema, domain engine, authoring workflows, scenarios, evidence, documentation, and cross-workspace checks must agree. `README.md` lists those phases. AUT-534 adds the standalone website publication proof, AUT-535 adds isolated preview and admin routes, and AUT-536 keeps this tutorial aligned with the executable result; the earlier issues remain the foundation those proofs exercise.
-
-As you continue, keep asking one question: **What kind of claim is this?** If it is a requirement, look for an invariant and a test. If it is a prototype choice, look for the boundary that permits replacement. If it is a measured finding, look for the evidence path. If it is open, do not let polished UI or confident prose make it sound decided.
-
-**Digest prompt:** Classify “public serving executes zero selector statements” and “production should use exactly two SQL statements.” The first is a requirement in spirit and is measured in the prototype. The second is not a requirement; two statements are the current manifest-mode shape, while an expanded shape uses one.
+**Digest prompt:** Choose one claim—same-priority conflict failure, copy-on-write, selector-free serving, preview isolation, or rollback. Name the schema or type, implementation function, focused test, proof route, and final command you would use to teach and verify it.
 
 # Chapter 2 — The Relational Grammar
 
@@ -201,7 +163,7 @@ As you continue, keep asking one question: **What kind of claim is this?** If it
 
 Auteur's most memorable picture is a **wall of maps**. Each map represents one URL template. A concrete URL is a point on that map. Transparent sheets cover selected regions, and a vertical pin through one point reveals every sheet that contributes to the final page.
 
-The picture is useful because it corrects two misconceptions at once. First, there is not one global default floating above every page in the company. Each template owns an isolated map and its own default. Second, pages are not forced into a single route tree. They are points described by several dimensions, some visible in the path and some supplied independently.
+The picture makes two current rules visible at once. Each template owns an isolated map and exactly one default. Each page is a first-class point described by several independent dimensions, some visible in the path and some supplied as explicit classifications.
 
 Take the Store template:
 
@@ -249,7 +211,7 @@ The same restraint applies to a two-dimensional projection. The HUD can plot two
 
 > **Requirement — template isolation.** A template owns its slots, page instances, tags, block lineages, variants, publications, and exactly one default. A Store default can never flow into an Eligible Vehicles page.
 
-> **Prototype choice — normalized dimensions.** SQLite stores scalar values in `page_slot_values` and memberships in `page_tags`. Production TiDB may use generated columns or wider read surfaces for hot dimensions, but it must preserve ownership, semantics, and selector safety.
+> **Current implementation — normalized dimensions.** SQLite stores scalar values in `page_slot_values` and explicit memberships in `page_tags`. Template foreign keys, unique constraints, and service validation preserve ownership and selector safety.
 
 The wall-of-maps metaphor is therefore a gateway, not a substitute for precision. It helps you see separate content spaces, high-dimensional page points, and sparse layers. The tables provide the enforceable grammar underneath.
 
@@ -262,7 +224,7 @@ The wall-of-maps metaphor is therefore a gateway, not a substitute for precision
 
 A map is useful only if its points have trustworthy identities and coordinates. Auteur therefore treats route ingestion as a first-class process rather than allowing unrelated code to insert page-shaped rows whenever convenient.
 
-The sequence begins with `route_ingestions`. One row represents one attempt to import a Camo Press or seed revision for one template. Its key includes the template, source, and source revision, which gives the import an idempotency identity. The row also records `source_observed_at`: when the external state was actually observed. That timestamp is immutable because changing it later would rewrite the meaning of the import.
+The sequence begins with `route_ingestions`. One row represents one attempt to apply a route or seed revision for one template. Its key includes the template, source, and source revision, which gives the import an idempotency identity. The row also records `source_observed_at`: when the input state was observed. That timestamp is immutable because changing it later would rewrite the meaning of the import.
 
 The ingestion moves through a controlled lifecycle. It begins as `running` and closes as `succeeded` or `failed`, with completion shape and row counts checked. Replaying the same source revision with the same input reuses the logical result rather than duplicating pages or memberships. Reusing the revision identifier with different input is an error, because it would make one external revision mean two things.
 
@@ -270,7 +232,7 @@ For each route, `page_instances` stores the stable content-side identity. Import
 
 - the owning template;
 - the normalized absolute canonical path;
-- the external Camo route identity;
+- the external route identity recorded by the adapter;
 - lifecycle status;
 - route revision;
 - immutable-at-publication context;
@@ -283,13 +245,13 @@ Slots are normalized through `template_slots` and `page_slot_values`. The templa
 
 Tags use two more tables. `tags` defines a namespace/value pair inside one template, along with label, description, source, and optional parent metadata. `page_tags` records an explicit page-to-tag membership and its assignment source. This separates the meaning of a tag from the fact that one page carries it.
 
-That source matters. A classification may come from a pipeline, an author, or deterministic seed data. The prototype preserves the distinction rather than flattening all memberships into unexplained strings. Production still needs a conflict and freshness policy for imported versus authored classifications; that is an open decision, not something the local seed settles.
+That source matters. A classification may come from a pipeline, an author, or deterministic seed data. The current rows preserve the distinction rather than flattening all memberships into unexplained strings. Selector evaluation consumes the explicit memberships that are actually stored; it does not infer a source winner or derive one tag from another.
 
 Lifecycle changes receive their own immutable evidence in `route_audit_log`. Insert, update, status transition, skip, and error actions can be traced back to the ingestion and page. Update/delete triggers protect the audit rows. The log turns “Why is this route archived?” from guesswork into a question with a recorded source action.
 
-`archived` deserves special attention. It is not merely another display filter. The service rejects casual reactivation because archive represents an intentional soft deletion. `not_live`, by contrast, describes a route that exists but currently returns `404`. The prototype verifies those public outcomes, while leaving the production policy for materializing `not_live` content explicit.
+`archived` deserves special attention. It is not merely another display filter. The service rejects casual reactivation because archive represents an intentional soft deletion. `not_live`, by contrast, describes a route that exists but currently returns `404`. Publication compiles `live` and `not_live` pages and excludes `archived` pages; serving returns `404` for both non-live statuses.
 
-> **Requirement — route status is authoritative input.** Authoring state may exist for a page, but it cannot make Camo's `not_live` or `archived` route serve as live.
+> **Current contract — route status gates serving.** Authoring state may exist for a page, but it cannot make a `not_live` or `archived` page serve as live.
 
 > **Measured finding — deterministic replay is executable.** The committed Store evidence replays the same scale seed, inserts zero additional pages, reproduces its seed identity, and leaves page and tag-membership counts unchanged. The exact evidence is under `scenarioReport.store.seedReplay` in both JSON ledgers; consult the files rather than memorizing host timings.
 
@@ -382,11 +344,11 @@ Second, **serving is selector-free**. The inspection SQL in `docs/data-model.md`
 
 The website turns that contract into React without another data model. Its public page view model fixes `renderMode` to `published` and `editable` to `false`, and each ordered placement is dispatched synchronously by `blockType`. Stable `placementKey` supplies both document identity and the React key. Known types such as `navigation`, `hero`, `hero_alt`, `promo`, and `footer` have renderers; an unknown published type is visible as an unsupported-block fallback instead of disappearing silently. Preview uses a discriminated sibling model with authoring provenance, but it is loaded only from the explicit preview namespace.
 
-The process resembles a compiler more than a view. An ordinary database view would recompute joins and selectors when read. Auteur snapshots inputs, checks conflicts, resolves and validates documents, canonicalizes and hashes results, writes a sealed namespace, audits it, and then activates it. This application-owned materialization is the decision recorded in `docs/adr/0001-tidb-materialization.md`.
+The process resembles a compiler more than a view. An ordinary database view would recompute joins and selectors when read. Auteur snapshots inputs, checks conflicts, resolves and validates documents, canonicalizes and hashes results, writes immutable publication rows, and then activates one complete result. The executable path is `CmsService.publish` in `packages/cms-service/src/cms-service.ts`.
 
 > **Requirement — atomic visibility.** A failed compile or write must leave the former current pointer active and must not expose partial rows as the live result.
 
-> **Prototype choice — SQLite transaction.** The local service writes a publication transactionally in SQLite. The TiDB ADR proposes chunked hidden namespaces plus a short activation transaction rather than assuming a million-row single transaction is the production answer.
+> **Current implementation — SQLite transaction.** `CmsService.publish` writes the complete publication and changes `current_publications` inside one synchronous SQLite transaction. Any thrown conflict, schema error, or write failure rolls back the transaction.
 
 > **Measured finding — fixed public read shapes.** The evidence records a two-statement manifest reconstruction and a one-statement expanded-document fixture, both with zero selector statements. The requirement is selector isolation and bounded reads, not that every implementation use one particular statement count.
 
@@ -461,7 +423,7 @@ $$
 
 The three layers can compose because their operations are sparse: the chain layer sets `footer`, the fast-food layer sets `category-promo`, and the McDonald's layer sets `primary-hero`. `navigation` remains in `D_T`. The page is not assigned to one “most specific variant.” It is a point where three masks overlap.
 
-This notation separates three questions that route-tree inheritance tended to blend:
+This notation keeps three current questions separate:
 
 1. **Existence:** Is `p` in `P_T`, and what is its route state?
 2. **Selection:** For which variants is `p ∈ M_v`?
@@ -473,7 +435,7 @@ Section 2 of `docs/process-engineering-guide.md` supplies the spatial model, and
 
 > **Requirement — closure inside one template.** Selectors, operations, block versions, pages, and publications cannot escape `T`. The composite database relationships are enforcement, not mere join convenience.
 
-> **Prototype choice — explicit page set.** SQLite stores concrete page instances and normalized dimensions. A future production read surface may optimize their physical form, but it must preserve the same logical `P_T`, masks, and template boundary.
+> **Current implementation — explicit page set.** SQLite stores concrete page instances and normalized dimensions. The selectors, resolver, publication loop, and serving rows all preserve the same logical `P_T`, masks, and template boundary.
 
 The notation is intentionally modest. It does not prescribe SQL, indexes, or storage engines. It gives us a shared language for the invariant: one page may match many sparse layers, but resolution must still produce one deterministic effective document.
 
@@ -681,17 +643,17 @@ $$
 \operatorname{Serve}_T(u)=\Pi_{C(T)}[u]
 $$
 
-The request follows the pointer, finds the page document for canonical URL `u`, and either returns its expanded payload or reconstructs it from its manifest plus immutable context. In the standalone app, the concrete pipeline is `read-only SQLite → CmsService.serve → PublishedDocumentSchema → synchronous block registry → React`. It performs one expanded read or two manifest reads and zero selector statements. No `S_v`, `M_v`, slots, tags, variants, or operations are evaluated on this path.
+The request follows the pointer, finds the page document for canonical URL `u`, and either returns its expanded payload or reconstructs it from its manifest plus immutable context. In the standalone app, the concrete pipeline is `read-only SQLite → CmsService.serve → PublishedDocumentSchema → synchronous block registry → React`. It performs one expanded read or two manifest reads and zero selector statements or AST evaluations. Manifest reconstruction calls `interpolateJson` against the stored immutable context; it does not consult authoring slots, tags, variants, or operations.
 
 That sequence is intentionally ordered. The registry never receives authoring rows, and it never decides precedence. It renders only the already-ordered placement array and keys each component by stable `placementKey`. The schema never “fixes up” gaps or duplicates; it rejects them. A public route cannot choose draft resolution with a query parameter. The separate `/cms-preview_/*` lane may run the draft resolver, but its no-store/noindex response and visible preview chrome prevent it from masquerading as the current publication.
 
 > **Requirement — publication is atomic and rollbackable.** Partial output never becomes current, and the previous immutable result remains addressable.
 
-> **Prototype choice — manifest and expanded modes.** The service can prove a manifest reconstruction path and an expanded-document path. Production must choose or combine them using measured bytes, latency, cache behavior, and TiDB constraints.
+> **Current implementation — manifest and expanded modes.** `CmsService.publish` accepts either materialization mode. `serveWithEvidence` reads an expanded document in one statement or reconstructs a manifest-backed document in two, validates the result, and reports zero selector SQL executions.
 
 > **Measured finding — shared structure is not total storage.** The Store evidence records logical expanded rendered bytes, a manifest-mode page-row estimate, and actual SQLite allocation delta separately. The standalone website additionally proves that both materialization shapes enter one strict publication contract and the same renderer registry. The benchmark explicitly avoids claiming an end-to-end database saving merely because structural manifests deduplicate.
 
-> **Open decision — production compilation shape.** SQLite proves the rules with a full-template transaction. The TiDB ADR proposes chunked hidden namespaces and compare-and-swap activation, and leaves incremental invalidation behind explicit proof spikes.
+> **Current boundary — synchronous full-template publication.** The checked-in publisher compiles every non-archived page inside one SQLite transaction and changes the active pointer only after the full result validates.
 
 The algebra now spans the whole system: a map `T`, points `P_T`, masks `M_v`, ordered sparse layers `L_T(p)`, a conflict-checked fold `R_T(p)`, structural equivalence `μ`, immutable publication `Π_n`, and active pointer `C(T)`. The next chapters can examine scenarios and UI workflows without introducing a second mental model.
 

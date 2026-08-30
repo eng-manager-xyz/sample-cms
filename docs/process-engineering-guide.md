@@ -539,14 +539,20 @@ A reviewer should be able to answer “yes” to each question:
 - Can I name the only legal precedence input: explicit priority?
 - Can I locate one content source and one order source for every visible placement?
 - Can I show that a failed publication leaves the former current pointer unchanged?
-- Can I trace a public request without finding selector evaluation or Louvre `multiResolve`?
-- Can I distinguish a measured prototype result from an unresolved TiDB assumption?
+- Can I trace a public request without finding selector evaluation, while locating manifest-mode interpolation against immutable context?
+- Can I distinguish executable behavior from a proposal that is not present in the repository?
 
 ## Tutorial learning contract
 
 [AUT-537](https://linear.app/harwood/issue/AUT-537/polish-tutorial-math-semantic-typography-and-retrieval-practice)
 makes `/tutorial` a practice surface for learning and re-explaining this model. It does not add a
 new CMS persistence or publication concern.
+
+[AUT-545](https://linear.app/harwood/issue/AUT-545/refocus-the-tutorial-on-the-current-executable-architecture)
+keeps that practice surface current-code-only. The curriculum begins with concrete repository
+paths, follows one canonical URL through the implemented SQLite/service/publication/website flow,
+and tests only behavior that exists in code. Historical provenance remains in its governed records,
+not in the reader's prerequisite path.
 
 The Markdown renderer preserves document meaning instead of flattening every token into the same
 visual treatment. Heading levels remain navigable; bold, italic, and highlighted passages keep
@@ -589,5 +595,6 @@ model.
 - Tutorial transfer and reviewed walkthroughs: `AUT-533`
 - Standalone publication rendering and isolated hybrid seams: `AUT-534`–`AUT-536`
 - Tutorial math, semantic presentation, knowledge checks, and retrieval practice: `AUT-537`
+- Current-code-only tutorial curriculum and regression guard: `AUT-545`
 
 The CMS project in Linear remains authoritative when this guide and an issue differ.

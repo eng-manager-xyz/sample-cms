@@ -30,8 +30,8 @@
     },
     "media": {
       "type": "array",
-      "minItems": 5,
-      "maxItems": 5,
+      "minItems": 4,
+      "maxItems": 4,
       "items": {
         "$ref": "#/$defs/uiFlowVideo"
       },
@@ -86,20 +86,6 @@
               },
               "scenarioId": {
                 "const": null
-              }
-            }
-          },
-          "minContains": 1,
-          "maxContains": 1
-        },
-        {
-          "contains": {
-            "properties": {
-              "id": {
-                "const": "pin-inspection-v1"
-              },
-              "scenarioId": {
-                "const": "stores"
               }
             }
           },
@@ -389,8 +375,7 @@
             "store-authoring-v1",
             "eligible-vehicles-authoring-v1",
             "structural-replacement-authoring-v1",
-            "wall-navigation-v1",
-            "pin-inspection-v1"
+            "wall-navigation-v1"
           ]
         },
         "kind": {

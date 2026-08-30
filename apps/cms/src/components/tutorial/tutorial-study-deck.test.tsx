@@ -8,7 +8,7 @@ describe('TutorialStudyDeck', () => {
 
     expect(markup).toContain('Spaced retrieval lab · 12 teach-back cards');
     expect(markup).toContain('Practice re-explaining the architecture');
-    expect(markup).toContain('From route to rendered page');
+    expect(markup).toContain('Trace the running code');
     expect(markup).toContain('role="progressbar"');
     expect(markup).toContain('aria-valuemax="12"');
     expect(markup).toContain('aria-valuenow="0"');

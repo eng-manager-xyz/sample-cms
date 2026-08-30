@@ -160,11 +160,15 @@ function tutorialSection(visual: string, number: string): TutorialSection {
   };
 }
 
-function renderSectionMedia(visual: string, number: string): string {
+function renderSectionMedia(
+  visual: string,
+  number: string,
+  activeVisual: string | null = null
+): string {
   return renderToStaticMarkup(
     createElement(TutorialSectionMedia, {
       section: tutorialSection(visual, number),
-      activeVisual: null,
+      activeVisual,
       onActiveVisualChange: () => undefined,
     })
   );
@@ -221,10 +225,9 @@ describe('tutorial UI-flow media manifest', () => {
     expect(manifest.integrationMode).toBe('reviewed-preview');
     expect(manifest.readyForApprovedIntegration).toBe(false);
     if (manifest.readyForApprovedIntegration) expect(ffprobePath).toBeTruthy();
-    expect(manifest.media).toHaveLength(5);
+    expect(manifest.media).toHaveLength(4);
     expect(manifest.media.map((media) => media.id).sort()).toEqual([
       'eligible-vehicles-authoring-v1',
-      'pin-inspection-v1',
       'store-authoring-v1',
       'structural-replacement-authoring-v1',
       'wall-navigation-v1',
@@ -404,24 +407,35 @@ describe('tutorial UI-flow media manifest', () => {
     }
   );
 
-  test('embeds both Chapter 5 walkthroughs as native, transcript-backed players', () => {
+  test('pairs the current Chapter 5 wall walkthrough with the live Store resolution pin', () => {
     const wallMarkup = renderSectionMedia('wall-ui-walkthrough', '5.1');
-    const pinMarkup = renderSectionMedia('pin-ui-walkthrough', '5.2');
+    const pinMarkup = renderSectionMedia('pin-ui-walkthrough', '5.2', 'pin-ui-walkthrough');
 
     expect(wallMarkup).toContain('id="wall-navigation-v1"');
     expect(wallMarkup).toContain('/media/tutorial/flows/wall-navigation-v1.mp4');
     expect(wallMarkup).toContain('The tutorial and operational workspace remain adjacent routes');
-    expect(pinMarkup).toContain('id="pin-inspection-v1"');
-    expect(pinMarkup).toContain('/media/tutorial/flows/pin-inspection-v1.webm');
-    expect(pinMarkup).toContain('Returning to Trace restores the independent Camo Press');
+    expect(pinMarkup).toContain('Inspect the current Store resolution pin');
+    expect(pinMarkup).toContain('Layers to manifest · Store');
+    expect(pinMarkup).toContain('stored route-status gate');
+    expect(pinMarkup).not.toContain('pin-inspection-v1');
+    expect(pinMarkup).not.toContain('<video');
     expect(wallMarkup).toContain('preload="none"');
-    expect(pinMarkup).toContain('preload="none"');
     expect(wallMarkup).toContain('aria-labelledby="wall-navigation-v1-title"');
     expect(wallMarkup).toContain('aria-describedby="wall-navigation-v1-description"');
-    expect(pinMarkup).toContain('aria-labelledby="pin-inspection-v1-title"');
-    expect(pinMarkup).toContain('aria-describedby="pin-inspection-v1-description"');
+    expect(pinMarkup).toContain('aria-labelledby="stores-resolution-title"');
     expect(wallMarkup).toContain('Reviewed UI capture');
-    expect(pinMarkup).toContain('Final source approval pending');
+  });
+
+  test('renders Chapter 1 as an executable current-code path', () => {
+    const markup = renderSectionMedia('current-code-flow', '1.1');
+
+    expect(markup).toContain('Executable code path');
+    expect(markup).toContain('author → publish → serve');
+    expect(markup).toContain('apps/cms/src/server-functions/cms.functions.ts');
+    expect(markup).toContain('packages/cms-service/src/cms-service.ts');
+    expect(markup).toContain('apps/website/src/server-functions/published-page.functions.ts');
+    expect(markup).toContain('apps/website/src/components/block-renderer.tsx');
+    expect(markup).not.toMatch(/(?:old world|route[- ]tree|legacy|Louvre|Median|Profound)/i);
   });
 
   test('keeps the Chapter 5 scenario replay in place with unique DOM ids', () => {
@@ -456,7 +470,16 @@ describe('tutorial UI-flow media manifest', () => {
       'https://ai.google.dev/gemini-api/docs/models/imagen',
       'https://docs.cloud.google.com/vertex-ai/generative-ai/docs/release-notes',
     ]);
-    expect(illustrationManifest.assets).toHaveLength(3);
+    expect(illustrationManifest.assets).toHaveLength(2);
+    expect(illustrationManifest.assets.map((asset) => asset.id).sort()).toEqual([
+      'atomic-publication-rollback-v1',
+      'three-proof-shapes-v1',
+    ]);
+    expect(
+      illustrationManifest.assets.some((asset) =>
+        asset.publicPath.includes('old-world-to-wall-of-maps')
+      )
+    ).toBe(false);
 
     for (const asset of illustrationManifest.assets) {
       expect(asset).toMatchObject({

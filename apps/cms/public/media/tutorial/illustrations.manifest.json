@@ -15,18 +15,6 @@
   ],
   "assets": [
     {
-      "id": "old-world-to-wall-of-maps-v1",
-      "publicPath": "/media/tutorial/old-world-to-wall-of-maps-v1.webp",
-      "evidenceClass": "editorial-illustration",
-      "status": "accepted-substitute",
-      "width": 1672,
-      "height": 941,
-      "bytes": 90552,
-      "sha256": "3bdd42cfbc692e0bf213d4cbdc07307e5c635a758f4dff10ba73f25e934509b7",
-      "alt": "A rigid branching route tree passes through a compiler threshold and becomes a wall of translucent selector maps, ending at a pinned immutable document.",
-      "longDescription": "Editorial concept art explaining the architectural transition. It is not a screenshot or benchmark result. Dark nested route branches at left converge at a narrow boundary, then fan into translucent coordinate planes with sparse colored selector sheets and one resolution pin above a document stack."
-    },
-    {
       "id": "three-proof-shapes-v1",
       "publicPath": "/media/tutorial/three-proof-shapes-v1.webp",
       "evidenceClass": "editorial-illustration",
