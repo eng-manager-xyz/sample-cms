@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 export function AuthoringDocumentSurface({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <div
-      className="grid min-h-[calc(100vh-11rem)] gap-3 bg-surface-muted/50 p-3 xl:grid-cols-[minmax(520px,1fr)_390px]"
+      className="grid min-h-[calc(100vh-8rem)] gap-3 bg-surface-muted/50 p-3 xl:grid-cols-[minmax(520px,1fr)_390px]"
       data-authoring-mode="document"
     >
       {children}
@@ -25,7 +25,7 @@ export function AuthoringSelectorSurface({
 }>) {
   return (
     <section
-      className="min-h-[calc(100vh-11rem)] bg-surface-muted/50 p-3"
+      className="min-h-[calc(100vh-8rem)] bg-surface-muted/50 p-3"
       data-authoring-mode="selector"
       aria-labelledby="selector-mode-heading"
     >

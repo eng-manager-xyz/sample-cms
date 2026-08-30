@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import type { ContentPageNavigation } from '@/data/content-explorer';
-import { nextPageForSegment, valuesForSegment } from './template-page-navigator';
+import { nextPageForSegment, pageForNavigation, valuesForSegment } from './template-page-navigator';
 
 const navigation = {
   segments: [
@@ -91,6 +91,25 @@ const completeNavigation: ContentPageNavigation = {
 };
 
 describe('AUT-547 segmented template page navigation', () => {
+  test('synchronizes the segmented controls to an exact canonical page when available', () => {
+    expect(
+      pageForNavigation(completeNavigation, '/es-US/eligible-vehicles/tx/delivery')
+    ).toMatchObject({
+      pageId: 'es-tx-delivery',
+      slotValues: { locale: 'es-US', state: 'tx', slug: 'delivery' },
+    });
+  });
+
+  test('falls back through selected, default, and first persisted pages', () => {
+    expect(pageForNavigation(completeNavigation, '/missing')).toBe(completeNavigation.selectedPage);
+    expect(pageForNavigation({ ...completeNavigation, selectedPage: null }, undefined)).toBe(
+      completeNavigation.defaultPage
+    );
+    expect(
+      pageForNavigation({ ...completeNavigation, selectedPage: null, defaultPage: null }, undefined)
+    ).toBe(completeNavigation.options[0] ?? null);
+  });
+
   test('only offers downstream values that form an existing concrete page', () => {
     const current = navigation.options[0];
     if (!current) throw new Error('Missing navigation fixture page.');

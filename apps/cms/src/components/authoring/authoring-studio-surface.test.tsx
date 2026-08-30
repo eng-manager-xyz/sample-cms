@@ -15,6 +15,7 @@ describe('AUT-550 authoring studio mode surfaces', () => {
     );
 
     expect(markup).toContain('data-authoring-mode="document"');
+    expect(markup).toContain('min-h-[calc(100vh-8rem)]');
     expect(markup).toContain('xl:grid-cols-[minmax(520px,1fr)_390px]');
     expect(markup).not.toContain('Return to document authoring');
   });
@@ -27,6 +28,7 @@ describe('AUT-550 authoring studio mode surfaces', () => {
     );
 
     expect(markup).toContain('data-authoring-mode="selector"');
+    expect(markup).toContain('min-h-[calc(100vh-8rem)]');
     expect(markup).toContain('Full selector cascade');
     expect(markup).toContain('aria-label="Return to document authoring"');
     expect(markup).not.toContain('xl:grid-cols-[minmax(520px,1fr)_390px]');

@@ -1,6 +1,6 @@
 import { createFileRoute, notFound } from '@tanstack/react-router';
+import { useState } from 'react';
 
-import { AppShell } from '@/components/app-shell';
 import { AuthoringStudio } from '@/components/authoring/authoring-studio';
 import { AuthoringStudioSearchSchema } from '@/data/authoring-studio';
 import {
@@ -62,22 +62,19 @@ function AuthoringRoute() {
   const { health, pageNavigation, scenarioId, websiteOrigin, workspace } = Route.useLoaderData();
   const search = Route.useSearch();
   const scenario = getScenarioFixture(scenarioId);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   return (
-    <AppShell
+    <AuthoringStudio
+      key={`${workspace.pageId}:${workspace.scopeId}`}
+      scenario={scenario}
+      initialWorkspace={workspace}
+      initialInspectorTab={search.panel ?? 'fields'}
+      pageNavigation={pageNavigation}
+      websiteOrigin={websiteOrigin}
       databaseHealthy={health.healthy}
       schemaVersion={health.schemaVersion}
-      section="template"
-      breadcrumb={`${scenario.name} · Authoring`}
-      templateId={scenario.id}
-    >
-      <AuthoringStudio
-        key={`${workspace.pageId}:${workspace.scopeId}`}
-        scenario={scenario}
-        initialWorkspace={workspace}
-        initialInspectorTab={search.panel ?? 'fields'}
-        pageNavigation={pageNavigation}
-        websiteOrigin={websiteOrigin}
-      />
-    </AppShell>
+      sidebarCollapsed={sidebarCollapsed}
+      onSidebarCollapsedChange={setSidebarCollapsed}
+    />
   );
 }

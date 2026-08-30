@@ -4,8 +4,9 @@ import { useId } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Select } from '@/components/ui/select';
 import type { ContentPageNavigation, ContentPageNavigationOption } from '@/data/content-explorer';
+import { cn } from '@/lib/cn';
 
-function initialPage(
+export function pageForNavigation(
   navigation: ContentPageNavigation,
   canonicalUrl: string | undefined
 ): ContentPageNavigationOption | null {
@@ -86,26 +87,149 @@ export function nextPageForSegment(
   );
 }
 
+function TemplatePageSegmentControls({
+  navigation,
+  selectedPage,
+  disabled,
+  compact,
+  idPrefix,
+  onPageChange,
+}: Readonly<{
+  navigation: ContentPageNavigation;
+  selectedPage: ContentPageNavigationOption;
+  disabled: boolean;
+  compact: boolean;
+  idPrefix: string;
+  onPageChange: (page: ContentPageNavigationOption) => void;
+}>) {
+  return (
+    <ol
+      className={cn('flex items-end', compact ? 'shrink-0 gap-1' : 'mt-3 flex-wrap gap-2')}
+      aria-label="Ordered URL segments"
+      title={
+        compact && navigation.truncated
+          ? `Showing ${navigation.options.length.toLocaleString()} of ${navigation.totalCount.toLocaleString()} persisted pages. Use Content Explorer for other pages.`
+          : undefined
+      }
+    >
+      {navigation.segments.map((segment) => {
+        const selectedValue = selectedPage.slotValues[segment.key] ?? '';
+        if (segment.kind === 'static') {
+          return (
+            <li key={segment.slotId} className={compact ? 'shrink-0' : 'min-w-28'}>
+              <span
+                className={cn(
+                  compact ? 'sr-only' : 'mb-1 block text-[10px] font-medium text-ink-faint'
+                )}
+              >
+                {segment.label}
+              </span>
+              <span
+                className={cn(
+                  'flex items-center gap-2 border border-line bg-surface-muted font-mono text-ink-muted',
+                  compact ? 'h-7 rounded-md px-2 text-[11px]' : 'h-9 rounded-lg px-3 text-xs'
+                )}
+                title={`${segment.label}: ${segment.staticValue ?? selectedValue}`}
+              >
+                <LockKeyhole
+                  aria-hidden="true"
+                  className={cn('shrink-0', compact ? 'size-2.5' : 'size-3')}
+                />
+                {segment.staticValue ?? selectedValue}
+              </span>
+            </li>
+          );
+        }
+        const values = valuesForSegment(
+          navigation,
+          selectedPage,
+          segment.pathPosition,
+          segment.key
+        );
+        return (
+          <li key={segment.slotId} className={compact ? 'shrink-0' : 'min-w-36 flex-1 sm:max-w-56'}>
+            <label
+              className={cn(
+                compact ? 'sr-only' : 'mb-1 block text-[10px] font-medium text-ink-faint'
+              )}
+              htmlFor={`${idPrefix}-page-segment-${segment.slotId}`}
+            >
+              {segment.label}
+            </label>
+            <Select
+              id={`${idPrefix}-page-segment-${segment.slotId}`}
+              density={compact ? 'compact' : 'default'}
+              className={compact ? 'w-auto min-w-20 max-w-40' : undefined}
+              value={selectedValue}
+              disabled={disabled}
+              title={compact ? segment.label : undefined}
+              onChange={(event) => {
+                const nextPage = nextPageForSegment(
+                  navigation,
+                  selectedPage,
+                  segment.pathPosition,
+                  segment.key,
+                  event.currentTarget.value
+                );
+                if (!nextPage) return;
+                onPageChange(nextPage);
+              }}
+            >
+              {values.map((value) => (
+                <option key={value} value={value}>
+                  {value}
+                </option>
+              ))}
+            </Select>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
 export function TemplatePageNavigator({
   navigation,
   canonicalUrl,
   disabled = false,
+  variant = 'panel',
   onPageChange,
 }: Readonly<{
   navigation: ContentPageNavigation;
   canonicalUrl?: string;
   disabled?: boolean;
+  variant?: 'panel' | 'compact';
   onPageChange: (page: ContentPageNavigationOption) => void;
 }>) {
   const idPrefix = useId();
   const headingId = `${idPrefix}-template-page-navigator-heading`;
-  const selectedPage = initialPage(navigation, canonicalUrl);
+  const selectedPage = pageForNavigation(navigation, canonicalUrl);
 
   if (!selectedPage) {
     return (
-      <section className="rounded-lg border border-dashed border-line p-3 text-xs text-ink-muted">
+      <section
+        className={cn(
+          'text-ink-muted',
+          variant === 'compact'
+            ? 'shrink-0 text-[11px]'
+            : 'rounded-lg border border-dashed border-line p-3 text-xs'
+        )}
+      >
         This template has no concrete preview pages.
       </section>
+    );
+  }
+
+  if (variant === 'compact') {
+    return (
+      <TemplatePageSegmentControls
+        navigation={navigation}
+        selectedPage={selectedPage}
+        disabled={disabled}
+        compact
+        idPrefix={idPrefix}
+        onPageChange={onPageChange}
+      />
     );
   }
 
@@ -143,62 +267,14 @@ export function TemplatePageNavigator({
         </div>
       </div>
 
-      <ol className="mt-3 flex flex-wrap items-end gap-2" aria-label="Ordered URL segments">
-        {navigation.segments.map((segment) => {
-          const selectedValue = selectedPage.slotValues[segment.key] ?? '';
-          if (segment.kind === 'static') {
-            return (
-              <li key={segment.slotId} className="min-w-28">
-                <span className="mb-1 block text-[10px] font-medium text-ink-faint">
-                  {segment.label}
-                </span>
-                <span className="flex h-9 items-center gap-2 rounded-lg border border-line bg-surface-muted px-3 font-mono text-xs text-ink-muted">
-                  <LockKeyhole aria-hidden="true" className="size-3 shrink-0" />
-                  {segment.staticValue ?? selectedValue}
-                </span>
-              </li>
-            );
-          }
-          const values = valuesForSegment(
-            navigation,
-            selectedPage,
-            segment.pathPosition,
-            segment.key
-          );
-          return (
-            <li key={segment.slotId} className="min-w-36 flex-1 sm:max-w-56">
-              <label
-                className="mb-1 block text-[10px] font-medium text-ink-faint"
-                htmlFor={`${idPrefix}-page-segment-${segment.slotId}`}
-              >
-                {segment.label}
-              </label>
-              <Select
-                id={`${idPrefix}-page-segment-${segment.slotId}`}
-                value={selectedValue}
-                disabled={disabled}
-                onChange={(event) => {
-                  const nextPage = nextPageForSegment(
-                    navigation,
-                    selectedPage,
-                    segment.pathPosition,
-                    segment.key,
-                    event.currentTarget.value
-                  );
-                  if (!nextPage) return;
-                  onPageChange(nextPage);
-                }}
-              >
-                {values.map((value) => (
-                  <option key={value} value={value}>
-                    {value}
-                  </option>
-                ))}
-              </Select>
-            </li>
-          );
-        })}
-      </ol>
+      <TemplatePageSegmentControls
+        navigation={navigation}
+        selectedPage={selectedPage}
+        disabled={disabled}
+        compact={false}
+        idPrefix={idPrefix}
+        onPageChange={onPageChange}
+      />
 
       {navigation.truncated ? (
         <p className="mt-2 text-[10px] text-ink-faint">

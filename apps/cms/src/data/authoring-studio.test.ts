@@ -4,6 +4,7 @@ import {
   AuthoringStudioSearchSchema,
   authoringPanelSearch,
   authoringScopeSearch,
+  authoringTemplateSearch,
   contentFromDraft,
   deriveBlockFormModel,
   draftValuesFromContent,
@@ -244,6 +245,12 @@ describe('AUT-541 schema-driven block form model', () => {
         environment: 'development',
       })
     ).toEqual({ status: 'unavailable', reason: 'invalid-config' });
+  });
+});
+
+describe('AUT-551 compact authoring navigation transitions', () => {
+  test('resets page and selector context when changing templates', () => {
+    expect(authoringTemplateSearch()).toEqual({ panel: 'fields' });
   });
 });
 

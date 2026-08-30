@@ -26,6 +26,9 @@ interface AppShellProps {
   schemaVersion?: number;
   section?: ShellSection;
   breadcrumb?: string;
+  headerContent?: ReactNode;
+  sidebarCollapsed?: boolean;
+  onSidebarCollapsedChange?: (collapsed: boolean) => void;
   templateId?: ScenarioId;
 }
 
@@ -253,9 +256,13 @@ export function AppShell({
   schemaVersion,
   section = 'maps',
   breadcrumb = 'Wall of Maps',
+  headerContent,
+  sidebarCollapsed,
+  onSidebarCollapsedChange,
   templateId,
 }: Readonly<AppShellProps>) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [uncontrolledCollapsed, setUncontrolledCollapsed] = useState(false);
+  const collapsed = sidebarCollapsed ?? uncontrolledCollapsed;
   const [mobileOpen, setMobileOpen] = useState(false);
   const mobileDialogRef = useRef<HTMLElement>(null);
   const mobileOpenButtonRef = useRef<HTMLButtonElement>(null);
@@ -285,7 +292,11 @@ export function AppShell({
       >
         <SidebarContents
           collapsed={collapsed}
-          onCollapse={() => setCollapsed((value) => !value)}
+          onCollapse={() => {
+            const nextCollapsed = !collapsed;
+            setUncontrolledCollapsed(nextCollapsed);
+            onSidebarCollapsedChange?.(nextCollapsed);
+          }}
           activeSection={section}
           templateId={templateId}
         />
@@ -355,7 +366,7 @@ export function AppShell({
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-30 flex h-[52px] shrink-0 items-center justify-between border-b border-line bg-canvas/92 px-3 backdrop-blur-md sm:px-4 lg:px-5">
-          <div className="flex min-w-0 items-center gap-2">
+          <div className="flex h-full min-w-0 flex-1 items-center gap-2">
             <Button
               ref={mobileOpenButtonRef}
               variant="ghost"
@@ -377,7 +388,9 @@ export function AppShell({
             <span aria-hidden="true" className="hidden text-ink-faint sm:inline">
               /
             </span>
-            <span className="truncate text-xs font-medium text-ink">{breadcrumb}</span>
+            {headerContent ?? (
+              <span className="truncate text-xs font-medium text-ink">{breadcrumb}</span>
+            )}
           </div>
 
           <div className="flex items-center gap-1.5">

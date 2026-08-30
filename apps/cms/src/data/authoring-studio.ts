@@ -23,6 +23,10 @@ export const AuthoringStudioSearchSchema = z.object({
   panel: z.enum(['fields', 'cascade', 'history']).optional(),
 });
 
+export function authoringTemplateSearch(): z.infer<typeof AuthoringStudioSearchSchema> {
+  return AuthoringStudioSearchSchema.parse({ panel: 'fields' });
+}
+
 export function authoringScopeSearch(input: {
   readonly canonicalUrl: string;
   readonly nextScopeId: string;
