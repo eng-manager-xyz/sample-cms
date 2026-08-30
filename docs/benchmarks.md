@@ -52,6 +52,10 @@ Generate the committed bounded envelope with:
 bun run scenarios:evidence:bounded
 ```
 
+The clean AUT-544 provenance run recorded the equivalent explicit invocation with output
+`.data/aut544-bounded-report.json` and database `.data/aut544-bounded.sqlite`; the delivery copy is
+`docs/evidence/bounded-report.json`.
+
 The envelope's `run` object is the authoritative environment record. It includes:
 
 | Surface | Recorded field |
@@ -64,8 +68,11 @@ The envelope's `run` object is the authoritative environment record. It includes
 | Inputs | page/sample/case counts and deterministic seed in `invocation` |
 
 The current bounded envelope was generated from clean governed commit
-`0d02c761e9a3941ad22ffded83dadf8397c53448`; the revision resolves directly in the AUT-536
-branch and uses the current website-enabled lockfile.
+`b419baa79dfdbc2369c297e08c145b1510859ff1` between `2026-08-30T07:37:27.673Z` and
+`2026-08-30T07:37:28.778Z`. Its recorded wall time is `1,104.948417` ms, its pre-run tree is empty,
+and its `bun.lock` SHA-256 is
+`f629b6b281247b4953f55e5d2c11fd0400f55726aa5247400e1cb967bb2e5129` with package-manager pin
+`bun@1.3.14`.
 
 The evidence runner records the exact pre-run tree state instead of assuming it was clean. The
 delivery verifier requires committed evidence to have an empty pre-run dirty-state record and the
@@ -158,8 +165,8 @@ The deterministic bounded report proves:
 | Expanded/stored canonical manifest bytes | 22,024 / 22,024 |
 | Exact intersection overrides every placement | true |
 | Persisted items with exact operation provenance | 168 |
-| Persisted publication rows / estimated serialized bytes | 218 / 21,120 |
-| Persisted publication database-byte delta | 118,784 |
+| Persisted publication rows / estimated serialized bytes | 218 / 16,520 |
+| Persisted publication database-byte delta | 114,688 |
 | Conflict placement/priority | `legal-notice` / 60 |
 
 This is the expected dense result: every page has a distinct structure, so manifest reuse is `0`
@@ -193,9 +200,9 @@ store-type memberships untouched.
 | Saved-placement ratio | 99.50% |
 | Expanded/stored canonical structure bytes | 830,021 / 4,214 |
 | Logical expanded rendered-document bytes | 1,142,964 |
-| Estimated manifest plus page-row bytes | 858,229 |
-| Publication database-byte delta | 1,294,336 |
-| Publication bytes per document | 1,291.75 |
+| Estimated manifest plus page-row bytes | 508,807 |
+| Publication database-byte delta | 782,336 |
+| Publication bytes per document | 780.77 |
 | Raw publications/page documents/manifests/items after republish | 2 / 1,004 / 5 / 20 |
 | Five-class golden coverage | true |
 | Identical republish reuses current publication | true |
@@ -246,20 +253,22 @@ bun run scenarios:benchmark:1m
 ```
 
 The authoritative stress run completed successfully from clean governed commit
-`6d02c0de16b3745b32df22b42fe0afca559300f6`. That revision includes the AUT-536 implementation and
-bounded evidence commit, resolves locally in this branch, and uses the current lockfile. The
-machine-readable source is `docs/evidence/store-1m.json`; values below are copied from that envelope
-rather than inferred from the bounded run.
+`b419baa79dfdbc2369c297e08c145b1510859ff1` between `2026-08-30T07:37:35.225Z` and
+`2026-08-30T07:56:01.673Z`. That revision includes the AUT-544 implementation and uses the same
+clean tree and lockfile as the bounded run. The recorded invocation wrote
+`.data/aut544-store-1m.json` against `.data/aut544-store-1m.sqlite`; the byte-identical delivery
+source is `docs/evidence/store-1m.json`. Values below are copied from that envelope rather than
+inferred from the bounded run.
 
 | Run provenance and host | Measured result |
 | --- | --- |
-| Git / pre-run tree | `6d02c0de16b3745b32df22b42fe0afca559300f6` / clean |
-| Lock SHA-256 / package-manager pin | `3df8a64cc151ce6315f378f312eaef4d1e876e9e7097023c9411d8f937ee51cc` / `bun@1.3.14` |
+| Git / pre-run tree | `b419baa79dfdbc2369c297e08c145b1510859ff1` / clean |
+| Lock SHA-256 / package-manager pin | `f629b6b281247b4953f55e5d2c11fd0400f55726aa5247400e1cb967bb2e5129` / `bun@1.3.14` |
 | Runtime | actual Bun `1.3.11`; SQLite `3.43.2` |
 | Host | macOS Darwin `24.6.0`, arm64 Apple M4 Max, 16 logical CPUs, 51,539,607,552 bytes (48 GiB) physical memory |
-| Wall / CPU | 941,377.622 ms wall; 813.432 s user CPU; 105.358 s system CPU |
-| Maximum resident memory | 580,419,584 bytes (553.53 MiB) |
-| Final database | 3,205,939,200 bytes (2.986 GiB), 782,700 × 4,096-byte pages, zero freelist pages |
+| Wall / CPU | 1,106,440.516 ms wall; 997.504 s user CPU; 109.529 s system CPU |
+| Maximum resident memory | 608,944,128 bytes (580.73 MiB) |
+| Final database | 2,692,648,960 bytes (2.508 GiB), 657,385 × 4,096-byte pages, zero freelist pages |
 
 | Persisted cardinality | Exact result |
 | --- | ---: |
@@ -273,7 +282,7 @@ rather than inferred from the bounded run.
 | Publications / page documents | 2 / 1,000,004 |
 | Manifests / manifest items | 5 / 20 |
 
-The initial seed took 61,272.986 ms. Replaying the same scale identity took 63.238 ms, inserted zero
+The initial seed took 61,902.738 ms. Replaying the same scale identity took 66.102 ms, inserted zero
 rows, reproduced the same SHA-256 identity, and left page and membership counts unchanged. Integrity
 was `ok` on schema v6 with zero foreign-key violations.
 
@@ -285,14 +294,14 @@ for the requested ordering. Each selector preview used the canonical-page index 
 
 | Selector | Exact matches | Preview time |
 | --- | ---: | ---: |
-| `store_type = 'chain_store'` | 500,001 | 764.465 ms |
-| `category = 'fast_food'` | 200,001 | 767.889 ms |
-| `brand = 'burger_king'` | 50,000 | 704.737 ms |
-| `brand = 'mcdonalds'` | 50,001 | 715.465 ms |
+| `store_type = 'chain_store'` | 500,001 | 774.697 ms |
+| `category = 'fast_food'` | 200,001 | 751.022 ms |
+| `brand = 'burger_king'` | 50,000 | 710.123 ms |
+| `brand = 'mcdonalds'` | 50,001 | 722.047 ms |
 
-The bounded 50-row publication preview over all 1,000,002 eligible pages took 48.222 ms. The full
-generic publication took 562,129.470 ms and persisted 1,000,002 documents at a measured local rate
-of 1,778.95 documents/second. The identical-input compile took 247,391.290 ms, returned the same
+The bounded 50-row publication preview over all 1,000,002 eligible pages took 49.440 ms. The full
+generic publication took 638,276.277 ms and persisted 1,000,002 documents at a measured local rate
+of 1,566.72 documents/second. The identical-input compile took 355,715.793 ms, returned the same
 publication ID and input hash, reproduced exactly 1,143,681,174 logical expanded payload bytes, and
 added no page-document rows.
 
@@ -305,15 +314,15 @@ added no page-document rows.
 | Logical/stored canonical structure bytes | 828,401,621 / 4,214 |
 | Saved canonical structure bytes | 828,397,407 |
 | Logical fully expanded rendered-document bytes | 1,143,681,174 |
-| Estimated manifest plus page-row bytes | 862,480,639 |
-| SQLite allocation before/after publication | 1,895,190,528 / 3,205,939,200 bytes |
-| Actual publication allocation delta | 1,310,748,672 bytes (1,310.75 bytes/document) |
+| Estimated manifest plus page-row bytes | 507,791,017 |
+| SQLite allocation before/after publication | 1,895,190,528 / 2,692,648,960 bytes |
+| Actual publication allocation delta | 797,458,432 bytes (797.46 bytes/document) |
 
-Across 250 full-scale samples, indexed canonical lookup measured 0.006750 ms p50 and 0.008000 ms
-p95. Manifest reconstruction measured 0.173500 ms p50 and 0.324666 ms p95, using exactly two SQL
+Across 250 full-scale samples, indexed canonical lookup measured 0.007292 ms p50 and 0.008375 ms
+p95. Manifest reconstruction measured 0.066667 ms p50 and 0.287417 ms p95, using exactly two SQL
 statements, zero selector statements, and zero CEL evaluations per request. The separate expanded
 serving fixture used one SQL statement, zero selectors, and zero CEL evaluations, measuring
-0.017000 ms p50 and 0.023500 ms p95. These local hot-cache SQLite measurements compare shapes; they
+0.019208 ms p50 and 0.035125 ms p95. These local hot-cache SQLite measurements compare shapes; they
 are not production SLOs. No resource limitation occurred.
 
 ## Scenario C — structural replacement (`AUT-529`)
@@ -334,7 +343,7 @@ The deterministic long-document proof uses 24 default placements and two sparse 
 | Persisted rollback restores baseline hash | true |
 | Domain publication pages/manifests/items | 2 / 2 / 47 |
 | Persisted publications/page documents/manifests/items | 2 / 4 / 2 / 47 |
-| Persisted publication database-byte delta | 20,480 |
+| Persisted publication database-byte delta | 28,672 |
 | New variant block versions / active sparse operations | 1 / 2 |
 | Replacement schemas and renderers differ | true |
 | `hero_alt` rejects the old `hero` payload | true |
