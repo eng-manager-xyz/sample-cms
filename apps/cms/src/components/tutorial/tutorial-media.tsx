@@ -144,13 +144,21 @@ function MediaFrame({
   children: ReactNode;
 }>) {
   return (
-    <figure className="my-6 overflow-hidden rounded-xl border border-line bg-surface-subtle">
-      <figcaption className="flex flex-wrap items-start justify-between gap-3 border-b border-line bg-canvas px-4 py-3">
+    <section
+      aria-labelledby={`tutorial-media-${visualId}-title`}
+      className="my-6 overflow-hidden rounded-xl border border-line bg-surface-subtle"
+    >
+      <header className="flex flex-wrap items-start justify-between gap-3 border-b border-line bg-canvas px-4 py-3">
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-accent-strong">
             Interactive explanation
           </p>
-          <h4 className="mt-0.5 text-sm font-semibold text-ink">{title}</h4>
+          <h4
+            id={`tutorial-media-${visualId}-title`}
+            className="mt-0.5 font-display text-sm font-semibold text-ink"
+          >
+            {title}
+          </h4>
           <p className="mt-1 max-w-2xl text-[11px] leading-5 text-ink-muted">{description}</p>
         </div>
         <div className="flex items-center gap-2">
@@ -168,7 +176,7 @@ function MediaFrame({
             {active ? 'Close model' : 'Load model'}
           </Button>
         </div>
-      </figcaption>
+      </header>
       <div id={`tutorial-media-${visualId}`} className="p-3 sm:p-4">
         {active ? (
           children
@@ -185,7 +193,7 @@ function MediaFrame({
           </div>
         )}
       </div>
-    </figure>
+    </section>
   );
 }
 
@@ -227,8 +235,8 @@ function EditorialImage({
 function PlannedVisual({ section }: Readonly<{ section: TutorialSection }>) {
   const hasMedia = section.mediaMinutes > 0;
   return (
-    <aside
-      aria-label={`Visual companion: ${readableVisualName(section.visual)}`}
+    <figure
+      aria-labelledby={`planned-visual-${section.visual}-title`}
       className="my-6 grid overflow-hidden rounded-xl border border-line bg-surface-subtle sm:grid-cols-[160px_minmax(0,1fr)]"
       data-visual-id={section.visual}
     >
@@ -241,7 +249,7 @@ function PlannedVisual({ section }: Readonly<{ section: TutorialSection }>) {
         <div className="absolute inset-x-11 top-20 h-4 rounded border border-success/30 bg-success-soft" />
         <div className="absolute bottom-3 left-1/2 h-20 w-px -translate-x-1/2 bg-accent" />
       </div>
-      <div className="flex items-start gap-3 p-4">
+      <figcaption className="flex items-start gap-3 p-4">
         <span className="mt-0.5 rounded-lg border border-line bg-canvas p-2 text-accent-strong">
           {hasMedia ? (
             <CirclePlay aria-hidden="true" className="size-4" />
@@ -253,7 +261,10 @@ function PlannedVisual({ section }: Readonly<{ section: TutorialSection }>) {
           <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-ink-faint">
             {hasMedia ? `${section.mediaMinutes} min media companion` : 'Static evidence companion'}
           </p>
-          <p className="mt-1 text-sm font-semibold text-ink">
+          <p
+            id={`planned-visual-${section.visual}-title`}
+            className="mt-1 font-display text-sm font-semibold text-ink"
+          >
             {readableVisualName(section.visual)}
           </p>
           <p className="mt-1 text-[11px] leading-5 text-ink-muted">
@@ -261,8 +272,8 @@ function PlannedVisual({ section }: Readonly<{ section: TutorialSection }>) {
             digest remain complete when media is unavailable.
           </p>
         </div>
-      </div>
-    </aside>
+      </figcaption>
+    </figure>
   );
 }
 
@@ -434,7 +445,7 @@ export function TutorialSectionMedia({
       return <TutorialVideo {...pinInspectionVideo} />;
     case 'shape-comparison':
       return (
-        <aside className="my-6 overflow-hidden rounded-xl border border-line bg-surface-subtle">
+        <figure className="my-6 overflow-hidden rounded-xl border border-line bg-surface-subtle">
           <img
             src="/media/tutorial/three-proof-shapes-v1.webp"
             alt="Editorial triptych showing dense overlapping vehicle selector bands, sparse Store selector islands across a large map, and a structural block replacement retaining the same placement pin."
@@ -444,7 +455,7 @@ export function TutorialSectionMedia({
             decoding="async"
             className="aspect-[16/9] w-full border-b border-line bg-canvas object-cover"
           />
-          <div className="p-4">
+          <figcaption className="p-4">
             <div className="mb-3 flex flex-wrap gap-2">
               <Badge tone="info">OpenAI-generated substitute</Badge>
               <Badge tone="success">Accepted for AUT-533</Badge>
@@ -472,8 +483,8 @@ export function TutorialSectionMedia({
               OpenAI-generated editorial substitute accepted by the requester for AUT-533. Exact
               counts above come from repository evidence.
             </p>
-          </div>
-        </aside>
+          </figcaption>
+        </figure>
       );
     case 'publication-video':
       return (

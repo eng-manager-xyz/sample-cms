@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "katex/dist/katex.min.css";
 
 @source "../**/*.{ts,tsx}";
 
@@ -47,7 +48,13 @@
   --font-sans:
     "Atkinson Hyperlegible Next", Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
     "Segoe UI", sans-serif;
-  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  --font-display:
+    "Atkinson Hyperlegible Next", Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+  --font-serif: Charter, "Bitstream Charter", "Sitka Text", Cambria, Georgia, ui-serif, serif;
+  --font-mono:
+    "SFMono-Regular", "Cascadia Code", "Roboto Mono", Consolas, "Liberation Mono", ui-monospace,
+    monospace;
 }
 
 @layer base {
@@ -85,6 +92,69 @@
   ::selection {
     background: var(--color-accent-soft);
     color: var(--color-accent-strong);
+  }
+}
+
+@layer components {
+  .tutorial-prose {
+    font-family: var(--font-sans);
+    font-kerning: normal;
+    font-optical-sizing: auto;
+    font-variant-ligatures: common-ligatures contextual;
+    hanging-punctuation: first last;
+    overflow-wrap: anywhere;
+  }
+
+  .tutorial-prose :where(h1, h2, h3, h4, h5, h6) {
+    font-family: var(--font-display);
+    text-wrap: balance;
+  }
+
+  .tutorial-prose :where(p, li, blockquote, figcaption, caption) {
+    text-wrap: pretty;
+  }
+
+  .tutorial-prose :where(blockquote, figcaption, caption) {
+    font-family: var(--font-serif);
+  }
+
+  .tutorial-prose :where(figure) {
+    margin-block: 1.75rem;
+  }
+
+  .tutorial-prose :where(figcaption, caption) {
+    color: var(--color-ink-muted);
+    font-size: 0.8125rem;
+    font-style: italic;
+    line-height: 1.5rem;
+  }
+
+  .tutorial-prose :where(mark) {
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+  }
+
+  .tutorial-prose :where(.katex-display) {
+    margin-block: 1.5rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+    border: 1px solid var(--color-line);
+    border-radius: 0.75rem;
+    background: var(--color-surface-subtle);
+    padding: 1rem 1.25rem;
+    color: var(--color-ink);
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-line-strong) transparent;
+  }
+
+  .tutorial-prose :where(.katex-display > .katex) {
+    min-width: max-content;
+    font-size: 1.08em;
+    text-align: center;
+  }
+
+  .tutorial-prose :where(.katex-mathml math) {
+    overflow-wrap: normal;
   }
 }
 

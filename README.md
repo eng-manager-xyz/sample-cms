@@ -26,7 +26,8 @@ See [the import provenance record](docs/import-provenance.md) for the retained a
 - React 19 and TypeScript
 - Tailwind CSS 4 and shadcn-style components/blocks
 - Lazy Three.js and PixiJS explanatory models
-- React Markdown/GFM with vendored Atkinson Hyperlegible Next variable fonts
+- React Markdown/GFM with `remark-math`, KaTeX, vendored Atkinson Hyperlegible Next, and explicit
+  display, sans, serif, and mono font roles
 - Local SQLite through Bun's native driver and Drizzle ORM
 - Bun test, Biome, and Fallow
 
@@ -104,6 +105,21 @@ Linear/source approval. Editorial-image provenance is separate in `illustrations
 it records the requester's AUT-533 acceptance of the OpenAI-generated illustrations as substitutes
 for the originally requested Google Imagen output.
 
+The AUT-537 learning pass treats Markdown as authored course material rather than a generic text
+blob. Inline math uses `$...$`; display math uses `$$...$$`. `remark-math` parses those canonical
+delimiters and KaTeX emits the visual expression plus its MathML representation, so raw TeX is not
+the intended reader experience. The renderer gives headings, emphasis, highlights, code, quotes,
+figures, captions, tables, and display equations distinct semantic typography across the display,
+sans, serif, and mono font roles. Architecture figures pair their visual comparison with labels,
+captions, and a readable data table instead of making color or geometry the only source of meaning.
+
+Each chapter ends with an official shadcn Questionnaire knowledge check, and the tutorial includes
+a teach-back deck for spaced retrieval practice. Questionnaire attempts stay in the current page
+session; the teach-back schedule uses versioned progress stored only in the reader's browser. None
+of that learning state crosses a server-function boundary, enters SQLite, changes authoring state,
+or affects a published document. Clearing it has no effect on the three proof scenarios or their
+evidence.
+
 The standard validation commands are:
 
 ```bash
@@ -173,8 +189,8 @@ The repository-specific `five-phase-pass` maps the prior workflow onto this proj
 3. Authoring, deterministic resolution, and publication (`AUT-520`–`AUT-525`)
 4. HUD, all three proof scenarios, standalone website, and isolated hybrid routes
    (`AUT-526`–`AUT-529`, `AUT-534`, and `AUT-535`)
-5. Correctness/scale evidence, process guide, TiDB ADR, tutorial, and cross-surface documentation
-   (`AUT-530`–`AUT-533` and `AUT-536`)
+5. Correctness/scale evidence, process guide, TiDB ADR, tutorial, cross-surface documentation, and
+   tutorial retrieval-practice polish (`AUT-530`–`AUT-533`, `AUT-536`, and `AUT-537`)
 
 The project is not complete merely because the UI builds. Every phase must have its acceptance
 evidence, and the final workspace must migrate, seed, test, typecheck, lint, and build from a fresh

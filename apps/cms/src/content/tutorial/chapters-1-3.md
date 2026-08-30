@@ -409,9 +409,9 @@ Let `T` be one template. Everything that follows stays inside that template boun
 
 Let `P_T` be the set of concrete page instances owned by `T`:
 
-\[
+$$
 P_T = \{p \mid \operatorname{template}(p)=T\}
-\]
+$$
 
 Each page `p` has scalar slot values, explicit tag memberships, immutable-at-publication context, canonical identity, and route state. Together those values describe the point on the map. They do not yet decide content.
 
@@ -419,17 +419,17 @@ Let `K_T` be the set of stable placement keys that may appear in the template's 
 
 The template owns one default document `D_T`. You can think of it as a partial mapping from placement key to an initial content-and-order pair:
 
-\[
+$$
 D_T : K_T \rightharpoonup (\text{block version},\ \text{order})
-\]
+$$
 
 The hooked arrow reminds us that not every conceivable placement key must be present. In the database, the default is the special template-owned variant at priority zero with an active revision and operations. In the algebra, `D_T` is simply the base state from which resolution begins.
 
 A non-default variant is a tuple:
 
-\[
+$$
 v = (S_v,\ \pi_v,\ O_v)
-\]
+$$
 
 where:
 
@@ -439,25 +439,25 @@ where:
 
 The selector defines a **mask** over the template's pages:
 
-\[
+$$
 M_v = \{p \in P_T \mid S_v(p)=\text{true}\}
-\]
+$$
 
 This is the precise version of a transparent sheet covering part of a map. A page may lie beneath no non-default mask, one mask, or several intersecting masks.
 
 For one page `p`, collect its matching layers:
 
-\[
+$$
 L_T(p)=\{v \mid p \in M_v \land v\text{ is active}\}
-\]
+$$
 
 Resolution starts with `D_T`, then considers the members of `L_T(p)` in ascending priority order. Importantly, `L_T(p)` is a **set of applicable layers**, not a declaration that the page belongs to exactly one variant.
 
 The Store example makes this concrete. Suppose page `p_m` carries explicit memberships for chain store, fast food, and McDonald's. Then:
 
-\[
+$$
 p_m \in M_{chain} \cap M_{fast} \cap M_{mcd}
-\]
+$$
 
 The three layers can compose because their operations are sparse: the chain layer sets `footer`, the fast-food layer sets `category-promo`, and the McDonald's layer sets `primary-hero`. `navigation` remains in `D_T`. The page is not assigned to one “most specific variant.” It is a point where three masks overlap.
 
@@ -502,13 +502,13 @@ The author controls the expression and literal values, but not table names, join
 
 The compilation pipeline is:
 
-\[
+$$
 \text{text}
 \rightarrow \text{tokens}
 \rightarrow \text{AST}
 \rightarrow \text{normalized AST}
 \rightarrow (\text{SQL},\ \text{parameters})
-\]
+$$
 
 **Tokenize.** The tokenizer applies length and token-count limits before expensive work. It recognizes only the language's supported identifiers, literals, operators, commas, and parentheses. Comments, statement separators, and executable-looking input are rejected rather than ignored.
 
@@ -520,9 +520,9 @@ The compilation pipeline is:
 
 **Compile.** Approved identifiers come from trusted metadata. Every authored value becomes a bound parameter. Template ownership is injected outside the author AST. In simplified form:
 
-\[
+$$
 Q_T(S_v)=\{p\in P_T \mid \operatorname{Eval}(S_v,p)=\text{true}\}
-\]
+$$
 
 The generated query always includes the fixed `T` boundary even though the author did not type it. A multi-valued tag field can lower to an indexed membership `EXISTS` query; it never becomes hidden hierarchy inference.
 
@@ -553,23 +553,23 @@ Once selectors have produced `L_T(p)`, the resolver must turn the default and ma
 
 For a variant `v` and placement key `k`, write:
 
-\[
+$$
 \operatorname{touch}(v,k)=
 \begin{cases}
 1 & \text{if } O_v \text{ contains any operation on } k\\
 0 & \text{otherwise}
 \end{cases}
-\]
+$$
 
 Two matching variants conflict for page `p` when they have the same priority and both touch the same placement:
 
-\[
+$$
 \exists v\neq w,\ k:\quad
 v,w\in L_T(p)
 \land \pi_v=\pi_w
 \land \operatorname{touch}(v,k)=1
 \land \operatorname{touch}(w,k)=1
-\]
+$$
 
 The implementation treats any cross-variant operation kinds on that priority/placement as ambiguous. Two variants at equal priority may still compose if their touched placement sets are disjoint.
 
@@ -577,10 +577,10 @@ Why reject before applying? Suppose two variants at priority 30 both set `primar
 
 After conflict validation, initialize one state record for every default placement. For each key `k`, the state contains:
 
-\[
+$$
 \operatorname{State}(k)=
 (\text{block},\ \text{order},\ \text{visible},\ \text{content source},\ \text{order source},\ \text{trace})
-\]
+$$
 
 Then sort matching variants by ascending explicit priority and apply their canonically sorted operations.
 
@@ -594,9 +594,9 @@ Content and order provenance remain separate because they may have different win
 
 When the fold is complete, remove invisible placements from the effective list, retain their tombstone traces separately, and sort visible placements by:
 
-\[
+$$
 (\text{order},\ \text{placement key})
-\]
+$$
 
 The placement key is the stable secondary order, so equal order values do not reintroduce row-order dependence. Tombstones are sorted by placement key. The canonical resolved value includes block identity, type, schema version, content, order, matched revisions, and provenance.
 
@@ -625,23 +625,23 @@ selector-driven authoring → atomic immutable publication → read-only public 
 
 Let `R_T(p)` be the resolved, provenance-rich document produced by the fold. Canonical encoding removes incidental input ordering, and hashing gives the document a stable content identity:
 
-\[
+$$
 h_p = H(\operatorname{canonical}(R_T(p)))
-\]
+$$
 
 The hash is not a substitute for the document; it is a compact identity for verifying that the same logical result produced the same bytes.
 
 Auteur also derives a structural manifest signature. A manifest contains ordered placement keys, winning block-version pointers, and exact source provenance. Page-specific context does not force a new structural manifest when those pointers remain the same. Define:
 
-\[
+$$
 \mu(p)=H(\operatorname{canonical}(\text{structural placements of }R_T(p)))
-\]
+$$
 
 Two pages may share a manifest when:
 
-\[
+$$
 p \sim q \iff \mu(p)=\mu(q)
-\]
+$$
 
 This is an equivalence relation over publication structure. It does **not** claim that the fully rendered page values are identical. A shared hero block can contain restricted interpolation such as a store name. The compiler evaluates that expression against each page's immutable context, so two pages can share `μ` while retaining different `h_p` and rendered output.
 
@@ -661,25 +661,25 @@ Section 5.9 and the publication flow in section 6 of `docs/process-engineering-g
 
 Publication itself has an input identity. Conceptually:
 
-\[
+$$
 I_T = H(\operatorname{canonical}(\text{active revisions and page inputs}))
-\]
+$$
 
 If `I_T` equals the current publication's input hash, an idempotent publish reuses the current result rather than appending duplicate page rows. It still compiles enough to verify the identity and reproduce measured logical payload bytes.
 
 Activation is intentionally tiny compared with compilation. Let `C(T)` be the current-publication pointer. A successful publish changes:
 
-\[
+$$
 C(T) \leftarrow \Pi_n
-\]
+$$
 
 where `Π_n` is the newly validated immutable namespace. A failed compile leaves `C(T)` unchanged. Rollback assigns `C(T)` to a retained earlier `Π_{n-1}`; it does not edit either publication.
 
 Public serving can now be written as a lookup rather than a resolution:
 
-\[
+$$
 \operatorname{Serve}_T(u)=\Pi_{C(T)}[u]
-\]
+$$
 
 The request follows the pointer, finds the page document for canonical URL `u`, and either returns its expanded payload or reconstructs it from its manifest plus immutable context. In the standalone app, the concrete pipeline is `read-only SQLite → CmsService.serve → PublishedDocumentSchema → synchronous block registry → React`. It performs one expanded read or two manifest reads and zero selector statements. No `S_v`, `M_v`, slots, tags, variants, or operations are evaluated on this path.
 

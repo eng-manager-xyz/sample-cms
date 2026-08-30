@@ -542,6 +542,44 @@ A reviewer should be able to answer “yes” to each question:
 - Can I trace a public request without finding selector evaluation or Louvre `multiResolve`?
 - Can I distinguish a measured prototype result from an unresolved TiDB assumption?
 
+## Tutorial learning contract
+
+[AUT-537](https://linear.app/harwood/issue/AUT-537/polish-tutorial-math-semantic-typography-and-retrieval-practice)
+makes `/tutorial` a practice surface for learning and re-explaining this model. It does not add a
+new CMS persistence or publication concern.
+
+The Markdown renderer preserves document meaning instead of flattening every token into the same
+visual treatment. Heading levels remain navigable; bold, italic, and highlighted passages keep
+their native emphasis semantics; inline and fenced code use the mono role; explanatory prose and
+quotations use appropriate sans and serif roles; and each architecture graphic is a semantic
+`figure` with a `figcaption`. Comparison graphics also expose their values as text or a table, so
+their argument remains available without relying on color, canvas pixels, or spatial position.
+
+Math has one authoring contract:
+
+| Meaning | Canonical Markdown | Rendering path |
+| --- | --- | --- |
+| Inline expression | `$M_v$` | `remark-math` to KaTeX inline output and MathML |
+| Display expression | `$$` on delimiter lines around the expression | `remark-math` to KaTeX display output and MathML |
+
+Do not use `\[` and `\]` as display delimiters in tutorial Markdown. They are TeX delimiters, but
+they are not the Markdown contract parsed by `remark-math`; leaving them in source can expose the
+raw expression in the lesson.
+
+Every chapter follows reading with an official shadcn Questionnaire knowledge check. Questions
+exercise three complementary retrieval moves: recall the invariant, distinguish it from a nearby
+but incorrect model, and apply or diagnose it in a concrete CMS situation. Feedback explains the
+reasoning rather than reducing the exercise to a score. A separate teach-back deck asks the reader
+to reconstruct the architecture in their own words and schedules cards by due state before
+introducing new prompts.
+
+Questionnaire attempts are deliberately ephemeral page-session state. Spaced-repetition scheduling
+is browser-local learning state, validated against a versioned progress shape and stored locally.
+Neither enters `@repo/cms-db`, SQLite migrations, selector evaluation, publication hashes, or
+serving documents. Resetting or losing that state affects only the learner's practice history. This
+separation keeps the tutorial useful for rehearsal without creating a second, accidental content
+model.
+
 ## Linear traceability
 
 - Model and transition: `AUT-514`–`AUT-519`
@@ -550,5 +588,6 @@ A reviewer should be able to answer “yes” to each question:
 - Evidence, this guide, and production ADR: `AUT-530`–`AUT-532`
 - Tutorial transfer and reviewed walkthroughs: `AUT-533`
 - Standalone publication rendering and isolated hybrid seams: `AUT-534`–`AUT-536`
+- Tutorial math, semantic presentation, knowledge checks, and retrieval practice: `AUT-537`
 
 The CMS project in Linear remains authoritative when this guide and an issue differ.

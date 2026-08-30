@@ -19,7 +19,6 @@ interface ProjectionRenderState {
 interface ProjectionRenderer {
   app: PixiApplication;
   graphics: PixiGraphics;
-  observer: ResizeObserver;
 }
 
 const palette = {
@@ -184,21 +183,26 @@ export function PixiProjection({ scenario }: Readonly<{ scenario: ScenarioFixtur
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const hostRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<ProjectionRenderer | null>(null);
-  const renderStateRef = useRef(createRenderState(scenario, selectedPointId, activeLayerIds));
+  const [initialRenderState] = useState(() =>
+    createRenderState(scenario, selectedPointId, activeLayerIds)
+  );
+  const renderStateRef = useRef(initialRenderState);
 
   const selectedPoint =
     scenario.projectionPoints.find((point) => point.id === selectedPointId) ??
     scenario.projectionPoints[0];
-  const activeLayers = scenario.layers.filter((layer) => activeLayerIds.includes(layer.id));
-  const selectedLayerNames = selectedPoint
-    ? scenario.layers
-        .filter((layer) => selectedPoint.layerIds.includes(layer.id))
-        .map((layer) => layer.name)
-    : [];
+  const activeLayerIdSet = new Set(activeLayerIds);
+  const activeLayers = scenario.layers.filter((layer) => activeLayerIdSet.has(layer.id));
+  const selectedPointLayerIdSet = new Set(selectedPoint?.layerIds ?? []);
+  const selectedLayerNames: string[] = [];
+  for (const layer of scenario.layers) {
+    if (selectedPointLayerIdSet.has(layer.id)) selectedLayerNames.push(layer.name);
+  }
 
   useEffect(() => {
     let cancelled = false;
     let pendingApp: PixiApplication | null = null;
+    let observer: ResizeObserver | null = null;
 
     async function initialize() {
       const canvas = canvasRef.current;
@@ -232,15 +236,17 @@ export function PixiProjection({ scenario }: Readonly<{ scenario: ScenarioFixtur
         const graphics = new pixi.Graphics();
         app.stage.addChild(graphics);
         const render = () => {
-          drawProjection(graphics, renderStateRef.current, app.screen.width, app.screen.height);
+          const renderState = renderStateRef.current;
+          if (!renderState) return;
+          drawProjection(graphics, renderState, app.screen.width, app.screen.height);
           app.render();
         };
-        const observer = new ResizeObserver(() => {
+        observer = new ResizeObserver(() => {
           app.resize();
           requestAnimationFrame(render);
         });
         observer.observe(host);
-        rendererRef.current = { app, graphics, observer };
+        rendererRef.current = { app, graphics };
         render();
         setRenderStatus('ready');
       } catch {
@@ -252,9 +258,9 @@ export function PixiProjection({ scenario }: Readonly<{ scenario: ScenarioFixtur
 
     return () => {
       cancelled = true;
+      observer?.disconnect();
       const renderer = rendererRef.current;
       if (renderer) {
-        renderer.observer.disconnect();
         renderer.app.stop();
         renderer.app.destroy(
           { removeView: false },
@@ -298,12 +304,12 @@ export function PixiProjection({ scenario }: Readonly<{ scenario: ScenarioFixtur
             <Badge tone="info">PixiJS breadth view</Badge>
             <Badge tone="warning">Aggregated projection</Badge>
           </div>
-          <h3
+          <h4
             id={`${scenario.id}-projection-title`}
-            className="text-lg font-semibold tracking-[-0.025em] text-ink"
+            className="font-display text-lg font-semibold tracking-[-0.025em] text-ink"
           >
             Wall of pages · {scenario.name}
-          </h3>
+          </h4>
           <p className="mt-1 max-w-2xl text-sm leading-6 text-ink-muted">
             Selector sheets cover aggregate route bins. Select a row to pin one deterministic
             sample; the table remains the semantic source of truth.
@@ -358,7 +364,7 @@ export function PixiProjection({ scenario }: Readonly<{ scenario: ScenarioFixtur
       <fieldset className="flex flex-wrap gap-2">
         <legend className="mb-2 text-xs font-semibold text-ink">Visible selector sheets</legend>
         {scenario.layers.map((layer) => {
-          const checked = activeLayerIds.includes(layer.id);
+          const checked = activeLayerIdSet.has(layer.id);
           return (
             <label
               key={layer.id}
@@ -373,11 +379,12 @@ export function PixiProjection({ scenario }: Readonly<{ scenario: ScenarioFixtur
                 type="checkbox"
                 checked={checked}
                 onChange={() =>
-                  setActiveLayerIds((current) =>
-                    current.includes(layer.id)
+                  setActiveLayerIds((current) => {
+                    const currentIds = new Set(current);
+                    return currentIds.has(layer.id)
                       ? current.filter((layerId) => layerId !== layer.id)
-                      : [...current, layer.id]
-                  )
+                      : [...current, layer.id];
+                  })
                 }
                 className="size-3.5 accent-[var(--color-accent)]"
               />
@@ -486,6 +493,10 @@ export function PixiProjection({ scenario }: Readonly<{ scenario: ScenarioFixtur
           </tbody>
         </table>
       </div>
+      <figcaption className="border-t border-line pt-3 font-serif text-xs italic leading-5 text-ink-muted">
+        The canvas is an aria-hidden breadth cue. Axis controls, exact sample values, layer counts,
+        and selection state remain available in native controls and the synchronized table.
+      </figcaption>
     </figure>
   );
 }

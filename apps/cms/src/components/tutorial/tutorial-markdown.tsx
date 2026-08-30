@@ -1,28 +1,115 @@
 import type { Components } from 'react-markdown';
 import ReactMarkdown from 'react-markdown';
+import rehypeKatex from 'rehype-katex';
 import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
 import { cn } from '@/lib/cn';
+
+interface MarkdownAstNode {
+  type: string;
+  value?: string;
+  children?: MarkdownAstNode[];
+  data?: {
+    hName?: string;
+  };
+}
+
+const highlightPattern = /==([^=\n]+)==/g;
+const literalNodeTypes = new Set(['code', 'inlineCode', 'html']);
+
+function splitHighlightText(node: MarkdownAstNode): MarkdownAstNode[] {
+  const value = node.value ?? '';
+  const matches = [...value.matchAll(highlightPattern)];
+  if (matches.length === 0) return [node];
+
+  const nodes: MarkdownAstNode[] = [];
+  let cursor = 0;
+
+  for (const match of matches) {
+    const start = match.index;
+    const highlighted = match[1];
+    if (start === undefined || highlighted === undefined) continue;
+
+    if (start > cursor) nodes.push({ type: 'text', value: value.slice(cursor, start) });
+    nodes.push({ type: 'text', value: highlighted, data: { hName: 'mark' } });
+    cursor = start + match[0].length;
+  }
+
+  if (cursor < value.length) nodes.push({ type: 'text', value: value.slice(cursor) });
+  return nodes;
+}
+
+function transformHighlights(node: MarkdownAstNode): void {
+  if (!node.children || literalNodeTypes.has(node.type)) return;
+
+  const children: MarkdownAstNode[] = [];
+  for (const child of node.children) {
+    if (child.type === 'text') {
+      children.push(...splitHighlightText(child));
+      continue;
+    }
+    transformHighlights(child);
+    children.push(child);
+  }
+  node.children = children;
+}
+
+/** Adds the familiar `==highlight==` extension without enabling raw HTML. */
+function remarkHighlight() {
+  return (tree: MarkdownAstNode) => transformHighlights(tree);
+}
 
 const markdownComponents: Components = {
   h1: ({ children }) => (
-    <h3 className="mt-10 text-2xl font-semibold tracking-[-0.03em] text-ink">{children}</h3>
+    <h1 className="mt-12 font-display text-3xl font-bold leading-tight tracking-[-0.035em] text-ink">
+      {children}
+    </h1>
   ),
   h2: ({ children }) => (
-    <h3 className="mt-9 text-xl font-semibold tracking-[-0.025em] text-ink">{children}</h3>
+    <h2 className="mt-11 font-display text-2xl font-bold leading-tight tracking-[-0.03em] text-ink">
+      {children}
+    </h2>
   ),
   h3: ({ children }) => (
-    <h3 className="mt-8 text-lg font-semibold tracking-[-0.02em] text-ink">{children}</h3>
+    <h3 className="mt-10 font-display text-xl font-bold leading-snug tracking-[-0.025em] text-ink">
+      {children}
+    </h3>
   ),
-  h4: ({ children }) => <h4 className="mt-7 text-base font-semibold text-ink">{children}</h4>,
-  p: ({ children }) => <p className="mt-4 text-[14px] leading-7 text-ink-muted">{children}</p>,
-  strong: ({ children }) => <strong className="font-semibold text-ink">{children}</strong>,
-  em: ({ children }) => <em className="text-ink">{children}</em>,
-  a: ({ children, href }) => {
+  h4: ({ children }) => (
+    <h4 className="mt-9 font-display text-lg font-bold leading-snug tracking-[-0.02em] text-ink">
+      {children}
+    </h4>
+  ),
+  h5: ({ children }) => (
+    <h5 className="mt-8 font-display text-base font-bold leading-snug text-ink">{children}</h5>
+  ),
+  h6: ({ children }) => (
+    <h6 className="mt-8 font-display text-sm font-bold uppercase tracking-[0.08em] text-ink">
+      {children}
+    </h6>
+  ),
+  p: ({ children }) => (
+    <p className="mt-5 text-[15px] font-[430] leading-7 text-ink-muted sm:text-base sm:leading-8">
+      {children}
+    </p>
+  ),
+  strong: ({ children }) => <strong className="font-bold text-ink">{children}</strong>,
+  em: ({ children }) => <em className="italic text-ink">{children}</em>,
+  del: ({ children }) => (
+    <del className="text-ink-faint decoration-danger/55 decoration-2">{children}</del>
+  ),
+  mark: ({ children }) => (
+    <mark className="rounded-sm bg-warning-soft px-1 py-0.5 text-ink box-decoration-clone">
+      {children}
+    </mark>
+  ),
+  a: ({ children, href, title }) => {
     const external = href?.startsWith('http://') || href?.startsWith('https://');
     return (
       <a
         href={href}
-        className="font-medium text-accent-strong underline decoration-accent/35 underline-offset-4 hover:decoration-accent focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        title={title}
+        className="font-semibold text-accent-strong underline decoration-accent/35 decoration-1 underline-offset-4 transition-colors hover:decoration-accent focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
         rel={external ? 'noreferrer' : undefined}
         target={external ? '_blank' : undefined}
       >
@@ -31,27 +118,27 @@ const markdownComponents: Components = {
     );
   },
   ul: ({ children }) => (
-    <ul className="mt-4 list-disc space-y-2 pl-5 text-[14px] leading-6 text-ink-muted marker:text-accent">
+    <ul className="mt-5 list-disc space-y-2.5 pl-6 text-[15px] font-[430] leading-7 text-ink-muted marker:text-accent sm:text-base [&_p]:mt-0">
       {children}
     </ul>
   ),
   ol: ({ children, start }) => (
     <ol
       start={start}
-      className="mt-4 list-decimal space-y-2 pl-5 text-[14px] leading-6 text-ink-muted marker:font-semibold marker:text-accent-strong"
+      className="mt-5 list-decimal space-y-2.5 pl-6 text-[15px] font-[430] leading-7 text-ink-muted marker:font-bold marker:text-accent-strong sm:text-base [&_p]:mt-0"
     >
       {children}
     </ol>
   ),
-  li: ({ children }) => <li className="pl-1">{children}</li>,
+  li: ({ children }) => <li className="pl-1.5">{children}</li>,
   blockquote: ({ children }) => (
-    <blockquote className="mt-5 rounded-r-lg border-l-2 border-accent bg-accent-soft/45 px-4 py-3 [&>p:first-child]:mt-0">
+    <blockquote className="mt-6 rounded-r-xl border-l-[3px] border-accent bg-accent-soft/45 px-5 py-4 font-serif text-[15px] leading-7 text-ink [&>p:first-child]:mt-0 [&>p:last-child]:mb-0">
       {children}
     </blockquote>
   ),
-  hr: () => <hr className="my-8 border-0 border-t border-line" />,
+  hr: () => <hr className="my-10 border-0 border-t border-line" />,
   pre: ({ children }) => (
-    <pre className="mt-5 max-w-full overflow-x-auto rounded-xl border border-line bg-ink px-4 py-3 font-mono text-[12px] leading-6 text-canvas shadow-sm [&>code]:border-0 [&>code]:bg-transparent [&>code]:p-0 [&>code]:text-inherit">
+    <pre className="mt-6 max-w-full overflow-x-auto rounded-xl border border-line bg-ink px-4 py-4 font-mono text-[12px] leading-6 text-canvas shadow-sm [tab-size:2] [&>code]:border-0 [&>code]:bg-transparent [&>code]:p-0 [&>code]:text-inherit">
       {children}
     </pre>
   ),
@@ -62,7 +149,7 @@ const markdownComponents: Components = {
         className={cn(
           block
             ? className
-            : 'rounded border border-line bg-surface-muted px-1.5 py-0.5 font-mono text-[0.88em] text-ink'
+            : 'rounded border border-line bg-surface-muted px-1.5 py-0.5 font-mono text-[0.86em] font-medium text-ink'
         )}
       >
         {children}
@@ -70,20 +157,40 @@ const markdownComponents: Components = {
     );
   },
   table: ({ children }) => (
-    <div className="mt-5 overflow-x-auto rounded-xl border border-line">
-      <table className="w-full min-w-[600px] border-collapse text-left text-[12px] leading-5">
+    <div className="mt-6 overflow-x-auto rounded-xl border border-line shadow-sm">
+      <table className="w-full min-w-[600px] border-collapse text-left text-[13px] leading-5">
         {children}
       </table>
     </div>
   ),
   thead: ({ children }) => <thead className="bg-surface-muted text-ink">{children}</thead>,
   tbody: ({ children }) => <tbody className="divide-y divide-line bg-canvas">{children}</tbody>,
-  tr: ({ children }) => <tr className="align-top">{children}</tr>,
+  tr: ({ children }) => <tr className="align-top even:bg-surface-subtle/45">{children}</tr>,
   th: ({ children }) => (
-    <th className="border-r border-line px-3 py-2.5 font-semibold last:border-r-0">{children}</th>
+    <th
+      scope="col"
+      className="border-r border-line px-3 py-3 font-display font-bold last:border-r-0"
+    >
+      {children}
+    </th>
   ),
   td: ({ children }) => (
-    <td className="border-r border-line px-3 py-2.5 text-ink-muted last:border-r-0">{children}</td>
+    <td className="border-r border-line px-3 py-3 text-ink-muted last:border-r-0">{children}</td>
+  ),
+  figure: ({ children }) => (
+    <figure className="mt-7 overflow-hidden rounded-xl border border-line bg-surface-subtle">
+      {children}
+    </figure>
+  ),
+  figcaption: ({ children }) => (
+    <figcaption className="border-t border-line px-4 py-3 font-serif text-[13px] italic leading-6 text-ink-muted">
+      {children}
+    </figcaption>
+  ),
+  caption: ({ children }) => (
+    <caption className="caption-top border-b border-line bg-surface-subtle px-3 py-3 text-left font-serif text-[13px] italic leading-6 text-ink-muted">
+      {children}
+    </caption>
   ),
 };
 
@@ -92,8 +199,12 @@ export function TutorialMarkdown({
   className,
 }: Readonly<{ markdown: string; className?: string }>) {
   return (
-    <div className={className}>
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+    <div className={cn('tutorial-prose min-w-0 font-sans', className)}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm, remarkMath, remarkHighlight]}
+        rehypePlugins={[rehypeKatex]}
+        components={markdownComponents}
+      >
         {markdown}
       </ReactMarkdown>
     </div>

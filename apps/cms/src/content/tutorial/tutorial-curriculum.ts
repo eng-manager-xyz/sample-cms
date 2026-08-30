@@ -310,6 +310,10 @@ function countMarkdownWords(markdown: string): number {
     .replace(/```[\s\S]*?```/g, ' ')
     .replace(/~~~[\s\S]*?~~~/g, ' ')
     .replace(/`[^`]+`/g, ' ')
+    .replace(/\$\$[\s\S]*?\$\$/g, ' ')
+    .replace(/\\\[[\s\S]*?\\\]/g, ' ')
+    .replace(/\\\([\s\S]*?\\\)/g, ' ')
+    .replace(/(^|[^\\$])\$(?![$\s])(?:\\.|[^$\\\n])*\S\$/gm, '$1 ')
     .replace(/[[\]()*_#>|]/g, ' ');
   return prose.match(/[\p{L}\p{N}][\p{L}\p{N}'’_-]*/gu)?.length ?? 0;
 }

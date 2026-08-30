@@ -10,8 +10,14 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { useState } from 'react';
+import { ChapterQuestionnaire } from '@/components/tutorial/chapter-questionnaire';
 import { TutorialMarkdown } from '@/components/tutorial/tutorial-markdown';
 import { TutorialMediaLegend, TutorialSectionMedia } from '@/components/tutorial/tutorial-media';
+import {
+  ContentAnatomyFigure,
+  ScenarioComparisonFigure,
+} from '@/components/tutorial/tutorial-semantic-figures';
+import { TutorialStudyDeck } from '@/components/tutorial/tutorial-study-deck';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { tutorialCurriculum } from '@/content/tutorial/tutorial-content';
@@ -43,11 +49,13 @@ function MetricCard({
     <Card className="p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.11em] text-ink-faint">
+          <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.11em] text-ink-faint">
             {label}
           </p>
-          <p className="mt-1 text-xl font-semibold tracking-[-0.025em] text-ink">{value}</p>
-          <p className="mt-1 text-[10px] leading-4 text-ink-muted">{detail}</p>
+          <p className="font-display mt-1 text-xl font-bold tracking-[-0.025em] text-ink">
+            {value}
+          </p>
+          <p className="mt-1 text-[11px] leading-4 text-ink-muted">{detail}</p>
         </div>
         <span className="rounded-lg border border-accent/20 bg-accent-soft p-2 text-accent-strong">
           <Icon aria-hidden="true" className="size-4" />
@@ -78,12 +86,12 @@ function HealthSummary({ health }: Readonly<{ health: CmsHealthSummary }>) {
             <Database aria-hidden="true" className="size-4" />
           </span>
           <div>
-            <p className="text-xs font-semibold text-ink">
+            <p className="font-display text-sm font-bold text-ink">
               {health.healthy
                 ? 'Executable SQLite baseline is healthy'
                 : 'SQLite baseline needs attention'}
             </p>
-            <p className="mt-1 text-[10px] leading-4 text-ink-muted">
+            <p className="mt-1 text-[11px] leading-5 text-ink-muted">
               Schema v{health.schemaVersion} · {health.templateCount.toLocaleString()} templates ·{' '}
               {health.pageCount.toLocaleString()} pages · {health.publicationCount.toLocaleString()}{' '}
               publications
@@ -110,10 +118,10 @@ function TutorialContents({ chapters }: Readonly<{ chapters: TutorialChapter[] }
     <aside className="print:hidden xl:sticky xl:top-[72px] xl:max-h-[calc(100vh-88px)] xl:overflow-y-auto">
       <Card className="overflow-hidden">
         <div className="border-b border-line p-4">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.11em] text-accent-strong">
+          <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.11em] text-accent-strong">
             Tutorial contents
           </p>
-          <p className="mt-1 text-[11px] leading-5 text-ink-muted">
+          <p className="mt-1 text-xs leading-5 text-ink-muted">
             Follow the dependency chain or jump to a review question.
           </p>
         </div>
@@ -132,10 +140,10 @@ function TutorialContents({ chapters }: Readonly<{ chapters: TutorialChapter[] }
                     {chapter.number}
                   </span>
                   <span>
-                    <span className="block text-[11px] font-semibold leading-4 text-ink group-hover:text-accent-strong">
+                    <span className="font-display block text-xs font-bold leading-4 text-ink group-hover:text-accent-strong">
                       {chapter.title}
                     </span>
-                    <span className="mt-0.5 block text-[9px] leading-4 text-ink-faint">
+                    <span className="mt-0.5 block text-[10px] leading-4 text-ink-faint">
                       {chapter.kicker}
                     </span>
                   </span>
@@ -145,7 +153,7 @@ function TutorialContents({ chapters }: Readonly<{ chapters: TutorialChapter[] }
                     <li key={section.id}>
                       <a
                         href={`#section-${section.id}`}
-                        className="block rounded px-1.5 py-1 text-[9px] leading-4 text-ink-muted hover:bg-canvas hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                        className="block rounded px-1.5 py-1 text-[10px] leading-4 text-ink-muted hover:bg-canvas hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                       >
                         <span className="font-mono text-ink-faint">{section.number}</span>{' '}
                         {section.title}
@@ -156,6 +164,13 @@ function TutorialContents({ chapters }: Readonly<{ chapters: TutorialChapter[] }
               </li>
             ))}
           </ol>
+          <a
+            href="#tutorial-study-deck"
+            className="font-display mt-3 flex min-h-10 items-center justify-between rounded-lg border border-accent/20 bg-accent-soft/40 px-3 text-xs font-bold text-accent-strong outline-none hover:bg-accent-soft focus-visible:ring-2 focus-visible:ring-focus"
+          >
+            Spaced retrieval lab
+            <span className="font-mono text-[10px] font-medium">12 cards</span>
+          </a>
         </nav>
       </Card>
     </aside>
@@ -198,20 +213,20 @@ function TutorialSectionArticle({
           </p>
           <TimeBreakdown section={section} />
         </div>
-        <h3 className="mt-3 max-w-3xl text-xl font-semibold tracking-[-0.025em] text-ink sm:text-2xl">
+        <h3 className="font-display mt-3 max-w-3xl text-xl font-bold tracking-[-0.025em] text-ink sm:text-2xl">
           {section.title}
         </h3>
         <div className="mt-4 flex gap-3 rounded-xl border border-accent/20 bg-accent-soft/45 p-4">
           <CheckCircle2 aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-accent-strong" />
           <div>
-            <p className="text-[9px] font-semibold uppercase tracking-[0.11em] text-accent-strong">
+            <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.11em] text-accent-strong">
               Learning outcome
             </p>
-            <p className="mt-1 text-[12px] leading-5 text-ink">{section.learningOutcome}</p>
+            <p className="mt-1 text-[13px] leading-5 text-ink">{section.learningOutcome}</p>
           </div>
         </div>
         {section.prerequisite && section.prerequisiteId ? (
-          <p className="mt-3 text-[10px] text-ink-faint">
+          <p className="mt-3 text-[11px] text-ink-faint">
             Builds on{' '}
             <a
               href={`#section-${section.prerequisiteId}`}
@@ -221,7 +236,7 @@ function TutorialSectionArticle({
             </a>
           </p>
         ) : (
-          <p className="mt-3 text-[10px] text-ink-faint">Entry point · no prerequisite</p>
+          <p className="mt-3 text-[11px] text-ink-faint">Entry point · no prerequisite</p>
         )}
       </header>
 
@@ -236,15 +251,15 @@ function TutorialSectionArticle({
         <div className="flex items-start gap-3">
           <Gauge aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-warning-strong" />
           <div>
-            <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-warning-strong">
+            <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-warning-strong">
               Digest prompt
             </p>
-            <p className="mt-1 text-[12px] leading-6 text-ink">{section.digestPrompt}</p>
+            <p className="font-serif mt-1 text-sm leading-6 text-ink">{section.digestPrompt}</p>
           </div>
         </div>
       </aside>
 
-      <footer className="mt-5 flex flex-wrap items-center justify-between gap-2 border-t border-line pt-4 text-[9px] text-ink-faint">
+      <footer className="mt-5 flex flex-wrap items-center justify-between gap-2 border-t border-line pt-4 font-mono text-[10px] text-ink-faint">
         <span>{section.wordCount.toLocaleString()} parsed words</span>
         <a
           href="#tutorial-contents"
@@ -282,10 +297,10 @@ function TutorialChapterArticle({
               {chapter.number}
             </span>
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-accent-strong">
+              <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-accent-strong">
                 {chapter.kicker}
               </p>
-              <h2 className="mt-1 text-2xl font-semibold tracking-[-0.03em] text-ink">
+              <h2 className="font-display mt-1 text-2xl font-bold tracking-[-0.03em] text-ink">
                 {chapter.title}
               </h2>
             </div>
@@ -307,7 +322,18 @@ function TutorialChapterArticle({
           onActiveVisualChange={onActiveVisualChange}
         />
       ))}
-      <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-line bg-surface-subtle px-5 py-3 text-[9px] text-ink-faint sm:px-7">
+      {chapter.number === 2 ? (
+        <div className="border-t border-line px-5 py-7 sm:px-7 sm:py-8">
+          <ContentAnatomyFigure />
+        </div>
+      ) : null}
+      {chapter.number === 4 ? (
+        <div className="border-t border-line px-5 py-7 sm:px-7 sm:py-8">
+          <ScenarioComparisonFigure />
+        </div>
+      ) : null}
+      <ChapterQuestionnaire chapterId={chapter.id} />
+      <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-line bg-surface-subtle px-5 py-3 font-mono text-[10px] text-ink-faint sm:px-7">
         <span>
           Parsed from <code className="font-mono">{chapter.sourceId}.md</code>
         </span>
@@ -339,22 +365,23 @@ export function TutorialReport({ health }: Readonly<{ health: CmsHealthSummary }
               Architecture field guide
             </Badge>
             <Badge tone="neutral">6 chapters · 24 sections</Badge>
+            <Badge tone="neutral">18 checks · 12 teach-back cards</Badge>
             <Badge tone={health.healthy ? 'success' : 'danger'}>
               SQLite schema v{health.schemaVersion}
             </Badge>
           </div>
           <div className="mt-6 grid items-end gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
             <div>
-              <p className="text-[11px] font-[600] uppercase tracking-[0.14em] text-accent-strong">
+              <p className="font-mono text-[11px] font-[600] uppercase tracking-[0.14em] text-accent-strong">
                 From route trees to the wall of maps
               </p>
-              <h1 className="mt-2 max-w-4xl text-3xl font-[800] tracking-[-0.045em] text-ink sm:text-4xl lg:text-5xl">
+              <h1 className="font-display mt-2 max-w-4xl text-3xl font-[800] tracking-[-0.045em] text-ink sm:text-4xl lg:text-5xl">
                 {tutorialCurriculum.title}
               </h1>
-              <p className="mt-4 max-w-3xl text-sm font-[350] leading-6 text-ink-muted sm:text-base sm:leading-7">
+              <p className="font-serif mt-4 max-w-3xl text-base leading-7 text-ink-muted sm:text-lg sm:leading-8">
                 {tutorialCurriculum.subtitle}
               </p>
-              <p className="mt-4 text-[11px] font-[450] italic text-ink-faint">
+              <p className="font-serif mt-4 text-xs italic text-ink-faint">
                 For {tutorialCurriculum.audience}
               </p>
             </div>
@@ -364,46 +391,46 @@ export function TutorialReport({ health }: Readonly<{ health: CmsHealthSummary }
 
         <div className="grid gap-px bg-line sm:grid-cols-2 xl:grid-cols-4">
           <div className="bg-canvas p-4 sm:p-5">
-            <p className="text-[9px] font-semibold uppercase tracking-[0.11em] text-ink-faint">
+            <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.11em] text-ink-faint">
               Plan target
             </p>
-            <p className="mt-1 text-lg font-semibold text-ink">
+            <p className="font-display mt-1 text-lg font-bold text-ink">
               {formatMinutes(tutorialCurriculum.totalBudgetMinutes)}
             </p>
-            <p className="mt-1 text-[9px] leading-4 text-ink-muted">
+            <p className="mt-1 text-[11px] leading-4 text-ink-muted">
               Maximum uninterrupted reading path
             </p>
           </div>
           <div className="bg-canvas p-4 sm:p-5">
-            <p className="text-[9px] font-semibold uppercase tracking-[0.11em] text-ink-faint">
+            <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.11em] text-ink-faint">
               Read + media path
             </p>
-            <p className="mt-1 text-lg font-[700] text-success-strong">
+            <p className="font-display mt-1 text-lg font-bold text-success-strong">
               {formatMinutes(continuousMinutes)}
             </p>
-            <p className="mt-1 text-[9px] leading-4 text-ink-muted">
+            <p className="mt-1 text-[11px] leading-4 text-ink-muted">
               {totals.readingMinutes} min prose · {totals.mediaMinutes} min media
             </p>
           </div>
           <div className="bg-canvas p-4 sm:p-5">
-            <p className="text-[9px] font-semibold uppercase tracking-[0.11em] text-ink-faint">
+            <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.11em] text-ink-faint">
               Optional deep study
             </p>
-            <p className="mt-1 text-lg font-[300] text-ink">
+            <p className="font-display mt-1 text-lg font-bold text-ink">
               {formatMinutes(totals.scheduledMinutes)}
             </p>
-            <p className="mt-1 text-[9px] leading-4 text-ink-muted">
+            <p className="mt-1 text-[11px] leading-4 text-ink-muted">
               Adds {totals.digestMinutes} min of deliberate digest prompts
             </p>
           </div>
           <div className="bg-canvas p-4 sm:p-5">
-            <p className="text-[9px] font-semibold uppercase tracking-[0.11em] text-ink-faint">
+            <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.11em] text-ink-faint">
               Parsed manuscript
             </p>
-            <p className="mt-1 text-lg font-semibold text-ink">
+            <p className="font-display mt-1 text-lg font-bold text-ink">
               {totals.wordCount.toLocaleString()} words
             </p>
-            <p className="mt-1 text-[9px] leading-4 text-ink-muted">
+            <p className="mt-1 text-[11px] leading-4 text-ink-muted">
               {tutorialCurriculum.readingSpeedWordsPerMinute} words/min planning rate
             </p>
           </div>
@@ -440,7 +467,7 @@ export function TutorialReport({ health }: Readonly<{ health: CmsHealthSummary }
         />
       </section>
 
-      <aside className="mt-4 rounded-xl border border-success/25 bg-success-soft/45 p-4 text-[11px] leading-5 text-ink-muted">
+      <aside className="mt-4 rounded-xl border border-success/25 bg-success-soft/45 p-4 text-[13px] leading-6 text-ink-muted">
         <strong className="font-semibold text-success-strong">Pacing contract.</strong> Reading
         straight through the prose and media takes {formatMinutes(continuousMinutes)}, leaving{' '}
         {tutorialCurriculum.totalBudgetMinutes - continuousMinutes} minutes inside the three-hour
@@ -449,7 +476,7 @@ export function TutorialReport({ health }: Readonly<{ health: CmsHealthSummary }
       </aside>
 
       <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-canvas px-4 py-3">
-        <p className="text-[10px] leading-5 text-ink-muted">
+        <p className="text-xs leading-5 text-ink-muted">
           Interactive visuals explain the model. Persisted claims remain tied to SQLite status and
           repository evidence.
         </p>
@@ -470,6 +497,8 @@ export function TutorialReport({ health }: Readonly<{ health: CmsHealthSummary }
             />
           ))}
 
+          <TutorialStudyDeck />
+
           <Card className="overflow-hidden border-success/25">
             <div className="flex flex-col gap-4 bg-success-soft/35 p-5 sm:flex-row sm:items-start sm:justify-between sm:p-6">
               <div className="flex gap-3">
@@ -478,13 +507,13 @@ export function TutorialReport({ health }: Readonly<{ health: CmsHealthSummary }
                   className="mt-0.5 size-5 shrink-0 text-success-strong"
                 />
                 <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-success-strong">
+                  <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-success-strong">
                     Review-ready reading path
                   </p>
-                  <h2 className="mt-1 text-lg font-semibold text-ink">
+                  <h2 className="font-display mt-1 text-lg font-bold text-ink">
                     Continue from prose to executable proof
                   </h2>
-                  <p className="mt-2 max-w-2xl text-[11px] leading-5 text-ink-muted">
+                  <p className="mt-2 max-w-2xl text-[13px] leading-6 text-ink-muted">
                     Reproduce the bounded and million-row ledgers, inspect the live workbenches, and
                     carry unresolved TiDB and policy choices forward as named decisions rather than
                     hidden assumptions.

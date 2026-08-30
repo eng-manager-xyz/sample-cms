@@ -4,6 +4,7 @@ import { TutorialReport } from '@/components/tutorial/tutorial-report';
 import { loadCmsHealth } from '@/server-functions/cms.functions';
 
 export const Route = createFileRoute('/tutorial')({
+  loader: () => loadCmsHealth(),
   head: () => ({
     meta: [
       { title: 'Auteur | Architecture Tutorial' },
@@ -14,7 +15,6 @@ export const Route = createFileRoute('/tutorial')({
       },
     ],
   }),
-  loader: () => loadCmsHealth(),
   component: TutorialRoute,
 });
 

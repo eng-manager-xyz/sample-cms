@@ -137,6 +137,31 @@ describe('tutorial curriculum parser', () => {
     );
   });
 
+  test('does not count display, inline, or legacy-delimited TeX as prose', () => {
+    const baseline = parseTutorialCurriculum(plan, [{ id: 'test-source', markdown }]);
+    const texOnly = String.raw`$$
+M_v = \{p \in P_T \mid S_v(p)=\text{true}\}
+$$
+
+$S_v(p)=\text{true}$
+
+\(R_T(p)\)
+
+\[
+\operatorname{Serve}_T(u)=\Pi_{C(T)}[u]
+    \]`;
+    const withTex = markdown.replace(
+      'The first body includes a fenced example',
+      () => `${texOnly}\n\nThe first body includes a fenced example`
+    );
+    const curriculum = parseTutorialCurriculum(plan, [{ id: 'test-source', markdown: withTex }]);
+
+    expect(curriculum.chapters[0]?.sections[0]?.wordCount).toBe(
+      baseline.chapters[0]?.sections[0]?.wordCount
+    );
+    expect(curriculum.totals.wordCount).toBe(baseline.totals.wordCount);
+  });
+
   test('rejects Markdown timing that drifts from the plan', () => {
     expect(() =>
       parseTutorialCurriculum(plan, [

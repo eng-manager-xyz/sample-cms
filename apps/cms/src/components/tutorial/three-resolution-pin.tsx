@@ -285,11 +285,13 @@ function buildRuntime(
 }
 
 function selectedOperations(scenario: ScenarioFixture, placementKey: string) {
-  return scenario.layers.flatMap((layer) =>
-    layer.operations
-      .filter((operation) => operation.placementKey === placementKey)
-      .map((operation) => ({ layer, operation }))
-  );
+  const selected: Array<{ layer: VariantLayer; operation: LayerOperation }> = [];
+  for (const layer of scenario.layers) {
+    for (const operation of layer.operations) {
+      if (operation.placementKey === placementKey) selected.push({ layer, operation });
+    }
+  }
+  return selected;
 }
 
 export function ThreeResolutionPin({ scenario }: Readonly<{ scenario: ScenarioFixture }>) {
@@ -312,8 +314,9 @@ export function ThreeResolutionPin({ scenario }: Readonly<{ scenario: ScenarioFi
     scenario.pin.placements.find((item) => item.placementKey === selectedPlacementKey) ??
     scenario.pin.placements[0];
   const operations = selectedOperations(scenario, placement?.placementKey ?? '');
+  const matchingLayerIds = new Set(scenario.pin.matchingLayerIds);
   const matchingLayers = scenario.layers.filter(
-    (layer, index) => index === 0 || scenario.pin.matchingLayerIds.includes(layer.id)
+    (layer, index) => index === 0 || matchingLayerIds.has(layer.id)
   );
   const camoCase = scenario.requestCases.find((requestCase) => requestCase.lifecycle === 'live');
   const currentBeatCopy =
@@ -379,12 +382,12 @@ export function ThreeResolutionPin({ scenario }: Readonly<{ scenario: ScenarioFi
               {conflict ? 'Publication blocked' : 'Manifest materialized'}
             </Badge>
           </div>
-          <h3
+          <h4
             id={`${scenario.id}-resolution-title`}
-            className="text-lg font-semibold tracking-[-0.025em] text-ink"
+            className="font-display text-lg font-semibold tracking-[-0.025em] text-ink"
           >
             Layers to manifest · {scenario.name}
-          </h3>
+          </h4>
           <p className="mt-1 max-w-2xl text-sm leading-6 text-ink-muted">
             One canonical URL passes the Camo gate, crosses matching layers, resolves stable
             placement keys, and either stops or becomes an immutable document.
@@ -604,6 +607,10 @@ export function ThreeResolutionPin({ scenario }: Readonly<{ scenario: ScenarioFi
           </tbody>
         </table>
       </div>
+      <figcaption className="border-t border-line pt-3 font-serif text-xs italic leading-5 text-ink-muted">
+        The 3D scene is an aria-hidden depth cue. The ordered trace and provenance table carry the
+        complete, non-visual explanation of each resolution beat.
+      </figcaption>
     </figure>
   );
 }
