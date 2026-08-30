@@ -59,37 +59,189 @@ unaffected placements.
 ## Relational overview
 
 ```mermaid
-erDiagram
-  templates ||--o{ template_slots : declares
-  templates ||--o{ route_ingestions : imports
-  templates ||--o{ page_instances : owns
-  route_ingestions ||--o{ page_instances : last_ingestion
-  route_ingestions ||--o{ route_audit_log : records
-  page_instances ||--o{ route_audit_log : explains
-  page_instances ||--o{ page_slot_values : has
-  template_slots ||--o{ page_slot_values : defines
-  templates ||--o{ tags : defines
-  page_instances ||--o{ page_tags : assigned
-  tags ||--o{ page_tags : classifies
-  templates ||--o{ variants : owns
-  variants ||--o{ variant_revisions : versions
-  variant_revisions ||--o{ variant_operations : contributes
-  templates ||--o{ block_lineages : owns
-  block_types ||--o{ block_versions : types
-  block_lineages ||--o{ block_versions : versions
-  block_versions ||--o{ variant_operations : selected_by
-  templates ||--o{ publications : compiles
-  templates ||--o{ document_manifests : owns
-  document_manifests ||--o{ document_manifest_items : orders
-  block_versions ||--o{ document_manifest_items : points_to
-  variant_revisions ||--o{ document_manifest_items : proves_source
-  variant_operations ||--o{ document_manifest_items : proves_exact_set
-  publications ||--o{ published_page_documents : contains
-  page_instances ||--o{ published_page_documents : materializes
-  document_manifests ||--o{ published_page_documents : shared_by
-  templates ||--|| current_publications : activates
-  publications ||--o| current_publications : current
+classDiagram
+  direction LR
+
+  class templates {
+    +TEXT id
+    +TEXT key
+    +TEXT url_pattern
+  }
+  class template_slots {
+    +TEXT id
+    +TEXT template_id
+    +TEXT key
+  }
+  class route_ingestions {
+    +TEXT id
+    +TEXT template_id
+    +TEXT source_revision
+  }
+  class page_instances {
+    +TEXT id
+    +TEXT template_id
+    +TEXT canonical_url
+  }
+  class route_audit_log {
+    +TEXT id
+    +TEXT ingestion_id
+    +TEXT page_instance_id
+  }
+  class page_slot_values {
+    +TEXT page_instance_id
+    +TEXT slot_id
+    +TEXT normalized_value
+  }
+  class tags {
+    +TEXT id
+    +TEXT template_id
+    +TEXT namespace
+    +TEXT value
+  }
+  class page_tags {
+    +TEXT page_instance_id
+    +TEXT tag_id
+  }
+  class variants {
+    +TEXT id
+    +TEXT template_id
+    +TEXT active_revision_id
+  }
+  class variant_revisions {
+    +TEXT id
+    +TEXT variant_id
+    +TEXT selector_sql
+  }
+  class variant_operations {
+    +TEXT id
+    +TEXT variant_revision_id
+    +TEXT block_version_id
+  }
+  class block_types {
+    +TEXT id
+    +TEXT key
+    +INTEGER schema_version
+  }
+  class block_lineages {
+    +TEXT id
+    +TEXT template_id
+    +TEXT key
+  }
+  class block_versions {
+    +TEXT id
+    +TEXT lineage_id
+    +TEXT block_type_id
+  }
+  class publications {
+    +TEXT id
+    +TEXT template_id
+    +TEXT previous_publication_id
+  }
+  class document_manifests {
+    +TEXT id
+    +TEXT template_id
+    +TEXT content_hash
+  }
+  class document_manifest_items {
+    +TEXT manifest_id
+    +TEXT placement_key
+    +TEXT block_version_id
+    +TEXT source_variant_revision_id
+    +TEXT source_operation_id
+  }
+  class published_page_documents {
+    +TEXT publication_id
+    +TEXT page_instance_id
+    +TEXT manifest_id
+  }
+  class current_publications {
+    +TEXT template_id
+    +TEXT publication_id
+  }
+
+  templates "1" --> "0..*" template_slots : declares
+  templates "1" --> "0..*" route_ingestions : imports
+  templates "1" --> "0..*" page_instances : owns
+  route_ingestions "0..1" --> "0..*" page_instances : last ingestion
+  route_ingestions "1" --> "0..*" route_audit_log : records
+  page_instances "0..1" --> "0..*" route_audit_log : explains
+  page_instances "1" --> "0..*" page_slot_values : has
+  template_slots "1" --> "0..*" page_slot_values : defines
+  templates "1" --> "0..*" tags : defines
+  page_instances "1" --> "0..*" page_tags : assigned
+  tags "1" --> "0..*" page_tags : classifies
+  templates "1" --> "0..*" variants : owns
+  variants "1" --> "0..*" variant_revisions : versions
+  variant_revisions "1" --> "0..*" variant_operations : contributes
+  templates "1" --> "0..*" block_lineages : owns
+  block_types "1" --> "0..*" block_versions : types
+  block_lineages "1" --> "0..*" block_versions : versions
+  block_versions "0..1" --> "0..*" variant_operations : selected by
+  templates "1" --> "0..*" publications : compiles
+  templates "1" --> "0..*" document_manifests : owns
+  document_manifests "1" --> "0..*" document_manifest_items : orders
+  block_versions "1" --> "0..*" document_manifest_items : points to
+  variant_revisions "1" --> "0..*" document_manifest_items : proves source
+  variant_operations "1" --> "0..*" document_manifest_items : proves exact set
+  publications "1" --> "0..*" published_page_documents : contains
+  page_instances "1" --> "0..*" published_page_documents : materializes
+  document_manifests "1" --> "0..*" published_page_documents : shared by
+  templates "1" --> "0..1" current_publications : activates
+  publications "1" --> "0..1" current_publications : current
 ```
+
+The class fields shown here are the identifiers and main relationship keys, not every column. An
+arrow runs from the referenced or owning table to its dependent table; the multiplicities show how
+many rows may participate. The table catalog below contains the complete responsibilities and
+constraints.
+
+### How the final page is assembled
+
+The class diagram shows individual table relationships. This
+[Mermaid block diagram](https://mermaid.ai/open-source/syntax/block.html) groups those tables by
+responsibility and follows the data from authoring through the immutable publication boundary to
+the React renderer.
+
+```mermaid
+block-beta
+  columns 3
+
+  routes["Route inputs<br/>page_instances<br/>slots + tags"]
+  rules["Selection rules<br/>variants + revisions<br/>operations"]
+  content["Immutable block content<br/>block_versions.content_json"]
+
+  compiler["Publication compiler<br/>resolve winners + validate<br/>PublishedDocumentSchema"]:3
+
+  publication["Release snapshot<br/>publications.id<br/>= publication_id"]
+  page["Page snapshot<br/>published_page_documents<br/>evaluated placement JSON + manifest_id<br/>or rendered_document_json"]
+  manifest["Shared identity recipe<br/>document_manifests.id<br/>= manifest_id<br/>items record type/version/provenance"]
+
+  current["Active release pointer<br/>current_publications.publication_id"]
+  service["Public serving<br/>CmsService<br/>one expanded or two manifest reads"]
+  renderer["Final page<br/>validated PublishedDocument<br/>React block registry"]
+
+  routes --> compiler
+  rules --> compiler
+  content --> compiler
+  compiler --> publication
+  compiler --> page
+  compiler --> manifest
+  publication --> current
+  publication --> page
+  page --> manifest
+  current --> service
+  page --> service
+  manifest --> service
+  service --> renderer
+```
+
+For `/en-US/store/1001`, `current_publications.publication_id` selects
+`publication-store-1`. Its page snapshot supplies `resolved_data_json` and
+`manifest-store-mcd-v1`; that manifest supplies ordered block identity and provenance, while the
+page snapshot supplies the already-evaluated content keyed by stable placement key. `CmsService`
+combines those materialized pieces into the final validated document. Authoring
+`block_versions.content_json` is not read or evaluated on this public path; `manifest_id` and
+`publication_id` remain immutable pointers rather than final page content themselves.
 
 The migration uses composite foreign keys containing `template_id` where a cross-template pointer
 would violate the product model. Application services must keep that boundary even when a future
@@ -229,6 +381,132 @@ The standalone public catch-all and the explicit preview prefix are separate Tan
 separate discriminated view models. A public query parameter—including `edit_mode=true`—is ignored
 by the public route validator and cannot select authoring state. The `/admin` route holds no content
 rows; it is only a validated-origin handoff to the separately running CMS.
+
+### Concrete Store public-render sequence (`AUT-534`)
+
+The compact seed serves `http://localhost:3001/en-US/store/1001#overview` through the manifest
+lane shown below. The URL fragment stays in the browser and is never sent with the HTTP request.
+Development permits the loopback host, while the selected template retains its canonical
+`www.ubereats.com` domain.
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor Browser
+  participant Route as TanStack public catch-all
+  participant Service as CmsService
+  participant DB as SQLite read-only
+  participant Schema as PublishedDocumentSchema
+  participant Registry as React block registry
+
+  Note over Browser,Route: #overview remains in the browser
+  Browser->>Route: GET /en-US/store/1001
+  Route->>Route: Validate host/path and select tpl-store
+  Route->>Service: serve(tpl-store, /en-US/store/1001)
+  Service->>DB: Query 1: page + current publication + page document
+  DB-->>Service: live + publication-store-1 + manifest-store-mcd-v1 + evaluated placement content
+  Note over Service,DB: rendered_document_json is NULL, so use the manifest lane
+  Service->>DB: Query 2: ordered manifest identities + provenance
+  DB-->>Service: navigation, hero, promo, footer identities + winners
+  Note over Service,DB: 2 indexed reads; 0 selector, CEL, or authoring-content queries
+  Service->>Service: Join materialized content by stable placement key
+  Service->>Schema: Validate order, keys, types, versions, and provenance
+  Schema-->>Route: Validated PublishedDocument
+  Route->>Registry: Dispatch placements by blockType
+  Registry-->>Route: React block tree
+  Route-->>Browser: 200 rendered page
+  Browser->>Browser: Scroll to #overview
+```
+
+The following literal queries make this fixture easy to inspect in a read-only SQLite console.
+`CmsService` executes the same shapes with bound `templateId`, `canonicalUrl`, and `manifestId`
+parameters rather than constructing SQL from request text.
+
+#### How Query 1 feeds Query 2
+
+Query 1 locates the active immutable page and returns its `manifest_id` plus page-specific,
+publish-time-evaluated placement content. Query 2 uses that manifest ID to load the four ordered
+block identities and their provenance. The service combines both materialized results; neither
+query evaluates selectors, CEL, or mutable authoring content.
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor Learner as You in WebStorm
+  participant DB as auteur.db
+  participant Render as CmsService + React
+
+  Learner->>DB: Query 1<br/>template_id = tpl-store<br/>canonical_url = /en-US/store/1001
+  DB-->>Learner: route_status = live<br/>publication_id = publication-store-1<br/>manifest_id = manifest-store-mcd-v1<br/>resolved_data_json = evaluated placements
+  Note over Learner: Copy manifest_id from the Query 1 result
+  Learner->>DB: Query 2<br/>template_id = tpl-store<br/>manifest_id = manifest-store-mcd-v1
+  DB-->>Learner: Row 0 navigation<br/>Row 1 McDonald's hero<br/>Row 2 fast-food promo<br/>Row 3 chain-store footer
+  Learner->>Render: Join evaluated content to four ordered identities by placement key
+  Render-->>Learner: Render input for /en-US/store/1001
+```
+
+#### Query 1 — current publication and page document
+
+```sql
+SELECT
+  pages.route_status AS current_route_status,
+  current.publication_id,
+  documents.page_instance_id,
+  documents.manifest_id,
+  documents.document_hash,
+  documents.rendered_document_json,
+  documents.resolved_data_json
+FROM page_instances AS pages
+LEFT JOIN current_publications AS current
+  ON current.template_id = pages.template_id
+LEFT JOIN published_page_documents AS documents
+  ON documents.template_id = pages.template_id
+  AND documents.page_instance_id = pages.id
+  AND documents.publication_id = current.publication_id
+WHERE pages.template_id = 'tpl-store'
+  AND pages.canonical_url = '/en-US/store/1001';
+```
+
+This returns the live route, `publication-store-1`, `page-store-1001`,
+`manifest-store-mcd-v1`, the immutable document hash, and the page's
+`cms-published-placement-content-v1` map of already-evaluated placement content.
+`rendered_document_json` is `NULL`, selecting the manifest lane and its second identity read.
+
+#### Query 2 — ordered manifest blocks and provenance
+
+```sql
+SELECT
+  items.ordinal,
+  items.placement_key,
+  items.block_version_id,
+  types.key AS block_type,
+  items.source_variant_revision_id AS source_revision_id,
+  items.source_operation_id,
+  items.source_priority
+FROM document_manifest_items AS items
+JOIN document_manifests AS manifests
+  ON manifests.id = items.manifest_id
+JOIN block_versions AS versions
+  ON versions.id = items.block_version_id
+JOIN block_lineages AS lineages
+  ON lineages.id = versions.lineage_id
+JOIN block_types AS types
+  ON types.id = versions.block_type_id
+WHERE manifests.template_id = 'tpl-store'
+  AND manifests.id = 'manifest-store-mcd-v1'
+  AND lineages.template_id = manifests.template_id
+ORDER BY items.ordinal;
+```
+
+This returns four identity rows in render order: default navigation, McDonald's hero, fast-food
+promo, and chain-store footer. Each row includes the block type, exact immutable block version, and
+winning operation, revision, and priority used as publication provenance. It intentionally omits
+authoring `content_json`.
+
+For this fixture, `rendered_document_json` is `NULL`, so the first read returns the page pointer,
+manifest ID, and materialized content map, and the second returns four ordered manifest identities.
+An expanded publication would stop after the first read. Neither shape evaluates selectors or CEL,
+and neither reads mutable block content on the public path.
 
 ## Effective page and provenance inspection SQL
 
