@@ -454,12 +454,13 @@ or errors.
 
 ## Final five-phase result
 
-`bun run five-phase-pass` passed on 2026-08-30 from the isolated AUT-544 delivery branch at
-`510538336226d9dd3e9b290021cab8fc2e4c75b8`, after the fixed-template explorer, production-shaped
-authoring studio, CEL compilation, cascade inspection, atomic publication lifecycle, governed
-tutorial, standalone website, and isolated preview/admin seams were completed. The committed
-bounded and million-row ledgers retain their exact source commit and lockfile digest; the verifier
-rejects drift.
+`bun run five-phase-pass` passed on 2026-08-30 from consolidated `main` after the AUT-544 authoring
+history and AUT-545 current-architecture tutorial history were joined at merge commit
+`3201dd1c`, and the final architecture document and ERD were committed at `68a6f2d`. The tree
+contains the fixed-template explorer, production-shaped authoring studio, CEL compilation, cascade
+inspection, atomic publication lifecycle, current executable tutorial, standalone website, and
+isolated preview/admin seams. The committed bounded and million-row ledgers retain their exact
+source commit and lockfile digest; the verifier rejects drift.
 
 | Phase | Result | Owning Linear work |
 | --- | --- | --- |
@@ -467,11 +468,11 @@ rejects drift.
 | 2 — relational foundation | Database suite and populated v1→v6 upgrade passed; health/integrity/foreign-key checks passed. | AUT-516–AUT-519 |
 | 3 — selector, resolution, publication | Selector corpus, bounded CEL compilation, domain resolution, service CRUD, authoring preflight, atomic publication, exact rollback, and fixed selector/CEL-free serving passed. | AUT-520–AUT-525, AUT-539, AUT-542–AUT-543 |
 | 4 — HUD, website, and scenarios | TanStack HUD/tutorial, fixed-template explorer, three-pane authoring studio, standalone-website tests, fresh bounded proof, evidence verification, and both client/SSR/Nitro production builds passed. Public, preview, and admin route boundaries were exercised independently. | AUT-526–AUT-530, AUT-533–AUT-535, AUT-540–AUT-544 |
-| 5 — cross-workspace audit | Committed bounded and one-million ledgers verified; authoring/browser evidence, tutorial contract, required artifacts, boundaries, Biome, TypeScript, all tests, build, and Fallow passed with zero findings. | AUT-530–AUT-533, AUT-536, AUT-538–AUT-544 |
+| 5 — cross-workspace audit | Committed bounded and one-million ledgers verified; authoring/browser evidence, current-architecture tutorial contract, required artifacts, boundaries, Biome, TypeScript, all tests, build, and Fallow passed with zero findings. | AUT-530–AUT-533, AUT-536–AUT-545 |
 
-The workspace total was 309 tests and 2,666 assertions: CEL engine 15/50, database 9/60, domain
-72/778, service 18/197, scenarios 12/172, CMS UI/router/server/tutorial/authoring 140/1,052, and
-standalone website 43/357. Fallow reported zero issues across unused files, exports, types,
+The consolidated workspace total was 313 tests and 2,655 assertions: CEL engine 15/50, database
+9/60, domain 72/778, service 18/197, scenarios 12/172, CMS UI/router/server/tutorial/authoring
+144/1,041, and standalone website 43/357. Fallow reported zero issues across unused files, exports, types,
 dependencies, cycles, unresolved imports, boundary/policy violations, and stale suppressions.
 
 Production-browser smoke against the built server rendered `/`, all three template workbenches,
@@ -493,7 +494,7 @@ console, page, and request failure ledgers were empty, and response headers dist
 cacheability from private no-store preview output.
 
 The tutorial browser audit found 65 unique rendered IDs and no duplicates. Its six current native
-player instances represent five distinct reviewed capture bundles and each expose MP4, WebM, and a
+player instances represent four distinct reviewed capture bundles and each expose MP4, WebM, and a
 description track. The Chapter 5 scenario selector swaps one player in place with pressed-state
 feedback and no backward player anchors. Media tests verify derivative hashes, byte counts, exact
 cue timing and transcript text, manifest/schema-state coherence, the accepted illustration
