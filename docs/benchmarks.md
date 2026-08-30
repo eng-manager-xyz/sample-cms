@@ -454,23 +454,25 @@ or errors.
 
 ## Final five-phase result
 
-`bun run five-phase-pass` passed on 2026-08-29 from the final implementation tree after the
-persisted authoring HUD, governed tutorial, standalone website, and isolated preview/admin seams
-were completed. The committed bounded and million-row ledgers retain their own exact source
-commits and lockfile digests; the verifier rejects drift.
+`bun run five-phase-pass` passed on 2026-08-30 from the isolated AUT-544 delivery branch at
+`510538336226d9dd3e9b290021cab8fc2e4c75b8`, after the fixed-template explorer, production-shaped
+authoring studio, CEL compilation, cascade inspection, atomic publication lifecycle, governed
+tutorial, standalone website, and isolated preview/admin seams were completed. The committed
+bounded and million-row ledgers retain their exact source commit and lockfile digest; the verifier
+rejects drift.
 
 | Phase | Result | Owning Linear work |
 | --- | --- | --- |
 | 1 — shell and SQLite baseline | Frozen install unchanged; boundaries and 71-skill/115-file import digest passed; reset and deterministic schema-v6 seed passed. | AUT-515–AUT-519 |
 | 2 — relational foundation | Database suite and populated v1→v6 upgrade passed; health/integrity/foreign-key checks passed. | AUT-516–AUT-519 |
-| 3 — selector, resolution, publication | Selector corpus, domain resolution, service CRUD, atomic publication, rollback, and fixed selector-free serving passed. | AUT-520–AUT-525 |
-| 4 — HUD, website, and scenarios | TanStack HUD/tutorial and standalone-website tests, fresh bounded proof, evidence verification, and both client/SSR/Nitro production builds passed. Public, preview, and admin route boundaries were exercised independently. | AUT-526–AUT-530, AUT-533–AUT-535 |
-| 5 — cross-workspace audit | Committed bounded and one-million ledgers verified; tutorial contract, required artifacts, boundaries, Biome, TypeScript, all tests, build, and Fallow passed. | AUT-530–AUT-533, AUT-536 |
+| 3 — selector, resolution, publication | Selector corpus, bounded CEL compilation, domain resolution, service CRUD, authoring preflight, atomic publication, exact rollback, and fixed selector/CEL-free serving passed. | AUT-520–AUT-525, AUT-539, AUT-542–AUT-543 |
+| 4 — HUD, website, and scenarios | TanStack HUD/tutorial, fixed-template explorer, three-pane authoring studio, standalone-website tests, fresh bounded proof, evidence verification, and both client/SSR/Nitro production builds passed. Public, preview, and admin route boundaries were exercised independently. | AUT-526–AUT-530, AUT-533–AUT-535, AUT-540–AUT-544 |
+| 5 — cross-workspace audit | Committed bounded and one-million ledgers verified; authoring/browser evidence, tutorial contract, required artifacts, boundaries, Biome, TypeScript, all tests, build, and Fallow passed with zero findings. | AUT-530–AUT-533, AUT-536, AUT-538–AUT-544 |
 
-The workspace total was 176 tests and 1,808 assertions: database 8/57, domain 66/756, service
-11/128, scenarios 11/137, CMS UI/router/server/tutorial 42/552, and standalone website 38/178.
-Fallow reported zero issues across unused files, exports, dependencies, cycles, unresolved imports,
-boundary/policy violations, and stale suppressions.
+The workspace total was 309 tests and 2,666 assertions: CEL engine 15/50, database 9/60, domain
+72/778, service 18/197, scenarios 12/172, CMS UI/router/server/tutorial/authoring 140/1,052, and
+standalone website 43/357. Fallow reported zero issues across unused files, exports, types,
+dependencies, cycles, unresolved imports, boundary/policy violations, and stale suppressions.
 
 Production-browser smoke against the built server rendered `/`, all three template workbenches,
 `/publications/stores`, and `/tutorial` with live SQLite schema v6. The Store workbench persisted a fifth block,
@@ -498,5 +500,5 @@ cue timing and transcript text, manifest/schema-state coherence, the accepted il
 substitution provenance record, and—on the recorded environment with `ffprobe`
 available—the real codecs, pixel formats, frame geometry/rate, audio absence, and durations.
 
-Linear closure follows the clean gate. Each AUT-514–AUT-536 handoff names its acceptance evidence
-and points back to this report; the parent remains closed only while every child is Done.
+The AUT-538–AUT-544 Linear handoffs name their acceptance evidence and point back to this report;
+the parent is closed only after every child is Done and this clean gate is recorded.
