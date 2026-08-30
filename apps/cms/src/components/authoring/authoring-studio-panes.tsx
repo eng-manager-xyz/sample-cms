@@ -6,19 +6,15 @@ import {
   type BlockFormSaveInput,
   SchemaBlockForm,
 } from '@/components/authoring/schema-block-form';
-import { SelectorWorkspace } from '@/components/selector-workspace';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { publishedWebsiteHref, type WebsiteOriginState } from '@/data/authoring-studio';
 import type { ScenarioFixture } from '@/data/scenario-fixtures';
-import type { SelectorWorkspacePreviewInput } from '@/data/selector-workspace';
 import type {
   CmsCommand,
-  CmsCommandResult,
   CmsWorkspaceFieldInspection,
   CmsWorkspacePlacement,
   CmsWorkspaceSnapshot,
-  SelectorPreviewSnapshot,
 } from '@/data/sqlite-authoring';
 import { cn } from '@/lib/cn';
 
@@ -306,7 +302,6 @@ function HistoryPanel({ placement }: Readonly<{ placement?: CmsWorkspacePlacemen
 }
 
 export function AuthoringInspectorPane({
-  scenarioId,
   workspace,
   selectedPlacement,
   addingBlock,
@@ -321,26 +316,21 @@ export function AuthoringInspectorPane({
   onSave,
   onFormDirty,
   inspectField,
-  runCommand,
-  previewSelector,
 }: Readonly<{
-  scenarioId: ScenarioFixture['id'];
   workspace: CmsWorkspaceSnapshot;
   selectedPlacement?: CmsWorkspacePlacement;
   addingBlock: boolean;
   addInsertion?: BlockFormInsertion;
-  inspectorTab: AuthoringInspectorTab;
+  inspectorTab: Exclude<AuthoringInspectorTab, 'cascade'>;
   inspectorNavigationDisabled: boolean;
   pending: boolean;
   placementActionsDisabled: boolean;
   serverError: string | null;
-  onTabChange: (tab: AuthoringInspectorTab) => void;
+  onTabChange: (tab: Exclude<AuthoringInspectorTab, 'cascade'>) => void;
   onDiscardChanges: () => void;
   onSave: (input: BlockFormSaveInput) => Promise<void>;
   onFormDirty: (description: string) => void;
   inspectField: (source: string) => Promise<CmsWorkspaceFieldInspection>;
-  runCommand: (command: CmsCommand) => Promise<CmsCommandResult>;
-  previewSelector: (input: SelectorWorkspacePreviewInput) => Promise<SelectorPreviewSnapshot>;
 }>) {
   return (
     <aside className="min-h-0 rounded-xl border border-line bg-canvas xl:sticky xl:top-32 xl:max-h-[calc(100vh-9rem)] xl:overflow-y-auto">
@@ -348,7 +338,6 @@ export function AuthoringInspectorPane({
         {(
           [
             ['fields', 'Fields', GitBranch],
-            ['cascade', 'Cascade', Layers3],
             ['history', 'History', FileClock],
           ] as const
         ).map(([tab, label, Icon]) => (
@@ -400,7 +389,7 @@ export function AuthoringInspectorPane({
                 className="mb-4 rounded-lg border border-warning/25 bg-warning-soft p-3 text-[11px] leading-4 text-warning-strong"
               >
                 This selector does not match <code>{workspace.canonicalUrl}</code>. Block changes
-                are disabled; update the selector in Cascade or choose a matching scope.
+                are disabled; use View selector to update it or choose a matching scope.
               </p>
             ) : null}
             {addingBlock || selectedPlacement ? (
@@ -427,15 +416,6 @@ export function AuthoringInspectorPane({
               <p className="text-xs text-ink-muted">Add a block to begin authoring.</p>
             )}
           </>
-        ) : null}
-        {inspectorTab === 'cascade' ? (
-          <SelectorWorkspace
-            scenarioId={scenarioId}
-            workspace={workspace}
-            pending={pending}
-            runCommand={runCommand}
-            previewSelector={previewSelector}
-          />
         ) : null}
         {inspectorTab === 'history' ? <HistoryPanel placement={selectedPlacement} /> : null}
       </div>

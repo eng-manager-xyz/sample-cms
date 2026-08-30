@@ -2,6 +2,8 @@ import { describe, expect, test } from 'bun:test';
 
 import {
   AuthoringStudioSearchSchema,
+  authoringPanelSearch,
+  authoringScopeSearch,
   contentFromDraft,
   deriveBlockFormModel,
   draftValuesFromContent,
@@ -242,5 +244,58 @@ describe('AUT-541 schema-driven block form model', () => {
         environment: 'development',
       })
     ).toEqual({ status: 'unavailable', reason: 'invalid-config' });
+  });
+});
+
+describe('AUT-550 selector mode search transitions', () => {
+  test('opens and closes selector mode without changing page or scope', () => {
+    expect(
+      authoringPanelSearch({
+        canonicalUrl: '/en-US/store/1001',
+        scopeId: 'variant-store-fast-food',
+        panel: 'cascade',
+      })
+    ).toEqual({
+      canonicalUrl: '/en-US/store/1001',
+      scopeId: 'variant-store-fast-food',
+      panel: 'cascade',
+    });
+    expect(
+      authoringPanelSearch({
+        canonicalUrl: '/en-US/store/1001',
+        scopeId: 'variant-store-fast-food',
+        panel: 'fields',
+      })
+    ).toEqual({
+      canonicalUrl: '/en-US/store/1001',
+      scopeId: 'variant-store-fast-food',
+      panel: 'fields',
+    });
+    expect(
+      authoringPanelSearch({
+        canonicalUrl: '/en-US/store/1001',
+        scopeId: 'variant-store-default',
+        panel: 'cascade',
+      })
+    ).toEqual({
+      canonicalUrl: '/en-US/store/1001',
+      scopeId: 'variant-store-default',
+      panel: 'cascade',
+    });
+  });
+
+  test('clears a selected variant to default and exits selector-only mode', () => {
+    expect(
+      authoringScopeSearch({
+        canonicalUrl: '/en-US/store/1001',
+        nextScopeId: 'variant-store-default',
+        currentPanel: 'cascade',
+        nextScopeIsDefault: true,
+      })
+    ).toEqual({
+      canonicalUrl: '/en-US/store/1001',
+      scopeId: 'variant-store-default',
+      panel: 'fields',
+    });
   });
 });

@@ -1,13 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import { CheckCircle2, Eye, GitBranch, Layers3, Rocket, Save } from 'lucide-react';
+import { CheckCircle2, Eye, Rocket, Save } from 'lucide-react';
 import { useReducer, useRef, useState } from 'react';
-
+import { AuthoringScopeControl } from '@/components/authoring/authoring-scope-control';
 import {
   AuthoringCanvasPane,
   AuthoringInspectorPane,
   type AuthoringInspectorTab,
 } from '@/components/authoring/authoring-studio-panes';
+import {
+  AuthoringDocumentSurface,
+  AuthoringSelectorSurface,
+} from '@/components/authoring/authoring-studio-surface';
 import {
   type PublicationWorkflowOperation,
   PublicationWorkflowPanel,
@@ -17,10 +21,10 @@ import {
   type BlockFormInsertion,
   type BlockFormSaveInput,
 } from '@/components/authoring/schema-block-form';
+import { SelectorWorkspace } from '@/components/selector-workspace';
 import { TemplatePageNavigator } from '@/components/template-page-navigator';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Select } from '@/components/ui/select';
 import {
   AUTHORING_LIFECYCLE_LIVE_REGION_PROPS,
   authoringLifecycleLabel,
@@ -31,7 +35,12 @@ import {
   initialAuthoringLifecycle,
   isAuthoringLifecyclePending,
 } from '@/data/authoring-lifecycle';
-import { type WebsiteOriginState, websitePreviewHref } from '@/data/authoring-studio';
+import {
+  authoringPanelSearch,
+  authoringScopeSearch,
+  type WebsiteOriginState,
+  websitePreviewHref,
+} from '@/data/authoring-studio';
 import type { ContentPageNavigation } from '@/data/content-explorer';
 import type { ScenarioFixture } from '@/data/scenario-fixtures';
 import type { SelectorWorkspacePreviewInput } from '@/data/selector-workspace';
@@ -104,6 +113,8 @@ export function AuthoringStudio({
   const [addInsertion, setAddInsertion] = useState<BlockFormInsertion | null>(null);
   const addingBlock = addInsertion !== null;
   const inspectorTab = initialInspectorTab;
+  const selectorMode = inspectorTab === 'cascade';
+  const documentInspectorTab = inspectorTab === 'history' ? 'history' : 'fields';
   const [lifecycle, dispatchLifecycle] = useReducer(
     authoringLifecycleReducer,
     workspace.canonicalUrl,
@@ -398,10 +409,16 @@ export function AuthoringStudio({
     inspectCmsBlockField({ data: { scenarioId: scenario.id, canonicalUrl, source } });
 
   const chooseScope = (nextScopeId: string): void => {
+    const nextVariant = workspace.variants.find((variant) => variant.id === nextScopeId);
     void navigate({
       to: '/author/$templateId',
       params: { templateId: scenario.id },
-      search: { canonicalUrl, scopeId: nextScopeId, panel: inspectorTab },
+      search: authoringScopeSearch({
+        canonicalUrl,
+        nextScopeId,
+        currentPanel: inspectorTab,
+        nextScopeIsDefault: Boolean(nextVariant?.isDefault),
+      }),
     });
   };
 
@@ -409,7 +426,7 @@ export function AuthoringStudio({
     void navigate({
       to: '/author/$templateId',
       params: { templateId: scenario.id },
-      search: { canonicalUrl, scopeId: workspace.scopeId, panel: tab },
+      search: authoringPanelSearch({ canonicalUrl, scopeId: workspace.scopeId, panel: tab }),
       replace: true,
     });
   };
@@ -525,57 +542,24 @@ export function AuthoringStudio({
               {lifecycle.announcement}
             </p>
           </div>
-          <Button
-            variant="outline"
-            disabled={pending || hasUnsavedForm || defaultVariant?.id === workspace.scopeId}
-            onClick={() => {
+          <AuthoringScopeControl
+            variants={workspace.variants}
+            selectedScopeId={workspace.scopeId}
+            disabled={pending || hasUnsavedForm}
+            onSelectScope={chooseScope}
+            onViewSelector={viewSelector}
+            onClearSelector={() => {
               if (defaultVariant) chooseScope(defaultVariant.id);
             }}
-            title="Select the template default while keeping this preview page"
-          >
-            <Layers3 aria-hidden="true" className="size-4" /> Default
-          </Button>
-          <div className="min-w-44">
-            <label
-              className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.1em] text-ink-faint"
-              htmlFor="authoring-scope"
-            >
-              Template variation
-            </label>
-            <Select
-              id="authoring-scope"
-              className="h-9 w-full"
-              value={workspace.scopeId}
-              disabled={pending || hasUnsavedForm}
-              onChange={(event) => chooseScope(event.currentTarget.value)}
-            >
-              {workspace.variants.map((variant) => (
-                <option key={variant.id} value={variant.id}>
-                  P{variant.priority} · {variant.name}
-                  {variant.isDefault
-                    ? ' · template default'
-                    : variant.matchesSamplePage
-                      ? ' · matches preview'
-                      : ' · does not match preview'}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <Button
-            variant="outline"
-            disabled={pending || hasUnsavedForm}
-            onClick={viewSelector}
-            title="Open the template-scoped authored predicate and generated SQLite preview"
-          >
-            <GitBranch aria-hidden="true" className="size-4" /> View selector
-          </Button>
+          />
           <Button
             variant="outline"
             form={AUTHORING_BLOCK_FORM_ID}
             type="submit"
             disabled={
               formActionsDisabled ||
-              inspectorTab !== 'fields' ||
+              documentInspectorTab !== 'fields' ||
+              selectorMode ||
               !hasEditableForm ||
               !canSaveDraft(lifecycle)
             }
@@ -584,7 +568,7 @@ export function AuthoringStudio({
                 ? 'The selected scope does not match this canonical page'
                 : !hasEditableForm
                   ? 'Select or add a block to save'
-                  : inspectorTab === 'fields'
+                  : documentInspectorTab === 'fields' && !selectorMode
                     ? 'Save the current block draft'
                     : 'Open Fields to save'
             }
@@ -635,51 +619,63 @@ export function AuthoringStudio({
         />
       </div>
 
-      <div className="grid min-h-[calc(100vh-11rem)] gap-3 bg-surface-muted/50 p-3 xl:grid-cols-[minmax(520px,1fr)_390px]">
-        <AuthoringCanvasPane
-          scenarioId={scenario.id}
-          workspace={workspace}
-          websiteOrigin={websiteOrigin}
-          selectedPlacementKey={selectedPlacement?.placementKey}
-          addingBlock={addingBlock}
-          actionsDisabled={structureActionsDisabled}
-          onStartAdd={startAdd}
-          onSelectPlacement={selectPlacement}
-          runPlacementCommand={runPlacementCommand}
-        />
-        <AuthoringInspectorPane
-          scenarioId={scenario.id}
-          workspace={workspace}
-          selectedPlacement={selectedPlacement}
-          addingBlock={addingBlock}
-          {...(addInsertion ? { addInsertion } : {})}
-          inspectorTab={inspectorTab}
-          inspectorNavigationDisabled={hasUnsavedForm}
-          pending={pending}
-          placementActionsDisabled={formActionsDisabled}
-          serverError={serverError}
-          onTabChange={(tab) => {
-            if (hasUnsavedForm && tab !== 'fields') return;
-            changeInspectorTab(tab);
-          }}
-          onDiscardChanges={() => {
-            setAddInsertion(null);
-            setServerError(null);
-            dispatchLifecycle({ type: 'discard-local-changes' });
-          }}
-          onSave={saveBlock}
-          onFormDirty={(description) => {
-            setServerError(null);
-            setPublicationPreflight(null);
-            setPublicationPanelOpen(false);
-            setPublicationError(null);
-            dispatchLifecycle({ type: 'local-change', description });
-          }}
-          inspectField={inspectField}
-          runCommand={runCommand}
-          previewSelector={runSelectorPreview}
-        />
-      </div>
+      {selectorMode ? (
+        <AuthoringSelectorSurface
+          disabled={pending}
+          onReturnToDocument={() => changeInspectorTab('fields')}
+        >
+          <SelectorWorkspace
+            scenarioId={scenario.id}
+            workspace={workspace}
+            pending={pending}
+            runCommand={runCommand}
+            previewSelector={runSelectorPreview}
+          />
+        </AuthoringSelectorSurface>
+      ) : (
+        <AuthoringDocumentSurface>
+          <AuthoringCanvasPane
+            scenarioId={scenario.id}
+            workspace={workspace}
+            websiteOrigin={websiteOrigin}
+            selectedPlacementKey={selectedPlacement?.placementKey}
+            addingBlock={addingBlock}
+            actionsDisabled={structureActionsDisabled}
+            onStartAdd={startAdd}
+            onSelectPlacement={selectPlacement}
+            runPlacementCommand={runPlacementCommand}
+          />
+          <AuthoringInspectorPane
+            workspace={workspace}
+            selectedPlacement={selectedPlacement}
+            addingBlock={addingBlock}
+            {...(addInsertion ? { addInsertion } : {})}
+            inspectorTab={documentInspectorTab}
+            inspectorNavigationDisabled={hasUnsavedForm}
+            pending={pending}
+            placementActionsDisabled={formActionsDisabled}
+            serverError={serverError}
+            onTabChange={(tab) => {
+              if (hasUnsavedForm && tab !== 'fields') return;
+              changeInspectorTab(tab);
+            }}
+            onDiscardChanges={() => {
+              setAddInsertion(null);
+              setServerError(null);
+              dispatchLifecycle({ type: 'discard-local-changes' });
+            }}
+            onSave={saveBlock}
+            onFormDirty={(description) => {
+              setServerError(null);
+              setPublicationPreflight(null);
+              setPublicationPanelOpen(false);
+              setPublicationError(null);
+              dispatchLifecycle({ type: 'local-change', description });
+            }}
+            inspectField={inspectField}
+          />
+        </AuthoringDocumentSurface>
+      )}
 
       {publicationPanelOpen && publicationPreflight ? (
         <PublicationWorkflowPanel

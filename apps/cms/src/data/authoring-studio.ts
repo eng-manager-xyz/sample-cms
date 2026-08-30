@@ -23,6 +23,28 @@ export const AuthoringStudioSearchSchema = z.object({
   panel: z.enum(['fields', 'cascade', 'history']).optional(),
 });
 
+export function authoringScopeSearch(input: {
+  readonly canonicalUrl: string;
+  readonly nextScopeId: string;
+  readonly currentPanel: 'fields' | 'cascade' | 'history';
+  readonly nextScopeIsDefault: boolean;
+}): z.infer<typeof AuthoringStudioSearchSchema> {
+  return AuthoringStudioSearchSchema.parse({
+    canonicalUrl: input.canonicalUrl,
+    scopeId: input.nextScopeId,
+    panel:
+      input.nextScopeIsDefault && input.currentPanel === 'cascade' ? 'fields' : input.currentPanel,
+  });
+}
+
+export function authoringPanelSearch(input: {
+  readonly canonicalUrl: string;
+  readonly scopeId: string;
+  readonly panel: 'fields' | 'cascade' | 'history';
+}): z.infer<typeof AuthoringStudioSearchSchema> {
+  return AuthoringStudioSearchSchema.parse(input);
+}
+
 const FormFieldKindSchema = z.enum(['string', 'number', 'integer', 'boolean', 'object', 'array']);
 type FormFieldKind = z.infer<typeof FormFieldKindSchema>;
 
