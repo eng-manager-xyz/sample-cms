@@ -319,6 +319,44 @@ flowchart TD
   Remove --> Reveal["Resolve lower-layer winner again"]
 ```
 
+### 5.11 Publish into the standalone website
+
+The repository has two intentionally separate TanStack Start applications. `apps/cms` is the
+authoring and publication HUD on port `3000`; `apps/website` is the rendering surface on port
+`3001`. This keeps the useful part of Median/Profound's hybrid topology—a separate admin entry, an
+explicit preview namespace, a catch-all page route, and a block registry—without carrying over its
+remote fetch, CEL, Supabase, auth, or route-tree inheritance model.
+
+The executable path is:
+
+```text
+CMS authoring mutation
+  → selector-bounded draft resolution
+  → atomic publication + current_publications pointer
+  → website canonical-pattern registry
+  → readonly CmsService.serve(template, canonical URL)
+  → PublishedDocumentSchema
+  → synchronous block registry
+  → cacheable HTML + publication/hash provenance
+```
+
+The public catch-all recognizes exactly the three proof grammars and dispatches each grammar to one
+template. `CmsService.serveWithEvidence` reads the current Camo-owned `route_status` and active
+publication pointer in the same materialized query. Expanded documents require that single query;
+manifest documents add one ordered manifest/block query. Both shapes execute zero selector
+statements. The website calls `serve`, validates the returned value at the shared
+`PublishedDocumentSchema` boundary, and dispatches `navigation`, `hero`, `hero_alt`, `promo`, and
+`footer` synchronously by block type. Placement keys remain DOM-visible and provenance remains
+inspectable, so a block-type replacement changes the renderer without changing placement identity.
+
+Public URLs cannot enter authoring mode: adding `?edit_mode=true` does not alter their publication
+ID, document hash, cache policy, or data path. Draft resolution exists only under
+`/cms-preview_/*`, sends `private, no-store` plus `noindex` headers, validates the canonical host,
+and is disabled by default in production. `/admin` validates `CMS_ADMIN_ORIGIN` and offers a link
+to the separate CMS; it is not an iframe, reverse proxy, auth boundary, or alternate content API.
+These are prototype seams, not claims that production preview authorization or proxying is
+complete.
+
 ## 6. Resolution and conflict rules
 
 For one page and one template, resolution is:
@@ -468,6 +506,12 @@ incompatible revision, Auteur must follow an explicit stale-content policy rathe
 serving an untraceable mix. A future Auteur takeover can replace the Camo adapter while preserving
 the same route-authority contract; takeover is outside this prototype.
 
+For the standalone proof, the `website` server function occupies the Auteur serving/renderer side
+of the diagram. It opens SQLite read-only, rejects unsupported URL grammars and mismatched
+production hosts, calls only the materialized serving service, validates the immutable document,
+and returns cache metadata. The browser bundle receives only the validated document view model; it
+does not contain SQLite, selector, publication, or draft-resolution code.
+
 ## 9. Decisions, tradeoffs, and open questions
 
 The production recommendation is developed in
@@ -504,5 +548,7 @@ A reviewer should be able to answer “yes” to each question:
 - Selector, blocks, CRUD, resolution, and publication: `AUT-520`–`AUT-525`
 - HUD and scenarios: `AUT-526`–`AUT-529`
 - Evidence, this guide, and production ADR: `AUT-530`–`AUT-532`
+- Tutorial transfer and reviewed walkthroughs: `AUT-533`
+- Standalone publication rendering and isolated hybrid seams: `AUT-534`–`AUT-536`
 
 The CMS project in Linear remains authoritative when this guide and an issue differ.

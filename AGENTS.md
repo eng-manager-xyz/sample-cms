@@ -59,6 +59,10 @@ Preserve these invariants:
   surface. It never runs on the public request path.
 - Publication is atomic and retains a rollback target. Serving reads the
   materialized result and records provenance for each effective placement.
+- Every publication document crosses the strict shared `PublishedDocumentSchema`
+  boundary before persistence or rendering. Placement order is contiguous,
+  placement keys are unique and stable, and each placement carries its winning
+  block version and provenance.
 - Camo Press remains the route-existence and serving-status authority at the
   prototype's transition seam.
 
@@ -114,9 +118,47 @@ Use the checked-in Bun lockfile and root scripts:
   `bun run db:seed`
 - final cross-surface gate: `bun run five-phase-pass`
 
-TanStack file routes live in `apps/cms/src/routes`. Never hand-edit generated
-`routeTree.gen.ts`. Browser code must never import `bun:sqlite` or the database
+TanStack file routes live in `apps/cms/src/routes` and
+`apps/website/src/routes`. Never hand-edit either generated `routeTree.gen.ts`.
+Browser code must never import `bun:sqlite`, `@repo/cms-db`, or the database
 client; database access crosses a TanStack server-function boundary.
+
+The two local applications have separate responsibilities and ports:
+
+- `bun run dev:cms` serves the authoring HUD and tutorial on port 3000.
+- `bun run dev:website` serves published pages, isolated draft previews, and the
+  CMS gateway on port 3001.
+
+`bun run db:seed` must remain repeatable and publish compact Store, Eligible
+Vehicles, and structural-replacement representatives. Their canonical proof
+paths are `/en-US/store/1001`,
+`/en-US/eligible-vehicles/ca/premium`, and
+`/en-US/airport/hero-alt`.
+
+Preserve the website delivery lanes:
+
+- Public catch-all routes open SQLite read-only, call only the materialized
+  `CmsService.serve` path, validate the published document, and dispatch through
+  the shared block registry. They perform one expanded or two manifest reads and
+  zero selector SQL. Query parameters such as `edit_mode` never elevate a public
+  request into draft mode.
+- Authoring preview exists only under the explicit `/cms-preview_/*` prefix. It
+  may resolve normalized authoring state through a read-only server connection,
+  and its document/RPC responses stay `private, no-store` and `noindex`.
+- `/admin` is a no-store handoff page to the separate CMS origin, not an iframe,
+  reverse proxy, authentication endpoint, or open redirect. `CMS_ADMIN_ORIGIN`
+  must be a bare absolute HTTP(S) origin. Development and tests may default to
+  `http://localhost:3000`; other environments fail closed when it is absent or
+  invalid.
+- Outside development and tests, preview requires `CMS_ENABLE_PREVIEW=true` and
+  a canonical template host. `CMS_ALLOW_LOCAL_PREVIEW_HOST=true` and
+  `CMS_ALLOW_LOCAL_PUBLISHED_HOST=true` are explicit localhost exceptions for
+  production-mode smoke tests, not deployment defaults.
+
+Do not present the prototype gateway as production authorization. Preview
+authentication, host/deployment routing, cache invalidation/CDN policy, and
+production database credentials remain open decisions until their Linear work
+is accepted.
 
 The complete prior skill inventory is preserved under
 `.agents/skills/_imported/mind-palace`. Use the promoted stack-relevant skills

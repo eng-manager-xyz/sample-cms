@@ -2,6 +2,11 @@
 
 Linear issue: [AUT-516](https://linear.app/harwood/issue/AUT-516/design-the-generic-relational-schema-and-authoring-serving-boundary)
 
+Executable delivery proofs:
+[AUT-534](https://linear.app/harwood/issue/AUT-534/prove-sqlite-publication-with-a-standalone-tanstack-website-renderer)
+and
+[AUT-535](https://linear.app/harwood/issue/AUT-535/add-the-hybrid-admin-gateway-and-isolated-website-preview-route)
+
 This reference describes the current SQLite/Drizzle foundation in
 `packages/cms-db/drizzle/0000_slot_variant_foundation.sql`,
 `packages/cms-db/drizzle/0001_authoring-contract.sql`,
@@ -22,6 +27,34 @@ There is **no route-tree content inheritance** in this model. A URL path is repr
 slots, but parent/child path position never determines content precedence. Inheritance comes only
 from one template-owned default plus matching selector variants with explicit integer priority.
 Camo Press remains the route identity/status authority at the transition seam.
+
+### Executable publication-document contract
+
+The relational rows are not passed loose to React. `packages/cms-domain/src/published-document.ts`
+defines the strict `PublishedDocumentSchema` used at publication persistence and at both expanded
+and manifest serving boundaries:
+
+```text
+PublishedDocument
+  templateId
+  pageId
+  placements[]
+    placementKey       stable document position
+    order              zero-based and contiguous
+    blockType          registry dispatch key
+    blockVersionId     immutable content version
+    content            rendered JSON object
+    provenance
+      sourceRevisionId
+      sourceOperationId
+      sourcePriority
+```
+
+Unknown fields, duplicate placement keys, gaps in order, and missing provenance fail parsing rather
+than becoming partially rendered public output. `apps/website` then consumes the validated value
+through one shared block registry. Block-type replacement changes `blockType` and
+`blockVersionId` at the same `placementKey`; it does not invent a new page position or clone the
+unaffected placements.
 
 ## Relational overview
 
@@ -186,10 +219,16 @@ The migration's payload check rejects malformed tombstones that carry a block ve
 | Template/slot setup | Write templates/slots/default rows | None until publish |
 | Camo ingestion | Write ingestion/page/slot/tag/audit rows | None; current publication remains stable |
 | Selector preview | Read approved page/slot/tag projection and variant revisions | Optionally compare current published document |
+| Explicit website preview (`/cms-preview_/*`) | Resolve current draft by template and canonical URL through a read-only connection | None; response is no-store and never activates a publication |
 | Block edit | Append block version and variant revision/operations | None until publish |
 | Publication | Snapshot/read all required authoring inputs | Insert immutable publication, manifest, item, and page rows; then update pointer |
-| Public serve | No authoring-table or selector read | Read current pointer and immutable page/manifest/block rows |
+| Standalone public serve | No authoring-table or selector read | Read current pointer and immutable page/manifest/block rows through `CmsService.serve`, then validate `PublishedDocumentSchema` |
 | Rollback | No authoring mutation | Point `current_publications` at a retained prior publication |
+
+The standalone public catch-all and the explicit preview prefix are separate TanStack routes and
+separate discriminated view models. A public query parameter—including `edit_mode=true`—is ignored
+by the public route validator and cannot select authoring state. The `/admin` route holds no content
+rows; it is only a validated-origin handoff to the separately running CMS.
 
 ## Effective page and provenance inspection SQL
 
@@ -230,6 +269,10 @@ ORDER BY items.ordinal;
 For the foundation fixture, bind `tpl-store` and `/en-US/store/1001`. The expected source priorities
 in ordinal order are `0`, `30`, `20`, and `10`, matching default navigation, McDonald's hero,
 fast-food promo, and chain-store footer.
+
+`CmsService.serveWithEvidence` records the bounded read shape used by the standalone renderer: an
+expanded page needs one fixed SQL statement, while a shared-manifest page needs two. Both report
+`selectorSqlExecutions: 0`; selector complexity therefore cannot alter public request cost.
 
 To inspect the selected page's scalar dimensions and explicit tag memberships separately:
 
@@ -303,6 +346,8 @@ The narrow schema evidence commands are:
 bun run db:reset
 bun run db:seed
 bun run --filter @repo/cms-db test
+bun run --filter website test
+bun run check:boundaries
 ```
 
 Final acceptance also requires selector/resolution/publication tests and the evidence in

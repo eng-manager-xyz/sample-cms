@@ -30,17 +30,61 @@ See [the import provenance record](docs/import-provenance.md) for the retained a
 - Local SQLite through Bun's native driver and Drizzle ORM
 - Bun test, Biome, and Fallow
 
+The repository contains two TanStack Start applications: `apps/cms` is the authoring and
+architecture workbench, while `apps/website` is the standalone webpage renderer. They share the
+domain and service packages, not a browser-side database client.
+
 ## Commands
 
 ```bash
 bun install --frozen-lockfile
 bun run db:migrate
 bun run db:seed
-bun run dev
+bun run dev:cms
+bun run dev:website
 ```
 
-The application opens at `http://localhost:3000`. Its SQLite access remains behind TanStack server
-functions; browser modules cannot import the database or service packages directly.
+Run the two development commands in separate terminals. The CMS opens at
+`http://localhost:3000`; the website opens at `http://localhost:3001`. SQLite access remains behind
+TanStack server functions in both applications; browser modules cannot import the database or
+service packages directly.
+
+The repeatable `db:seed` command creates and publishes compact representatives of all three proof
+patterns. The standalone website gallery links to their public URLs:
+
+- Store: `http://localhost:3001/en-US/store/1001`
+- Eligible Vehicles: `http://localhost:3001/en-US/eligible-vehicles/ca/premium`
+- structural block replacement: `http://localhost:3001/en-US/airport/hero-alt`
+
+The Store pattern's canonical production host is `www.ubereats.com`; the other two use
+`www.uber.com`. Local development accepts loopback hosts so the same paths are runnable without DNS
+changes.
+
+Each public request matches a canonical route pattern, opens SQLite read-only, and delegates to
+`CmsService.serve`. The result must satisfy the strict `PublishedDocumentSchema` before the shared
+registry renders `navigation`, `hero`, `hero_alt`, `promo`, and `footer` blocks by stable placement
+key and type. Expanded publications take one SQLite read and manifest publications take two; both
+execute zero selector SQL. Public documents are immutable and non-editable, and a query such as
+`?edit_mode=true` never changes that lane or exposes a draft.
+
+The website keeps Median/Profound's useful hybrid topology explicit without importing their data
+or authentication stacks:
+
+- `/cms-preview_/*` resolves current authoring state through the read-only server boundary, returns
+  `private, no-store` and `noindex` responses, and never aliases the corresponding public URL.
+- `/admin` is a no-store, noindex gateway page that links to the separate CMS origin. In local
+  development it defaults to `http://localhost:3000`; other environments require a valid absolute
+  HTTP(S) origin in `CMS_ADMIN_ORIGIN` with no credentials, path, query, or hash.
+- Preview is available automatically only in development and tests. Outside those environments,
+  set `CMS_ENABLE_PREVIEW=true` and serve the request on the template's canonical host. The
+  `CMS_ALLOW_LOCAL_PREVIEW_HOST=true` flag permits localhost only for an explicit production-mode
+  smoke test; it does not enable preview by itself.
+- Public production-mode localhost smoke tests likewise require
+  `CMS_ALLOW_LOCAL_PUBLISHED_HOST=true`. Canonical production hosts do not need that exception.
+
+The gateway and preview routes prove separation and rendering, not production access control.
+Authentication, deployment routing, CDN/cache invalidation, and the final production preview
+policy remain explicit follow-up decisions.
 
 Open any `/templates/:templateId` route and choose **Block authoring** for the persisted workbench.
 The HUD can add, reorder, version, replace, hide, and revert stable placements; create linked or
@@ -105,6 +149,7 @@ manifest reuse, idempotent republish, atomic failure behavior, and rollback.
 
 ```text
 apps/cms                 TanStack Start authoring, inspection HUD, and architecture tutorial
+apps/website             TanStack Start public renderer, isolated draft preview, and CMS gateway
 packages/cms-db          SQLite schema, migrations, repositories, and deterministic fixtures
 packages/cms-domain      Selector, resolution, provenance, and publication domain logic
 packages/cms-service     Transactional authoring, preview, publish, rollback, and serve boundary
@@ -113,10 +158,11 @@ packages/typescript-config
 docs                     Process guide, measurements, and production ADR
 ```
 
-The primary HUD routes are `/`, `/templates/stores`, `/templates/eligible-vehicles`,
-`/templates/structural-proof`, and the corresponding `/publications/:templateId` views. UI
-authoring and publication controls persist bounded SQLite state. Explanatory projections are
-labeled as fixtures, and only the scenario evidence commands above create benchmark evidence.
+The primary CMS HUD routes are `/`, `/templates/stores`, `/templates/eligible-vehicles`,
+`/templates/structural-proof`, and the corresponding `/publications/:templateId` views. The website
+owns its public catch-all, `/cms-preview_/*`, and `/admin`. UI authoring and publication controls
+persist bounded SQLite state. Explanatory projections are labeled as fixtures, and only the
+scenario evidence commands above create benchmark evidence.
 
 ## Five-phase delivery gate
 
@@ -125,8 +171,10 @@ The repository-specific `five-phase-pass` maps the prior workflow onto this proj
 1. Median import and compiling local shell (`AUT-515`)
 2. Relational model foundation (`AUT-516`–`AUT-519`, plus block foundations)
 3. Authoring, deterministic resolution, and publication (`AUT-520`–`AUT-525`)
-4. HUD and all three proof scenarios (`AUT-526`–`AUT-529`)
-5. Correctness/scale evidence, process guide, TiDB ADR, and cross-surface audit (`AUT-530`–`AUT-532`)
+4. HUD, all three proof scenarios, standalone website, and isolated hybrid routes
+   (`AUT-526`–`AUT-529`, `AUT-534`, and `AUT-535`)
+5. Correctness/scale evidence, process guide, TiDB ADR, tutorial, and cross-surface documentation
+   (`AUT-530`–`AUT-533` and `AUT-536`)
 
 The project is not complete merely because the UI builds. Every phase must have its acceptance
 evidence, and the final workspace must migrate, seed, test, typecheck, lint, and build from a fresh

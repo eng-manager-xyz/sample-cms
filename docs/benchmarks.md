@@ -1,6 +1,6 @@
 # Prototype correctness and benchmark report
 
-Linear issues: [AUT-530](https://linear.app/harwood/issue/AUT-530/prove-determinism-crud-semantics-selector-safety-and-scale) for the proof ledger and [AUT-533](https://linear.app/harwood/issue/AUT-533/build-the-chaptered-architecture-tutorial-and-reviewed-ui-walkthroughs) for the governed tutorial transfer.
+Linear issues: [AUT-530](https://linear.app/harwood/issue/AUT-530/prove-determinism-crud-semantics-selector-safety-and-scale) for the proof ledger, [AUT-533](https://linear.app/harwood/issue/AUT-533/build-the-chaptered-architecture-tutorial-and-reviewed-ui-walkthroughs) for the governed tutorial transfer, and [AUT-534–AUT-536](https://linear.app/harwood/issue/AUT-536/update-the-auteur-tutorial-for-the-standalone-publishing-and-hybrid) for the standalone publishing proof and its documented hybrid seams.
 
 This is the human-readable index for two machine-readable evidence envelopes:
 
@@ -83,6 +83,7 @@ bun run --filter @repo/cms-domain test
 bun run --filter @repo/cms-service test
 bun run --filter @repo/cms-scenarios test
 bun run --filter cms test
+bun run --filter website test
 ```
 
 | Invariant | Executable evidence |
@@ -374,6 +375,11 @@ ADR can weigh expanded one-query reads against shared structures honestly.
 - Atomic write-failure and rollback tests use bounded fixtures; repeating destructive failure
   injection across one million rows would add cost without changing the transaction invariant.
 - Camo Press and Louvre are represented by tested transition contracts, not production traffic.
+- The standalone website proves a read-only local SQLite serving boundary and deterministic block
+  registry. It is not a deployed multi-host service, CDN integration, or production Camo adapter.
+- `/cms-preview_/*` proves route and cache isolation, but production authentication and authorization
+  are deliberately absent; preview fails closed unless explicitly enabled. `/admin` is a validated
+  link gateway, not a reverse proxy, iframe, SSO boundary, or replacement CMS API.
 - TiDB selector plans, transaction chunking, partition/global-index behavior, hot keys, constraints,
   and cache topology require the named proof spikes in ADR 0001.
 - The production policy for `not_live` precompilation, Camo revision drift, tag freshness/ownership,
@@ -381,22 +387,23 @@ ADR can weigh expanded one-query reads against shared structures honestly.
 
 ## Final five-phase result
 
-`bun run five-phase-pass` passed on 2026-08-29 from the clean final implementation tree after the
-persisted authoring HUD and AUT-533 tutorial transfer were completed. The committed bounded and million-row ledgers retain their
-own exact source commits and lockfile digests; the verifier rejects drift.
+`bun run five-phase-pass` passed on 2026-08-29 from the final implementation tree after the
+persisted authoring HUD, governed tutorial, standalone website, and isolated preview/admin seams
+were completed. The committed bounded and million-row ledgers retain their own exact source
+commits and lockfile digests; the verifier rejects drift.
 
 | Phase | Result | Owning Linear work |
 | --- | --- | --- |
 | 1 — shell and SQLite baseline | Frozen install unchanged; boundaries and 71-skill/115-file import digest passed; reset and deterministic schema-v6 seed passed. | AUT-515–AUT-519 |
 | 2 — relational foundation | Database suite and populated v1→v6 upgrade passed; health/integrity/foreign-key checks passed. | AUT-516–AUT-519 |
 | 3 — selector, resolution, publication | Selector corpus, domain resolution, service CRUD, atomic publication, rollback, and fixed selector-free serving passed. | AUT-520–AUT-525 |
-| 4 — HUD and scenarios | TanStack HUD and tutorial tests, fresh bounded proof, evidence verification, and client/SSR/Nitro production build passed. | AUT-526–AUT-530, AUT-533 |
-| 5 — cross-workspace audit | Committed bounded and one-million ledgers verified; boundaries, Biome, TypeScript, all tests, build, and Fallow passed. | AUT-530–AUT-533 |
+| 4 — HUD, website, and scenarios | TanStack HUD/tutorial and standalone-website tests, fresh bounded proof, evidence verification, and both client/SSR/Nitro production builds passed. Public, preview, and admin route boundaries were exercised independently. | AUT-526–AUT-530, AUT-533–AUT-535 |
+| 5 — cross-workspace audit | Committed bounded and one-million ledgers verified; tutorial contract, required artifacts, boundaries, Biome, TypeScript, all tests, build, and Fallow passed. | AUT-530–AUT-533, AUT-536 |
 
-The workspace total was 124 tests and 1,552 assertions: database 8/57, domain 62/750, service
-10/122, scenarios 6/97, and CMS UI/router/server/tutorial 38/526. Fallow reported zero issues across unused files,
-exports, dependencies, cycles, unresolved imports, boundary/policy violations, and stale
-suppressions.
+The workspace total was 176 tests and 1,808 assertions: database 8/57, domain 66/756, service
+11/128, scenarios 11/137, CMS UI/router/server/tutorial 42/552, and standalone website 38/178.
+Fallow reported zero issues across unused files, exports, dependencies, cycles, unresolved imports,
+boundary/policy violations, and stale suppressions.
 
 Production-browser smoke against the built server rendered `/`, all three template workbenches,
 `/publications/stores`, and `/tutorial` with live SQLite schema v6. The Store workbench persisted a fifth block,
@@ -407,6 +414,15 @@ publication route read the same live pointer, document hash, and two-publication
 route/table smoke also advanced the bounded instance page and exercised the unsafe
 live-without-document HTTP 503 fixture with no selector SQL; the browser console was clean.
 
+The separate built `website` server rendered the three real canonical examples at
+`/en-US/eligible-vehicles/ca/premium`, `/en-US/store/1001`, and `/en-US/airport/hero-alt` from their
+active immutable publications. `/admin` and `/cms-preview_/*` rendered as separate seams. The Store
+public URL retained publication `publication-store-1` and document hash
+`173f0c8b8cfaff9425c595896e3e1d9f4d39bb5b3f73a358582ba17198d6306d` when
+`?edit_mode=true` was added, while the preview route alone exposed the newer draft. The browser
+console, page, and request failure ledgers were empty, and response headers distinguished public
+cacheability from private no-store preview output.
+
 The tutorial browser audit found 65 unique rendered IDs and no duplicates. Its six current native
 player instances represent five distinct reviewed capture bundles and each expose MP4, WebM, and a
 description track. The Chapter 5 scenario selector swaps one player in place with pressed-state
@@ -415,5 +431,5 @@ cue timing and transcript text, manifest/schema-state coherence, the accepted il
 substitution provenance record, and—on the recorded environment with `ffprobe`
 available—the real codecs, pixel formats, frame geometry/rate, audio absence, and durations.
 
-Linear closure follows the clean gate. Each AUT-514–AUT-533 handoff names its acceptance evidence
+Linear closure follows the clean gate. Each AUT-514–AUT-536 handoff names its acceptance evidence
 and points back to this report; the parent remains closed only while every child is Done.

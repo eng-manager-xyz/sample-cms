@@ -6,7 +6,6 @@ export type PublicScenarioId = z.infer<typeof PublicScenarioIdSchema>;
 export const PublicPageRequestSchema = z.strictObject({
   canonicalUrl: z.string().regex(/^\/[A-Za-z0-9/_-]+$/),
 });
-export type PublicPageRequest = z.infer<typeof PublicPageRequestSchema>;
 
 export interface PublicTemplateMatch {
   readonly scenarioId: PublicScenarioId;

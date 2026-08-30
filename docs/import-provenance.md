@@ -24,6 +24,14 @@ audited pull-request head when the prototype was bootstrapped.
 - React 19, TypeScript, Tailwind CSS 4, Bun test, Biome, and Fallow conventions.
 - Relevant domain-independent UI patterns such as cards, badges, tables, tabs, dialogs, sheets,
   comboboxes, tooltips, and compact navigation.
+- Median's standalone renderer flow: a file-based public catch-all feeds a server assembly boundary,
+  then synchronously dispatches typed blocks through a small registry. The audited donors were
+  `apps/docs/src/routes/$.tsx`, `apps/renderer/lib/proxy-core.ts`, and
+  `apps/renderer/lib/tanstack/proxy.ts`; Auteur reimplements the flow over an active SQLite
+  publication instead of Median's services.
+- Median's reserved preview-route topology in `apps/docs/src/routes/[cms-preview_].tsx`,
+  `[cms-preview_].index.tsx`, and `[cms-preview_].$.tsx`. Auteur retains the explicit prefix so a
+  public route and an authoring preview cannot become the same request mode.
 
 The implementation is pared down and recomposed from shadcn-style primitives instead of copying
 Median's entire product-specific component graph.
@@ -36,18 +44,36 @@ generic dashboard data with the wall of maps, projection controls, layer stack, 
 vertical provenance pin, and publication trace. Components remain checked-in source primitives;
 there is no runtime dependency on the catalog or its CLI.
 
+The [Profound hybrid admin-panel proxy guide](https://cms.docs.tryprofound.com/hybrid/setup-admin-panel-proxy)
+was used as an additional topology reference: keep the authoring entry point separate, reserve an
+explicit preview namespace, and leave ordinary storefront routes in their published mode. Auteur's
+standalone TanStack application implements that intent as `/admin`, `/cms-preview_/*`, and a public
+catch-all. It does **not** copy the guide as a framework-specific proxy recipe.
+
 ## Replaced intentionally
 
 - PostgreSQL, Supabase/PostgREST, RLS, Supavisor, and route-binding inheritance.
 - WorkOS authentication and organization/website tenancy.
+- Median's CEL field-expression runtime and document-fetch semantics. Auteur selectors remain the
+  constrained, template-scoped DSL compiled by `@repo/cms-service`; public rendering evaluates
+  neither CEL nor selector SQL.
 - Vercel, Bunny, ImageKit, Sentry, GitHub deployment, and production API integrations.
 - Rust image/MCP/translation services, TensorZero, Terraform, and Docker deployment surfaces.
 - Louvre-style block multi-resolve and Median's existing document/route storage model.
 - Lexical, Monaco, media management, translation, and AI features that do not prove this model.
+- Median's `edit_mode` public-route rewrite, blind proxying, and Supabase/WorkOS-backed admin/API/auth
+  path. `/cms-preview_/*` is the only draft renderer, and `/admin` is a validated-origin handoff
+  page—not an iframe, reverse proxy, `/api` surface, or authentication implementation.
 
 The replacement is a local SQLite database whose schema is owned by committed Drizzle definitions
 and migrations. The selector-overlay Auteur domain remains authoritative even when a Median type or
 screen appears superficially similar.
+
+The standalone website reads that database with `readonly: true` and `create: false`. Public
+requests call the immutable `CmsService.serve` boundary and validate its `PublishedDocumentSchema`
+before a shared `navigation`/`hero`/`hero_alt`/`promo`/`footer` registry renders stable placement
+keys. Preview reads the current authoring resolution only under `/cms-preview_/*`; the two result
+types are deliberately discriminated and cannot be selected by a public query parameter.
 
 ## SQLite driver decision
 

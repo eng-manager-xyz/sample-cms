@@ -10,23 +10,22 @@ const JsonObjectSchema = z.record(z.string(), z.json());
 export const PreviewPageRequestSchema = z.strictObject({
   canonicalUrl: z.string().regex(/^\/[A-Za-z0-9/_-]+$/),
 });
-export type PreviewPageRequest = z.infer<typeof PreviewPageRequestSchema>;
 
-export const AuthoringSourceSchema = z.strictObject({
+const AuthoringSourceSchema = z.strictObject({
   kind: z.enum(['default', 'variant']),
   sourceRevisionId: z.string().min(1),
   sourcePriority: z.int().min(0),
 });
-export type AuthoringSource = z.infer<typeof AuthoringSourceSchema>;
+type AuthoringSource = z.infer<typeof AuthoringSourceSchema>;
 
-export const AuthoringTraceStepSchema = z.strictObject({
+const AuthoringTraceStepSchema = z.strictObject({
   operationKind: z.enum(['default', 'set', 'tombstone', 'order']),
   source: AuthoringSourceSchema,
   blockVersionId: z.string().min(1).optional(),
   order: z.int().min(0).optional(),
 });
 
-export const PreviewPlacementSchema = z.strictObject({
+const PreviewPlacementSchema = z.strictObject({
   placementKey: z.string().min(1),
   order: z.int().min(0),
   blockType: z.string().min(1),
@@ -38,8 +37,6 @@ export const PreviewPlacementSchema = z.strictObject({
     trace: z.array(AuthoringTraceStepSchema),
   }),
 });
-export type PreviewPlacement = z.infer<typeof PreviewPlacementSchema>;
-
 const PreviewPlacementListSchema = z
   .array(PreviewPlacementSchema)
   .superRefine((placements, ctx) => {
@@ -63,7 +60,7 @@ const PreviewPlacementListSchema = z
     }
   });
 
-export const PreviewTombstoneSchema = z.strictObject({
+const PreviewTombstoneSchema = z.strictObject({
   placementKey: z.string().min(1),
   source: AuthoringSourceSchema,
   hiddenBlockType: z.string().min(1).optional(),

@@ -35,7 +35,7 @@ export const CmsAdminOriginSchema = z
     return url.origin;
   });
 
-export const AdminGatewayStateSchema = z.discriminatedUnion('status', [
+const AdminGatewayStateSchema = z.discriminatedUnion('status', [
   z.strictObject({
     status: z.literal('ready'),
     origin: CmsAdminOriginSchema,

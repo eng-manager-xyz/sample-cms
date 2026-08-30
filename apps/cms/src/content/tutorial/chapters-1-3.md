@@ -98,22 +98,27 @@ This is why the route tree is a design trap rather than merely an outdated data 
 ## 1.3 — A Transition Architecture, Not a Big-Bang Rewrite
 
 > **Estimated time:** Read 6 min · Media 1 min · Digest 2 min
-> **Learning outcome:** You can draw the transitional Camo-to-Auteur request path and identify the revision seam that prevents route state and published content from becoming an untraceable mixture.
+> **Learning outcome:** You can draw the transitional Camo-to-Auteur request path, distinguish authoring, preview, and public delivery, and identify the revision seam that prevents route state and published content from becoming an untraceable mixture.
 
 Auteur is designed to grow into a larger role, but the prototype deliberately avoids a big-bang migration. The cleanest architecture is not always the safest migration plan. Route existence, route lifecycle, content authoring, publication, and rendering move on different timelines and carry different operational risks.
 
-The transitional request path is:
+The transitional public request path is:
 
 ```text
 public URL
   → Camo Press: route identity, canonical path, lifecycle status, route revision
-  → Auteur: current immutable publication for that page
-  → renderer: deterministic document input
+  → Auteur website: current immutable publication for that page
+  → PublishedDocumentSchema: validate the persisted boundary
+  → synchronous block registry: deterministic React output
 ```
 
 Camo Press remains intact. It answers whether the URL exists and whether policy allows a `200` or requires a `404`. Auteur begins owning the relational content model: templates, slots, tags, variants, blocks, effective-document resolution, publications, manifests, and provenance. Louvre is removed from the new content path because Auteur's publication already identifies the exact winning block versions.
 
-The sequence diagram in section 8 of `docs/process-engineering-guide.md` is the canonical picture. For a `not_live` or `archived` route, Camo returns the policy result. For a live route, it passes stable route information to Auteur. Auteur reads the current publication and the immutable page/manifest data. No selector SQL and no Louvre `multiResolve` execute on the public path.
+The sequence diagram in section 8 of `docs/process-engineering-guide.md` is the canonical picture. For a `not_live` or `archived` route, Camo returns the policy result. For a live route, it passes stable route information to Auteur. `apps/website` opens SQLite read-only, calls `CmsService.serve`, validates the materialized document, and dispatches each placement through the synchronous registry. Manifest mode uses two fixed reads and expanded mode uses one; both execute zero selector statements and never call Louvre `multiResolve`.
+
+The local application topology makes the separation executable. `apps/cms` runs on `http://localhost:3000` and owns authoring, selector inspection, publication controls, and rollback. `apps/website` runs on `http://localhost:3001` and owns reader-facing rendering. A normal canonical route in the website app is always published and non-editable. Even `?edit_mode=true` cannot elevate that route: the public catch-all discards search input and still reads the active publication.
+
+Draft preview has a different, explicit namespace. `/cms-preview_/<canonical-path>` resolves current authoring state and renders it through the same block components, with visible “Unpublished authoring preview” chrome, authoring provenance, `Cache-Control: private, no-store`, and `X-Robots-Tag: noindex, nofollow, noarchive`. `/admin` is a third boundary: it validates the server-only `CMS_ADMIN_ORIGIN` and offers a handoff link to the separate CMS. It is not an iframe, an authentication endpoint, or a blind open redirect. Keeping these routes distinct is how the prototype proves that a convenient query parameter cannot leak draft state onto the public path.
 
 The handoff needs more than a URL string. At minimum it carries:
 
@@ -130,15 +135,15 @@ Canonical identity also becomes explicit. One normalized `domain + canonical pat
 
 > **Requirement — one URL, one answer.** One canonical domain/path maps to exactly one template and one page instance, and an active publication maps that page to one immutable effective document.
 
-> **Prototype choice — local route adapter.** The prototype models Camo ingestion and lifecycle through deterministic local inputs and service integration tests. It does not claim to exercise production Camo traffic. `docs/benchmarks.md` lists that boundary among the known limitations.
+> **Prototype choice — local route adapter and isolated preview.** The prototype models Camo ingestion and lifecycle through deterministic local inputs and service integration tests. The explicit preview route is enabled for local development and can be deliberately enabled for a controlled proof environment; it is not a production authentication design. `docs/benchmarks.md` lists those boundaries among the known limitations.
 
 > **Open decision — stale-route policy.** Production still needs a policy for Camo revision drift, including what happens when route state changes during a long publication build and whether `not_live` pages are precompiled, retained, or omitted. The unresolved decision appears in section 9 of the process guide and in the TiDB proof spikes in `docs/adr/0001-tidb-materialization.md`.
 
-This staged ownership is a feature. Auteur can replace the content-resolution half while leaving route authority untouched. Later, a different adapter—or an Auteur-owned route subsystem—can implement the same contract. The relational content and publication invariants do not depend on pretending that takeover has already happened.
+This staged ownership is a feature. Auteur can replace the content-resolution half while leaving route authority untouched. Later, a different adapter—or an Auteur-owned route subsystem—can implement the same contract. The relational content and publication invariants do not depend on pretending that takeover has already happened, and the preview convenience does not weaken the published request contract.
 
 The transition also clarifies failure domains. An authoring edit does not mutate the current publication. A route ingestion does not automatically rewrite the served document. A failed publication does not advance the current pointer. A rollback repoints Auteur to a retained publication without rewriting Camo state. Each boundary has an owner and an observable revision.
 
-**Digest prompt:** Draw two boxes, Camo and Auteur. Put route identity/status/revision in Camo; put variants/blocks/publications in Auteur. Draw one arrow carrying the route seam. If you find yourself putting selector evaluation on the request arrow, you have crossed the boundary incorrectly.
+**Digest prompt:** Draw Camo, `apps/cms`, and `apps/website`. Put route identity/status/revision in Camo; put variants, blocks, and publication controls in the CMS; put read-only publication lookup and the registry in the website. Add the explicit preview and admin lanes. If a selector or `edit_mode` query reaches the public request arrow, you have crossed the boundary incorrectly.
 
 ## 1.4 — The Prototype as an Evidence Instrument
 
@@ -159,14 +164,17 @@ The process guide opens with four labels. They are the reading discipline for th
 
 This classification prevents a common architecture failure: treating whatever the prototype happens to do as the only acceptable production design. It also prevents the opposite failure: dismissing executable results as “just a prototype” when they demonstrate a genuine invariant.
 
-The application shell has its own provenance. `README.md` and `docs/import-provenance.md` record that Median pull request 15 donated the Bun/Turborepo structure, TanStack Start routing and server-function boundary, React/TypeScript conventions, and compact administrative visual language. Median did **not** donate the Auteur domain. PostgreSQL/Supabase integration, authentication, deployment surfaces, route-binding inheritance, existing document storage, and Louvre-style resolution were intentionally removed.
+The application shell has its own provenance. `README.md` and `docs/import-provenance.md` record that Median pull request 15 donated the Bun/Turborepo structure, TanStack Start catch-all routing and server-function boundary, synchronous block-registry pattern, React/TypeScript conventions, and compact administrative visual language. [Profound's hybrid admin-panel proxy guide](https://cms.docs.tryprofound.com/hybrid/setup-admin-panel-proxy) supplied a second useful topology clue: keep the normal route published while reserving explicit `/cms-preview_/*` and admin surfaces for editorial traffic. Auteur adapts those interface ideas to its relational compiler; it does not copy their storage or trust assumptions.
+
+Median did **not** donate the Auteur domain. PostgreSQL/Supabase integration, authentication, deployment surfaces, route-binding inheritance, existing document storage, and Louvre-style resolution were intentionally removed. The prototype also does not pretend to have Profound's framework-specific API/auth proxy: `/admin` is only a validated handoff to `CMS_ADMIN_ORIGIN`, and `/cms-preview_/*` calls Auteur's local draft resolver. The public catch-all never rewrites to preview because `edit_mode` appears in its query string.
 
 That distinction matters when reading the UI. A familiar sidebar or table may have Median ancestry, but the wall of maps, layer stack, vertical provenance pin, selector overlays, and publication trace express the new model. Appearance is not authority; the domain contracts and evidence are.
 
 The stack is intentionally small:
 
 - Bun workspaces and Turborepo coordinate the repository.
-- TanStack Start, Router, Query, and Table provide the application boundary.
+- `apps/cms` on port `3000` provides the TanStack authoring HUD; `apps/website` on port `3001` provides the standalone TanStack renderer.
+- TanStack Start, Router, Query, and Table provide the application boundaries.
 - React and TypeScript implement the HUD.
 - SQLite, isolated behind `@repo/cms-db`, makes the relational model locally executable.
 - Drizzle definitions and committed SQL migrations own schema change.
@@ -178,7 +186,7 @@ Evidence is similarly layered. `docs/evidence/bounded-report.json` contains a fa
 
 > **Measured finding — evidence is reproducible, not anonymous.** A number without its source commit, invocation, database shape, and host context is not accepted as benchmark evidence.
 
-The repository's five-phase gate reinforces the same idea. A buildable UI is not enough. The shell, schema, domain engine, authoring workflows, scenarios, evidence, documentation, and cross-workspace checks must agree. `README.md` lists those phases and maps them to the Linear work from AUT-515 through AUT-532.
+The repository's five-phase gate reinforces the same idea. A buildable UI is not enough. The shell, schema, domain engine, authoring workflows, scenarios, evidence, documentation, and cross-workspace checks must agree. `README.md` lists those phases. AUT-534 adds the standalone website publication proof, AUT-535 adds isolated preview and admin routes, and AUT-536 keeps this tutorial aligned with the executable result; the earlier issues remain the foundation those proofs exercise.
 
 As you continue, keep asking one question: **What kind of claim is this?** If it is a requirement, look for an invariant and a test. If it is a prototype choice, look for the boundary that permits replacement. If it is a measured finding, look for the evidence path. If it is open, do not let polished UI or confident prose make it sound decided.
 
@@ -360,7 +368,7 @@ On the serving side, it writes five kinds of rows.
 
 `document_manifest_items` stores each ordered placement in that manifest, including the winning block version and exact source revision, operation, and priority. A database trigger proves that the recorded source operation is the same-template `set` that selected the version.
 
-`published_page_documents` maps one page in one publication to canonical URL, route status, immutable context, document hash, and a manifest. Depending on materialization mode it may also carry the fully rendered document.
+`published_page_documents` maps one page in one publication to canonical URL, route status, immutable context, document hash, and a manifest. Depending on materialization mode it may also carry the fully rendered document. At the TypeScript boundary, `PublishedDocumentSchema` is the strict contract for that rendered value: it requires template and page identity, unique stable placement keys, contiguous order, immutable block-version pointers, typed content, and exact source revision, operation, and priority provenance. The service parses the value when compiling and again when serving, so malformed persisted JSON cannot quietly become a webpage.
 
 `current_publications` is the small mutable seam: one active publication pointer per template. Activation changes this pointer only after the immutable result is complete and validated. Rollback changes it to a retained prior publication; it does not rebuild or mutate either publication.
 
@@ -370,7 +378,9 @@ This boundary produces two critical safety properties.
 
 First, **draft work does not leak**. An author can create block versions, revise selectors, or introduce a conflict without changing the active publication. Until a compile succeeds and activates, public reads stay on the former immutable result.
 
-Second, **serving is selector-free**. The inspection SQL in `docs/data-model.md` joins the current publication, published page document, manifest items, block versions, and block types. It can return the ordered winner and provenance for one canonical URL without consulting variants, operations, slots, tags, or selector text.
+Second, **serving is selector-free**. The inspection SQL in `docs/data-model.md` joins the current publication, published page document, manifest items, block versions, and block types. It can return the ordered winner and provenance for one canonical URL without consulting variants, operations, slots, tags, or selector text. `apps/website` demonstrates the executable boundary with a read-only database connection and one `CmsService.serve(templateId, canonicalUrl)` call. The public budget is **1–2 SQLite reads and zero selector statements**: expanded publication takes one read and manifest reconstruction takes two, and both return the same validated page contract.
+
+The website turns that contract into React without another data model. Its public page view model fixes `renderMode` to `published` and `editable` to `false`, and each ordered placement is dispatched synchronously by `blockType`. Stable `placementKey` supplies both document identity and the React key. Known types such as `navigation`, `hero`, `hero_alt`, `promo`, and `footer` have renderers; an unknown published type is visible as an unsupported-block fallback instead of disappearing silently. Preview uses a discriminated sibling model with authoring provenance, but it is loaded only from the explicit preview namespace.
 
 The process resembles a compiler more than a view. An ordinary database view would recompute joins and selectors when read. Auteur snapshots inputs, checks conflicts, resolves and validates documents, canonicalizes and hashes results, writes a sealed namespace, audits it, and then activates it. This application-owned materialization is the decision recorded in `docs/adr/0001-tidb-materialization.md`.
 
@@ -380,11 +390,11 @@ The process resembles a compiler more than a view. An ordinary database view wou
 
 > **Measured finding — fixed public read shapes.** The evidence records a two-statement manifest reconstruction and a one-statement expanded-document fixture, both with zero selector statements. The requirement is selector isolation and bounded reads, not that every implementation use one particular statement count.
 
-The boundary also explains why authoring can be expensive without making every request expensive. Preview may parse a selector, execute an indexed query, calculate full match counts, and report overlaps. Publication may resolve every eligible page. Public serving performs the work already compiled for its URL.
+The boundary also explains why authoring can be expensive without making every request expensive. Preview may parse a selector, execute an indexed query, calculate full match counts, and report overlaps. Publication may resolve every eligible page. Public serving performs the work already compiled for its URL. A public query such as `?edit_mode=true` is discarded by route validation; it cannot select the preview model or make a placement editable.
 
 At this point the data model has all its nouns: maps, points, dimensions, layers, operations, block versions, publications, manifests, and pointers. The next chapter turns those nouns into a small algebra—an exact procedure for deciding what one page means.
 
-**Digest prompt:** Place `variant_operations` and `document_manifest_items` on opposite sides of a line. The first is an authoring instruction; the second is a compiled winning fact. Publication is the only workflow that legitimately crosses from the former to the latter.
+**Digest prompt:** Place `variant_operations` and `document_manifest_items` on opposite sides of a line. The first is an authoring instruction; the second is a compiled winning fact. Put `PublishedDocumentSchema` and the synchronous registry on the serving side, then explain why neither `edit_mode` nor a renderer may cross back into authoring state.
 
 # Chapter 3 — The Wall-of-Maps Algebra
 
@@ -609,6 +619,10 @@ The fold is “CSS for content” only up to a point. Like CSS, several selector
 
 Resolution gives us one effective document for one page. Publication applies that result across the eligible page set and turns it into a durable serving namespace.
 
+```text
+selector-driven authoring → atomic immutable publication → read-only public serve → synchronous block registry
+```
+
 Let `R_T(p)` be the resolved, provenance-rich document produced by the fold. Canonical encoding removes incidental input ordering, and hashing gives the document a stable content identity:
 
 \[
@@ -667,13 +681,15 @@ Public serving can now be written as a lookup rather than a resolution:
 \operatorname{Serve}_T(u)=\Pi_{C(T)}[u]
 \]
 
-The request follows the pointer, finds the page document for canonical URL `u`, and either returns its expanded payload or reconstructs it from its manifest plus immutable context. No `S_v`, `M_v`, slots, tags, variants, or operations are evaluated on this path.
+The request follows the pointer, finds the page document for canonical URL `u`, and either returns its expanded payload or reconstructs it from its manifest plus immutable context. In the standalone app, the concrete pipeline is `read-only SQLite → CmsService.serve → PublishedDocumentSchema → synchronous block registry → React`. It performs one expanded read or two manifest reads and zero selector statements. No `S_v`, `M_v`, slots, tags, variants, or operations are evaluated on this path.
+
+That sequence is intentionally ordered. The registry never receives authoring rows, and it never decides precedence. It renders only the already-ordered placement array and keys each component by stable `placementKey`. The schema never “fixes up” gaps or duplicates; it rejects them. A public route cannot choose draft resolution with a query parameter. The separate `/cms-preview_/*` lane may run the draft resolver, but its no-store/noindex response and visible preview chrome prevent it from masquerading as the current publication.
 
 > **Requirement — publication is atomic and rollbackable.** Partial output never becomes current, and the previous immutable result remains addressable.
 
 > **Prototype choice — manifest and expanded modes.** The service can prove a manifest reconstruction path and an expanded-document path. Production must choose or combine them using measured bytes, latency, cache behavior, and TiDB constraints.
 
-> **Measured finding — shared structure is not total storage.** The Store evidence records logical expanded rendered bytes, a manifest-mode page-row estimate, and actual SQLite allocation delta separately. The benchmark explicitly avoids claiming an end-to-end database saving merely because structural manifests deduplicate.
+> **Measured finding — shared structure is not total storage.** The Store evidence records logical expanded rendered bytes, a manifest-mode page-row estimate, and actual SQLite allocation delta separately. The standalone website additionally proves that both materialization shapes enter one strict publication contract and the same renderer registry. The benchmark explicitly avoids claiming an end-to-end database saving merely because structural manifests deduplicate.
 
 > **Open decision — production compilation shape.** SQLite proves the rules with a full-template transaction. The TiDB ADR proposes chunked hidden namespaces and compare-and-swap activation, and leaves incremental invalidation behind explicit proof spikes.
 

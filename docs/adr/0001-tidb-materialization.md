@@ -5,6 +5,10 @@
 - Linear issue: [AUT-532](https://linear.app/harwood/issue/AUT-532/translate-prototype-findings-into-a-tidbauteur-materialization-adr)
 - Evidence ledger: [Prototype benchmark report](../benchmarks.md)
 - Process model: [Auteur process-engineering guide](../process-engineering-guide.md)
+- Standalone delivery proof:
+  [AUT-534](https://linear.app/harwood/issue/AUT-534/prove-sqlite-publication-with-a-standalone-tanstack-website-renderer)
+- Hybrid-route isolation proof:
+  [AUT-535](https://linear.app/harwood/issue/AUT-535/add-the-hybrid-admin-gateway-and-isolated-website-preview-route)
 
 ## Context
 
@@ -49,6 +53,9 @@ Adopt a hybrid of the Linear options:
    after dependency capture and affected-page equivalence are proven against full rebuilds.
 7. Keep deterministic interpolation compatible with structural manifest sharing. Whether the hot
    serving row also stores a fully expanded payload is an evidence-gated optimization.
+8. Expose a strict, versionable published-document contract to renderers. Stable placement keys,
+   contiguous order, immutable block-version pointers, and winning provenance are validated before
+   a block registry receives the document; malformed materialization fails closed.
 
 This is the accepted production direction from the prototype, not a production scale or SLO claim.
 The committed one-million envelope and successful five-phase result in `docs/benchmarks.md` support
@@ -87,6 +94,33 @@ JSON so they cannot drift during prose edits.
 
 The measured shapes support the selected boundary, not TiDB throughput. The named TiDB proof spikes
 remain mandatory even after the local one-million run passes.
+
+## Standalone application proof
+
+`apps/website` makes the authoring/serving boundary executable in a second TanStack Start
+application instead of demonstrating it only inside the CMS HUD:
+
+- the public catch-all maps one supported canonical path and host to one template, opens SQLite
+  read-only, calls `CmsService.serve`, validates `PublishedDocumentSchema`, and synchronously
+  dispatches `navigation`, `hero`, `hero_alt`, `promo`, and `footer` through a shared block registry;
+- the three deterministic compact publications render Store
+  (`/en-US/store/1001`), Eligible Vehicles
+  (`/en-US/eligible-vehicles/ca/premium`), and structural replacement
+  (`/en-US/airport/hero-alt`), including the stable-key `hero` to `hero_alt` swap;
+- expanded and manifest serving remain bounded at one or two SQLite statements respectively, with
+  zero selector statements;
+- `/cms-preview_/*` is a separate no-store/noindex authoring-resolution lane. A public
+  `edit_mode` query is discarded and cannot expose a draft;
+- `/admin` validates `CMS_ADMIN_ORIGIN` and offers a handoff to the separately deployed CMS. It is
+  not an iframe, reverse proxy, API gateway, or authentication endpoint.
+
+This local topology follows the useful separation shown by Median and the
+[Profound hybrid admin-panel proxy guide](https://cms.docs.tryprofound.com/hybrid/setup-admin-panel-proxy),
+but it is evidence for the data boundary, not a production deployment design. Production preview
+authentication and authorization, host/origin routing, serving/database credentials, CDN cache
+keys and invalidation, and rollback-aware edge purge behavior remain open decisions. Preview fails
+closed outside development/test unless explicitly enabled; localhost host exceptions exist only for
+deliberate production-mode smoke tests.
 
 ## Authoritative and serving schemas
 
@@ -432,6 +466,10 @@ Only explicit priority decides precedence; same-priority same-placement overlap 
 - Database constraints and immutability enforcement differ between SQLite and TiDB.
 - Camo status drift requires an explicit serving and republish policy.
 - A large or skewed template can hotspot keys even when total row count is acceptable.
+- The local `/admin` handoff and `/cms-preview_/*` isolation do not supply production
+  authentication, authorization, or tenant routing.
+- Public cache headers prove cacheability, but CDN keying, invalidation, purge-on-rollback, and
+  deployment topology still require an operational contract.
 
 ## Required TiDB proof spikes
 
@@ -460,6 +498,7 @@ These are named blockers, not implied guarantees:
 - [TiDB transaction overview](https://docs.pingcap.com/tidb/stable/transaction-overview/)
 - [TiDB partitioning](https://docs.pingcap.com/tidb/stable/partitioned-table/)
 - [TiDB `CREATE TABLE` and global-index compatibility notes](https://docs.pingcap.com/tidb/stable/sql-statement-create-table/)
+- [Profound hybrid admin-panel proxy topology](https://cms.docs.tryprofound.com/hybrid/setup-admin-panel-proxy)
 - [CMS project](https://linear.app/harwood/project/cms-d9fccc6885e7/overview)
 
 ## Acceptance status
@@ -469,4 +508,6 @@ map, failure contract, and proof spikes are present. Bounded and one-million den
 query-plan, storage-shape, atomic-failure, rollback, and selector-free serving evidence is executable.
 The one-million envelope introduced no local resource blocker, and the complete five-phase gate
 passed from the clean final repository tree on 2026-08-29. The ADR is accepted with its TiDB proof
-spikes and production-assumption limits intact.
+spikes and production-assumption limits intact. AUT-534 and AUT-535 extend the local evidence with a
+standalone renderer and isolated hybrid routes; they do not close the production authentication,
+deployment, credential, or cache-policy decisions named above.

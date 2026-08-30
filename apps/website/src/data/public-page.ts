@@ -1,12 +1,6 @@
-import {
-  type PublishedDocument,
-  type PublishedPlacement,
-  PublishedPlacementSchema,
-} from '@repo/cms-domain';
+import { type PublishedDocument, PublishedPlacementSchema } from '@repo/cms-domain';
 import * as z from 'zod';
 import { PublicScenarioIdSchema } from './public-path';
-
-export type PublicPlacement = PublishedPlacement;
 
 export const PublicPageViewModelSchema = z.strictObject({
   scenarioId: PublicScenarioIdSchema,

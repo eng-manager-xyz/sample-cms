@@ -16,9 +16,21 @@ required_files=(
   "docs/evidence/store-1m.json"
   "packages/cms-db/package.json"
   "packages/cms-domain/package.json"
+  "packages/cms-domain/src/published-document.ts"
   "packages/cms-service/package.json"
   "packages/cms-scenarios/package.json"
+  "packages/cms-scenarios/src/compact-seed.ts"
   "apps/cms/package.json"
+  "apps/cms/src/content/tutorial/chapters-1-3.md"
+  "apps/cms/src/content/tutorial/chapters-4-6.md"
+  "apps/cms/src/content/tutorial/tutorial-current-content.test.ts"
+  "apps/website/package.json"
+  "apps/website/src/routes/$.tsx"
+  "apps/website/src/routes/[cms-preview_].tsx"
+  "apps/website/src/routes/[cms-preview_].$.tsx"
+  "apps/website/src/routes/admin.tsx"
+  "apps/website/src/server-functions/published-page.integration.test.tsx"
+  "apps/website/src/server/preview-page.server.test.ts"
   "scripts/run-scenario-evidence.ts"
   "scripts/verify-evidence.ts"
   "scripts/verify-imported-skills.ts"
@@ -46,8 +58,9 @@ printf 'Phase 3/5 — selector, resolution, and publication checks\n'
 bun run --filter @repo/cms-domain test
 bun run --filter @repo/cms-service test
 
-printf 'Phase 4/5 — HUD and scenario build\n'
+printf 'Phase 4/5 — HUD, standalone website, and scenario build\n'
 bun run --filter cms test
+bun run --filter website test
 bun run scripts/run-scenario-evidence.ts \
   --output .data/five-phase-scenario-proof.json \
   --database .data/five-phase-scenario.sqlite \

@@ -1,6 +1,6 @@
 ---
 name: five-phase-pass
-description: Run the Auteur CMS prototype through its five delivery phases, Linear acceptance evidence, cross-workspace drift audit, and final Bun/Turborepo/SQLite validation. Use when asked for /five-phase-pass, a full project gate, or completion of AUT-514 through AUT-532.
+description: Run the Auteur CMS prototype through its five delivery phases, Linear acceptance evidence, cross-workspace drift audit, and final Bun/Turborepo/SQLite validation. Use when asked for /five-phase-pass, a full project gate, or completion of AUT-514 through AUT-536.
 ---
 
 # Auteur five-phase pass
@@ -52,9 +52,9 @@ Owns `AUT-520`, `AUT-522` through `AUT-525`.
 - Force conflict and write failures; publication must remain atomic and the former pointer active.
 - Trace the serving query path and confirm it reads materialized output without selector execution.
 
-## Phase 4 — HUD and proof scenarios
+## Phase 4 — HUD, standalone website, and proof scenarios
 
-Owns `AUT-526` through `AUT-529`.
+Owns `AUT-526` through `AUT-530` and `AUT-534` through `AUT-535`.
 
 - Verify the wall of maps, map detail/projection, priority layer stack, three-pane editor, vertical
   pin inspector, draft/published diff, and publication surface use server-side pagination or bounded
@@ -64,12 +64,20 @@ Owns `AUT-526` through `AUT-529`.
   publication, idempotent republish, and benchmark.
 - Require at least 90% inherited placements in structural replacement and honest manifest/storage
   metrics in dense variation.
-- Build and smoke the primary routes with no console errors, failed requests, blank content, or
-  inaccessible primary controls.
+- Verify the standalone `website` app renders all three canonical pattern examples from the active
+  immutable publication using the shared published-document schema and synchronous block registry.
+- Trace the public catch-all and require zero selector statements, an active publication pointer,
+  one expanded-document read or one page-plus-manifest pair, stable placement keys, and cache
+  headers.
+- Prove `?edit_mode=true` cannot elevate a public request. Keep `/cms-preview_/*` on the explicit
+  draft-resolution path with `private, no-store`, and keep `/admin` as a validated gateway rather
+  than an iframe, reverse proxy, or second CMS implementation.
+- Build and smoke the CMS and website primary routes with no console errors, failed requests, blank
+  content, or inaccessible primary controls.
 
 ## Phase 5 — evidence, docs, ADR, and final audit
 
-Owns `AUT-530` through `AUT-532`, then closes `AUT-514`.
+Owns `AUT-530` through `AUT-533` and `AUT-536`, then closes `AUT-514`.
 
 - Regenerate the measured benchmark report with environment, row counts, timings, query plans,
   storage, and limitations. Never invent results.
@@ -77,6 +85,10 @@ Owns `AUT-530` through `AUT-532`, then closes `AUT-514`.
   envelope at `docs/evidence/store-1m.json` and validate both bounded and stress artifacts with
   `scripts/verify-evidence.ts`.
 - Finish the process-engineering guide and TiDB materialization ADR from measured evidence.
+- Keep the chaptered tutorial synchronized with the executable standalone publishing flow: author
+  in the CMS, publish atomically, serve by canonical URL in `website`, and inspect the isolated
+  preview/admin seams. Preserve reviewed media and exact tutorial navigation contracts unless the
+  implementation actually changes them.
 - Audit `README.md`, `AGENTS.md`, promoted skills, migrations, package scripts, routes, and Linear for
   stale Median/Postgres/Supabase/auth/deployment assumptions.
 - Run `bun run five-phase-pass`, which must cover lint, typecheck, tests, build, database/scenario
