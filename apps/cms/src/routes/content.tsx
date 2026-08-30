@@ -43,6 +43,7 @@ function ContentExplorerRoute() {
       schemaVersion={health.schemaVersion}
       section="content"
       breadcrumb="Content explorer"
+      templateId={search.template}
     >
       <ContentExplorer snapshot={snapshot} search={search} />
     </AppShell>

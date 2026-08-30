@@ -3,6 +3,7 @@ import type { LucideIcon } from 'lucide-react';
 import {
   BookOpen,
   ChevronDown,
+  ChevronRight,
   Database,
   FileStack,
   FolderTree,
@@ -38,13 +39,76 @@ interface NavigationItem {
   section: ShellSection;
 }
 
-const baseNavigation: NavigationItem[] = [
-  { label: 'Wall of Maps', icon: MapIcon, section: 'maps' },
-  { label: 'Content explorer', icon: FolderTree, section: 'content' },
-  { label: 'Tutorial', icon: BookOpen, section: 'tutorial' },
-  { label: 'Template workspace', icon: FileStack, section: 'template' },
-  { label: 'Publications', icon: Database, section: 'publications' },
-];
+interface NavigationBranch extends NavigationItem {
+  children: readonly NavigationItem[];
+}
+
+export const sidebarNavigation = [
+  {
+    label: 'Tutorial',
+    icon: BookOpen,
+    section: 'tutorial',
+    children: [{ label: 'Wall of Maps', icon: MapIcon, section: 'maps' }],
+  },
+  {
+    label: 'Content explorer',
+    icon: FolderTree,
+    section: 'content',
+    children: [
+      { label: 'Template workspace', icon: FileStack, section: 'template' },
+      { label: 'Publications', icon: Database, section: 'publications' },
+    ],
+  },
+] as const satisfies readonly NavigationBranch[];
+
+export function flattenSidebarNavigation(
+  navigation: readonly NavigationBranch[] = sidebarNavigation
+): readonly NavigationItem[] {
+  return navigation.flatMap((branch) => [branch, ...branch.children]);
+}
+
+export function isNavigationBranchActive(
+  branch: NavigationBranch,
+  activeSection: ShellSection
+): boolean {
+  return (
+    branch.section === activeSection ||
+    branch.children.some((item) => item.section === activeSection)
+  );
+}
+
+export function isNavigationItemUnavailable(
+  item: NavigationItem,
+  templateId?: ScenarioId
+): boolean {
+  return !templateId && (item.section === 'template' || item.section === 'publications');
+}
+
+export function getContentExplorerNavigationSearch(templateId?: ScenarioId) {
+  return { view: 'tree' as const, template: templateId ?? 'stores', q: '' };
+}
+
+const expandedBranches = {
+  tutorial: true,
+  content: true,
+} satisfies Record<(typeof sidebarNavigation)[number]['section'], boolean>;
+
+type NavigationBranchSection = keyof typeof expandedBranches;
+
+const navigationRowClassName =
+  'flex h-8 min-w-0 items-center rounded-md text-[12px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus';
+
+const collapsedNavigation = flattenSidebarNavigation();
+
+const navigationBranchIds = {
+  tutorial: 'tutorial',
+  content: 'content-explorer',
+} satisfies Record<NavigationBranchSection, string>;
+
+function NavigationIcon({ item }: Readonly<{ item: NavigationItem }>) {
+  const Icon = item.icon;
+  return <Icon aria-hidden="true" strokeWidth={1.8} className="size-3.5 shrink-0" />;
+}
 
 function SidebarLink({
   item,
@@ -52,20 +116,21 @@ function SidebarLink({
   activeSection,
   templateId,
   onNavigate,
+  nested = false,
 }: Readonly<{
   item: NavigationItem;
   collapsed: boolean;
   activeSection: ShellSection;
   templateId?: ScenarioId;
   onNavigate?: () => void;
+  nested?: boolean;
 }>) {
-  const Icon = item.icon;
   const active = item.section === activeSection;
-  const unavailable =
-    !templateId && (item.section === 'template' || item.section === 'publications');
+  const unavailable = isNavigationItemUnavailable(item, templateId);
   const className = cn(
-    'flex h-9 w-full items-center rounded-lg px-2 text-[12px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus',
-    collapsed ? 'justify-center' : 'gap-2.5',
+    navigationRowClassName,
+    'w-full',
+    collapsed ? 'justify-center px-2' : nested ? 'gap-2 px-2' : 'gap-2 px-1.5',
     active
       ? 'bg-canvas text-ink shadow-[0_0_0_1px_var(--color-line),0_1px_1px_rgba(0,0,0,0.03)]'
       : unavailable
@@ -74,7 +139,7 @@ function SidebarLink({
   );
   const contents = (
     <>
-      <Icon aria-hidden="true" strokeWidth={1.8} className="size-4 shrink-0" />
+      <NavigationIcon item={item} />
       <span className={cn('truncate', collapsed && 'sr-only')}>{item.label}</span>
     </>
   );
@@ -91,6 +156,7 @@ function SidebarLink({
     return (
       <Link
         to="/"
+        aria-current={active ? 'page' : undefined}
         onClick={onNavigate}
         title={collapsed ? item.label : undefined}
         className={className}
@@ -104,7 +170,8 @@ function SidebarLink({
     return (
       <Link
         to="/content"
-        search={{ view: 'tree', template: 'stores', q: '' }}
+        search={getContentExplorerNavigationSearch(templateId)}
+        aria-current={active ? 'page' : undefined}
         onClick={onNavigate}
         title={collapsed ? item.label : undefined}
         className={className}
@@ -118,6 +185,7 @@ function SidebarLink({
     return (
       <Link
         to="/tutorial"
+        aria-current={active ? 'page' : undefined}
         onClick={onNavigate}
         title={collapsed ? item.label : undefined}
         className={className}
@@ -132,6 +200,7 @@ function SidebarLink({
       <Link
         to="/author/$templateId"
         params={{ templateId }}
+        aria-current={active ? 'page' : undefined}
         onClick={onNavigate}
         title={collapsed ? item.label : undefined}
         className={className}
@@ -146,6 +215,7 @@ function SidebarLink({
       <Link
         to="/publications/$templateId"
         params={{ templateId }}
+        aria-current={active ? 'page' : undefined}
         onClick={onNavigate}
         title={collapsed ? item.label : undefined}
         className={className}
@@ -158,18 +228,112 @@ function SidebarLink({
   return null;
 }
 
+function NavigationTree({
+  activeSection,
+  templateId,
+  onNavigate,
+  idPrefix,
+}: Readonly<{
+  activeSection: ShellSection;
+  templateId?: ScenarioId;
+  onNavigate?: () => void;
+  idPrefix: string;
+}>) {
+  const [openBranches, setOpenBranches] = useState(expandedBranches);
+
+  return (
+    <ul className="space-y-1">
+      {sidebarNavigation.map((branch) => {
+        const branchSection = branch.section;
+        const branchOpen = openBranches[branchSection];
+        const branchActive = isNavigationBranchActive(branch, activeSection);
+        const branchSelfActive = branch.section === activeSection;
+        const branchId = `${idPrefix}-${navigationBranchIds[branchSection]}-items`;
+
+        return (
+          <li key={branch.section}>
+            <div
+              className={cn(
+                'group/branch flex min-w-0 items-center rounded-md',
+                branchActive && !branchSelfActive && 'bg-surface-muted/70'
+              )}
+              data-active-branch={branchActive || undefined}
+            >
+              <button
+                type="button"
+                aria-label={`${branchOpen ? 'Collapse' : 'Expand'} ${branch.label}`}
+                aria-expanded={branchOpen}
+                aria-controls={branchId}
+                onClick={() =>
+                  setOpenBranches((current) => ({
+                    ...current,
+                    [branchSection]: !current[branchSection],
+                  }))
+                }
+                className="grid size-8 shrink-0 place-items-center rounded-md text-ink-faint outline-none transition-colors hover:bg-canvas hover:text-ink focus-visible:ring-2 focus-visible:ring-focus"
+              >
+                <ChevronRight
+                  aria-hidden="true"
+                  strokeWidth={1.8}
+                  className={cn('size-3.5 transition-transform', branchOpen && 'rotate-90')}
+                />
+              </button>
+              <SidebarLink
+                item={branch}
+                collapsed={false}
+                activeSection={activeSection}
+                templateId={templateId}
+                onNavigate={onNavigate}
+              />
+              {branchActive && !branchSelfActive ? (
+                <span
+                  aria-hidden="true"
+                  className="mr-2 size-1.5 shrink-0 rounded-full bg-accent"
+                />
+              ) : null}
+            </div>
+
+            {branchOpen ? (
+              <ul
+                id={branchId}
+                aria-label={`${branch.label} destinations`}
+                className="relative ml-4 mt-1 space-y-0.5 border-l border-line pl-3"
+              >
+                {branch.children.map((item) => (
+                  <li key={item.section}>
+                    <SidebarLink
+                      item={item}
+                      collapsed={false}
+                      activeSection={activeSection}
+                      templateId={templateId}
+                      onNavigate={onNavigate}
+                      nested
+                    />
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 function SidebarContents({
   collapsed,
   onCollapse,
   activeSection,
   templateId,
   onNavigate,
+  idPrefix,
 }: Readonly<{
   collapsed: boolean;
   onCollapse?: () => void;
   activeSection: ShellSection;
   templateId?: ScenarioId;
   onNavigate?: () => void;
+  idPrefix: string;
 }>) {
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -194,7 +358,7 @@ function SidebarContents({
 
       <Separator />
 
-      <nav aria-label="Primary" className="flex-1 space-y-1 overflow-y-auto p-2.5">
+      <nav aria-label="Primary" className="flex-1 overflow-y-auto p-2.5">
         <p
           className={cn(
             'px-2 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-faint',
@@ -203,16 +367,28 @@ function SidebarContents({
         >
           Workspace
         </p>
-        {baseNavigation.map((item) => (
-          <SidebarLink
-            key={item.label}
-            item={item}
-            collapsed={collapsed}
+        {collapsed ? (
+          <ul className="space-y-1">
+            {collapsedNavigation.map((item) => (
+              <li key={item.section}>
+                <SidebarLink
+                  item={item}
+                  collapsed
+                  activeSection={activeSection}
+                  templateId={templateId}
+                  onNavigate={onNavigate}
+                />
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <NavigationTree
             activeSection={activeSection}
             templateId={templateId}
             onNavigate={onNavigate}
+            idPrefix={idPrefix}
           />
-        ))}
+        )}
       </nav>
 
       <div className="p-2.5">
@@ -299,6 +475,7 @@ export function AppShell({
           }}
           activeSection={section}
           templateId={templateId}
+          idPrefix="desktop-navigation"
         />
       </aside>
 
@@ -359,6 +536,7 @@ export function AppShell({
               activeSection={section}
               templateId={templateId}
               onNavigate={() => setMobileOpen(false)}
+              idPrefix="mobile-navigation"
             />
           </aside>
         </div>
