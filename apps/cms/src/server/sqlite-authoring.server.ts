@@ -1,4 +1,8 @@
 import type { CmsDatabaseClient } from '@repo/cms-db';
+import {
+  compactScenarioRegistry,
+  ensureCompactPublishedScenario,
+} from '@repo/cms-scenarios/compact-seed';
 import { CmsService, CmsServiceError } from '@repo/cms-service';
 import type { ScenarioId } from '@/data/scenario-fixtures';
 import type {
@@ -10,17 +14,10 @@ import type {
 
 const ACTOR = 'prototype-ui';
 
-export const editableScenarioRegistry = {
-  stores: { templateId: 'tpl-store', pageId: 'page-store-1001' },
-  'eligible-vehicles': {
-    templateId: 'eligible-vehicles',
-    pageId: 'eligible:en-US:CA:premium',
-  },
-  'structural-proof': {
-    templateId: 'structural-marketing',
-    pageId: 'structural-page:hero-alt',
-  },
-} as const satisfies Record<ScenarioId, { templateId: string; pageId: string }>;
+export const editableScenarioRegistry = compactScenarioRegistry satisfies Record<
+  ScenarioId,
+  { templateId: string; pageId: string }
+>;
 
 type JsonObject = Parameters<CmsService['createDefaultPlacement']>[1]['content'];
 
@@ -51,19 +48,6 @@ const blockExamples: Readonly<Record<string, JsonObject>> = {
 
 const randomId = (scope: string): string => `${scope}:${globalThis.crypto.randomUUID()}`;
 
-function eligibleCustomizedContent(blockTypeKey: string, placementKey: string): JsonObject {
-  if (blockTypeKey === 'navigation') return { label: 'California premium' };
-  if (blockTypeKey === 'hero') return { headline: 'Premium rideshare vehicles in California' };
-  if (blockTypeKey === 'footer') return { legal: `CA premium · ${placementKey}` };
-  return { message: `CA premium · ${placementKey}` };
-}
-
-function structuralDefaultContent(blockTypeKey: string, placementKey: string): JsonObject {
-  if (blockTypeKey === 'hero') return { headline: 'Airport rides made simple' };
-  if (blockTypeKey === 'footer') return { legal: 'Airport product terms' };
-  return { message: `Default ${placementKey}` };
-}
-
 function parseContentJson(value: string): JsonObject {
   let parsed: unknown;
   try {
@@ -77,344 +61,7 @@ function parseContentJson(value: string): JsonObject {
   return parsed as JsonObject;
 }
 
-function ensureHeroAltBlockType(client: CmsDatabaseClient, service: CmsService): void {
-  const existing = client.sqlite
-    .query<{ key: string }, []>("SELECT key FROM block_types WHERE key = 'hero_alt'")
-    .get();
-  if (existing) return;
-  service.registerBlockType({
-    id: 'block-type-hero-alt',
-    key: 'hero_alt',
-    name: 'Hero · split layout',
-    schemaVersion: 1,
-    schema: {
-      type: 'object',
-      required: ['headline', 'mapAssetKey'],
-      properties: {
-        headline: { type: 'string' },
-        mapAssetKey: { type: 'string' },
-      },
-      additionalProperties: false,
-    },
-    previewRenderer: { kind: 'wireframe', component: 'hero_alt' },
-  });
-}
-
-function createDefaultPlacement(
-  service: CmsService,
-  templateId: string,
-  index: number,
-  placementKey: string,
-  blockTypeKey: 'navigation' | 'hero' | 'promo' | 'footer',
-  content: JsonObject
-): void {
-  service.createDefaultPlacement(templateId, {
-    revisionId: `${templateId}:default:r${index + 2}`,
-    placementKey,
-    lineage: {
-      id: `${templateId}:lineage:${placementKey}`,
-      key: placementKey,
-      label: placementKey,
-    },
-    blockVersionId: `${templateId}:block:${placementKey}:v1`,
-    blockTypeKey,
-    content,
-    createdBy: 'editable-scenario-seed',
-    position: { kind: 'end' },
-  });
-}
-
-function seedEligibleVehicles(service: CmsService): void {
-  const templateId = editableScenarioRegistry['eligible-vehicles'].templateId;
-  service.createTemplate({
-    id: templateId,
-    key: templateId,
-    name: 'Eligible Vehicles',
-    domain: 'www.uber.com',
-    urlPattern: '/{locale}/eligible-vehicles/{state}/{slug}',
-    description: 'Bounded editable workbench for the dense proof scenario.',
-  });
-  for (const slot of [
-    {
-      id: 'editable-eligible-slot-locale',
-      key: 'locale',
-      label: 'Locale',
-      kind: 'variable',
-      pathPosition: 0,
-    },
-    {
-      id: 'editable-eligible-slot-resource',
-      key: 'resource',
-      label: 'Resource',
-      kind: 'static',
-      pathPosition: 1,
-      staticValue: 'eligible-vehicles',
-    },
-    {
-      id: 'editable-eligible-slot-state',
-      key: 'state',
-      label: 'State',
-      kind: 'variable',
-      pathPosition: 2,
-    },
-    {
-      id: 'editable-eligible-slot-slug',
-      key: 'slug',
-      label: 'Slug',
-      kind: 'variable',
-      pathPosition: 3,
-    },
-    { id: 'editable-eligible-slot-country', key: 'country', label: 'Country', kind: 'derived' },
-    { id: 'editable-eligible-slot-language', key: 'language', label: 'Language', kind: 'derived' },
-  ] as const) {
-    service.createTemplateSlot(templateId, slot);
-  }
-  service.createPage(templateId, {
-    id: 'eligible:en-US:CA:premium',
-    canonicalUrl: '/en-US/eligible-vehicles/ca/premium',
-    routeExternalId: 'camo:eligible:en-US:CA:premium',
-    routeStatus: 'live',
-    routeRevision: 'editable-eligible-v1',
-    context: { locale: 'en-US', state: 'CA', purpose: 'premium', country: 'US' },
-    slotValues: {
-      locale: 'en-US',
-      resource: 'eligible-vehicles',
-      state: 'ca',
-      slug: 'premium',
-      country: 'US',
-      language: 'en',
-    },
-  });
-  service.createPage(templateId, {
-    id: 'eligible:es-US:TX:delivery',
-    canonicalUrl: '/es-US/eligible-vehicles/tx/delivery',
-    routeExternalId: 'camo:eligible:es-US:TX:delivery',
-    routeStatus: 'live',
-    routeRevision: 'editable-eligible-v1',
-    context: { locale: 'es-US', state: 'TX', purpose: 'delivery', country: 'US' },
-    slotValues: {
-      locale: 'es-US',
-      resource: 'eligible-vehicles',
-      state: 'tx',
-      slug: 'delivery',
-      country: 'US',
-      language: 'es',
-    },
-  });
-
-  const placements = [
-    ['navigation', 'navigation', { label: 'Eligible Vehicles' }],
-    ['primary-hero', 'hero', { headline: 'Drive with Uber in {{ state }}' }],
-    ['eligibility', 'promo', { message: 'Review local eligibility' }],
-    ['requirements', 'promo', { message: 'Vehicle requirements' }],
-    ['vehicle-list', 'promo', { message: 'Eligible vehicle list' }],
-    ['legal-notice', 'footer', { legal: 'Local terms apply' }],
-    ['footer', 'footer', { legal: 'Uber legal' }],
-  ] as const;
-  placements.forEach(([placementKey, blockTypeKey, content], index) => {
-    createDefaultPlacement(service, templateId, index, placementKey, blockTypeKey, content);
-  });
-
-  const variantId = 'editable-eligible-exact';
-  service.createVariant(templateId, {
-    id: variantId,
-    revisionId: `${variantId}:r1`,
-    key: 'ca-premium-exact',
-    name: 'CA premium exact',
-    priority: 40,
-    status: 'active',
-    selector: "country = 'US' AND state = 'ca' AND slug = 'premium'",
-    createdBy: 'editable-scenario-seed',
-    mode: 'linked',
-  });
-  placements.forEach(([placementKey, blockTypeKey, _content], index) => {
-    service.copyOnWritePlacement(templateId, variantId, 'eligible:en-US:CA:premium', placementKey, {
-      revisionId: `${variantId}:r${index + 2}`,
-      blockVersionId: `${templateId}:exact:${placementKey}:v2`,
-      content: eligibleCustomizedContent(blockTypeKey, placementKey),
-      createdBy: 'editable-scenario-seed',
-    });
-  });
-  service.publish(templateId, {
-    id: 'editable-eligible-publication-1',
-    createdBy: 'editable-scenario-seed',
-  });
-}
-
-function seedStructuralProof(client: CmsDatabaseClient, service: CmsService): void {
-  ensureHeroAltBlockType(client, service);
-  const templateId = editableScenarioRegistry['structural-proof'].templateId;
-  service.createTemplate({
-    id: templateId,
-    key: templateId,
-    name: 'Structural replacement',
-    domain: 'www.uber.com',
-    urlPattern: '/{locale}/airport/{slug}',
-    description: 'Bounded editable workbench with 24 default placements.',
-  });
-  for (const slot of [
-    {
-      id: 'editable-structural-slot-locale',
-      key: 'locale',
-      label: 'Locale',
-      kind: 'variable',
-      pathPosition: 0,
-    },
-    {
-      id: 'editable-structural-slot-resource',
-      key: 'resource',
-      label: 'Resource',
-      kind: 'static',
-      pathPosition: 1,
-      staticValue: 'airport',
-    },
-    {
-      id: 'editable-structural-slot-slug',
-      key: 'slug',
-      label: 'Slug',
-      kind: 'variable',
-      pathPosition: 2,
-    },
-    {
-      id: 'editable-structural-slot-code',
-      key: 'airport_code',
-      label: 'Airport code',
-      kind: 'derived',
-    },
-  ] as const) {
-    service.createTemplateSlot(templateId, slot);
-  }
-  for (const [slug, code] of [
-    ['current', 'PDX'],
-    ['hero-alt', 'LAX'],
-  ] as const) {
-    service.createPage(templateId, {
-      id: `structural-page:${slug}`,
-      canonicalUrl: `/en-US/airport/${slug}`,
-      routeExternalId: `camo:structural:${slug}`,
-      routeStatus: 'live',
-      routeRevision: 'editable-structural-v1',
-      context: { locale: 'en-US', slug, airportCode: code },
-      slotValues: { locale: 'en-US', resource: 'airport', slug, airport_code: code },
-    });
-  }
-
-  const placementKeys = [
-    'primary-hero',
-    'announcement-promo',
-    ...Array.from({ length: 21 }, (_, index) => `section-${String(index + 1).padStart(2, '0')}`),
-    'footer',
-  ];
-  placementKeys.forEach((placementKey, index) => {
-    const blockTypeKey =
-      placementKey === 'primary-hero' ? 'hero' : placementKey === 'footer' ? 'footer' : 'promo';
-    createDefaultPlacement(
-      service,
-      templateId,
-      index,
-      placementKey,
-      blockTypeKey,
-      structuralDefaultContent(blockTypeKey, placementKey)
-    );
-  });
-
-  const variantId = 'editable-structural-hero-alt';
-  service.createVariant(templateId, {
-    id: variantId,
-    revisionId: `${variantId}:r1`,
-    key: 'hero-alt-airports',
-    name: 'Hero alt airports',
-    priority: 30,
-    status: 'active',
-    selector: "airport_code IN ('LAX', 'SFO', 'JFK')",
-    createdBy: 'editable-scenario-seed',
-    mode: 'linked',
-  });
-  service.copyOnWritePlacement(templateId, variantId, 'structural-page:hero-alt', 'primary-hero', {
-    revisionId: `${variantId}:r2`,
-    blockVersionId: `${templateId}:hero-alt:v2`,
-    blockTypeKey: 'hero_alt',
-    content: { headline: 'Plan your LAX pickup', mapAssetKey: 'lax-pickup-map' },
-    createdBy: 'editable-scenario-seed',
-  });
-  service.tombstoneVariantPlacement(templateId, variantId, {
-    revisionId: `${variantId}:r3`,
-    placementKey: 'announcement-promo',
-    createdBy: 'editable-scenario-seed',
-  });
-  service.publish(templateId, {
-    id: 'editable-structural-publication-1',
-    createdBy: 'editable-scenario-seed',
-  });
-}
-
-function editableScenarioIsComplete(client: CmsDatabaseClient, scenarioId: ScenarioId): boolean {
-  const registry = editableScenarioRegistry[scenarioId];
-  const service = new CmsService(client);
-  try {
-    if (
-      !service.getTemplate(registry.templateId) ||
-      !service.getPage(registry.templateId, registry.pageId)
-    ) {
-      return false;
-    }
-    const variants = service.listVariants(registry.templateId);
-    const defaultVariant = variants.find((variant) => variant.isDefault);
-    if (!defaultVariant?.activeRevisionId) return false;
-    const requiredVariantId =
-      scenarioId === 'stores'
-        ? 'variant-store-chain'
-        : scenarioId === 'eligible-vehicles'
-          ? 'editable-eligible-exact'
-          : 'editable-structural-hero-alt';
-    if (!variants.some((variant) => variant.id === requiredVariantId)) return false;
-    return Boolean(
-      client.sqlite
-        .query<{ publicationId: string }, [string]>(
-          'SELECT publication_id AS publicationId FROM current_publications WHERE template_id = ?'
-        )
-        .get(registry.templateId)?.publicationId
-    );
-  } catch {
-    return false;
-  }
-}
-
-function ensureEditableScenario(
-  client: CmsDatabaseClient,
-  scenarioId: ScenarioId
-): { templateId: string; pageId: string } {
-  const registry = editableScenarioRegistry[scenarioId];
-  const service = new CmsService(client);
-  if (service.getTemplate(registry.templateId)) {
-    if (!editableScenarioIsComplete(client, scenarioId)) {
-      throw new CmsServiceError(
-        'CONFLICT',
-        `Editable scenario "${scenarioId}" is partially initialized; reset and reseed the local database.`
-      );
-    }
-    return registry;
-  }
-  if (scenarioId === 'stores') {
-    throw new CmsServiceError(
-      'NOT_FOUND',
-      'The Store foundation is missing. Run `bun run db:reset && bun run db:seed`.'
-    );
-  }
-  client.sqlite
-    .transaction(() => {
-      if (scenarioId === 'eligible-vehicles') seedEligibleVehicles(service);
-      else seedStructuralProof(client, service);
-      if (!editableScenarioIsComplete(client, scenarioId)) {
-        throw new CmsServiceError(
-          'CONFLICT',
-          `Editable scenario "${scenarioId}" did not satisfy its completion invariant.`
-        );
-      }
-    })
-    .immediate();
-  return registry;
-}
+const ensureEditableScenario = ensureCompactPublishedScenario;
 
 function selectorsByVariant(client: CmsDatabaseClient, templateId: string): Map<string, string> {
   return new Map(
@@ -448,7 +95,7 @@ export function readCmsWorkspace(
     variants.find((variant) => variant.id === requestedScopeId && variant.status !== 'archived') ??
     defaultVariant;
   const selectors = selectorsByVariant(client, registry.templateId);
-  let pageId = registry.pageId;
+  let pageId: string = registry.pageId;
   let scopeMatchesSamplePage = true;
   if (!selectedVariant.isDefault) {
     const selector = selectors.get(selectedVariant.id) ?? '';

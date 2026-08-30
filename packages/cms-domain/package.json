@@ -25,6 +25,10 @@
     "./publication": {
       "types": "./src/publication.ts",
       "import": "./src/publication.ts"
+    },
+    "./published-document": {
+      "types": "./src/published-document.ts",
+      "import": "./src/published-document.ts"
     }
   },
   "scripts": {
@@ -32,6 +36,9 @@
     "check-types": "tsc --noEmit",
     "lint": "biome check .",
     "test": "bun test"
+  },
+  "dependencies": {
+    "zod": "4.4.3"
   },
   "devDependencies": {
     "@repo/typescript-config": "workspace:*",

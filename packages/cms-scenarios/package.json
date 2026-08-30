@@ -9,6 +9,10 @@
     ".": {
       "types": "./src/index.ts",
       "import": "./src/index.ts"
+    },
+    "./compact-seed": {
+      "types": "./src/compact-seed.ts",
+      "import": "./src/compact-seed.ts"
     }
   },
   "scripts": {
@@ -17,6 +21,7 @@
     "lint": "biome check .",
     "test": "bun test",
     "seed": "bun run ./src/cli.ts seed",
+    "db:seed": "bun run ./src/scripts/seed.ts",
     "prove": "bun run ./src/cli.ts prove",
     "benchmark": "bun run ./src/cli.ts benchmark",
     "report": "bun run ./src/cli.ts report",

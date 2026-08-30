@@ -12,6 +12,8 @@ import {
   type JsonObject,
   type JsonValue,
   orderPlacement,
+  type PublishedDocument,
+  parsePublishedDocument,
   type ResolvedDocument,
   type ResolvedPlacement,
   type ResolvedTombstone,
@@ -380,6 +382,31 @@ const parseJsonObject = (value: string): JsonObject => {
     throw new CmsServiceError('INVALID_INPUT', 'Expected a JSON object.');
   }
   return parsed as JsonObject;
+};
+
+const assertPublishedDocument = (value: unknown): PublishedDocument => {
+  try {
+    return parsePublishedDocument(value);
+  } catch (error) {
+    const detail = error instanceof Error ? ` ${error.message}` : '';
+    throw new CmsServiceError(
+      'PUBLICATION_FAILED',
+      `Published document failed contract validation.${detail}`
+    );
+  }
+};
+
+const parsePublishedDocumentJson = (value: string): PublishedDocument => {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(value);
+  } catch {
+    throw new CmsServiceError(
+      'PUBLICATION_FAILED',
+      'Published document contains invalid persisted JSON.'
+    );
+  }
+  return assertPublishedDocument(parsed);
 };
 
 const stringifyJson = (value: JsonValue): string => JSON.stringify(value);
@@ -3566,8 +3593,8 @@ export class CmsService {
     pageId: string,
     renderedPlacements: EffectivePageDocument['renderedPlacements'],
     placements: readonly MaterializedPlacement[]
-  ): JsonObject {
-    return {
+  ): PublishedDocument {
+    return assertPublishedDocument({
       templateId,
       pageId,
       placements: renderedPlacements.map((rendered, ordinal) => {
@@ -3588,7 +3615,7 @@ export class CmsService {
           },
         };
       }),
-    };
+    });
   }
 
   private currentPublication(templateId: string): PublicationRow | null {
@@ -3974,7 +4001,7 @@ export class CmsService {
     pageInstanceId: string,
     manifestId: string,
     resolvedDataJson: string
-  ): JsonObject {
+  ): PublishedDocument {
     const context = parseJsonObject(resolvedDataJson);
     const rows = this.all<{
       ordinal: number;
@@ -3986,7 +4013,7 @@ export class CmsService {
       sourceOperationId: string;
       sourcePriority: number;
     }>(publishedManifestSql, [templateId, manifestId]);
-    return {
+    return assertPublishedDocument({
       templateId,
       pageId: pageInstanceId,
       placements: rows.map((row) => {
@@ -4010,7 +4037,7 @@ export class CmsService {
           },
         };
       }),
-    };
+    });
   }
 
   resolvePublication(
@@ -4050,7 +4077,7 @@ export class CmsService {
       routeStatus: row.routeStatus,
       documentHash: row.documentHash,
       document: row.renderedDocumentJson
-        ? parseJson(row.renderedDocumentJson)
+        ? parsePublishedDocumentJson(row.renderedDocumentJson)
         : this.renderPublishedManifest(
             templateId,
             row.pageInstanceId,
@@ -4124,7 +4151,7 @@ export class CmsService {
       canonicalUrl,
       documentHash: row.documentHash,
       document: row.renderedDocumentJson
-        ? parseJson(row.renderedDocumentJson)
+        ? parsePublishedDocumentJson(row.renderedDocumentJson)
         : this.renderPublishedManifest(
             templateId,
             row.pageInstanceId,

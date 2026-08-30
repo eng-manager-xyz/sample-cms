@@ -10,6 +10,7 @@
   "scripts": {
     "dev": "turbo run dev --filter=cms",
     "dev:cms": "turbo run dev --filter=cms",
+    "dev:website": "turbo run dev --filter=website",
     "build": "turbo run build",
     "check-types": "turbo run check-types && tsc --project scripts/tsconfig.json",
     "check:boundaries": "bun scripts/check-prototype-boundaries.ts",
@@ -21,7 +22,7 @@
     "db:generate": "turbo run db:generate --filter=@repo/cms-db",
     "db:migrate": "turbo run db:migrate --filter=@repo/cms-db",
     "db:reset": "turbo run db:reset --filter=@repo/cms-db",
-    "db:seed": "turbo run db:seed --filter=@repo/cms-db",
+    "db:seed": "turbo run db:seed --filter=@repo/cms-scenarios",
     "db:seed:scale": "turbo run db:seed:scale --filter=@repo/cms-db",
     "db:benchmark": "turbo run db:benchmark --filter=@repo/cms-db",
     "scenarios:prove": "bun run packages/cms-scenarios/src/cli.ts prove --output .data/scenario-proof.json --database .data/scenario-proof.sqlite --pages 1000 --samples 100 --cases 200 --seed 1592639710",

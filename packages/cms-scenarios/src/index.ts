@@ -1,3 +1,4 @@
+export * from './compact-seed';
 export * from './dense';
 export * from './properties';
 export * from './report';

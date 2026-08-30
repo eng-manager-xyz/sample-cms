@@ -29,6 +29,15 @@ export {
   type PublishedPageDocument,
 } from './publication';
 export {
+  type PublishedDocument,
+  PublishedDocumentSchema,
+  type PublishedPlacement,
+  type PublishedPlacementProvenance,
+  PublishedPlacementProvenanceSchema,
+  PublishedPlacementSchema,
+  parsePublishedDocument,
+} from './published-document';
+export {
   assertNoVariantConflicts,
   type CopyOnWriteInput,
   type CopyOnWriteResult,

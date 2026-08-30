@@ -3,7 +3,7 @@ import { readdir, readFile } from 'node:fs/promises';
 import { extname, join, relative } from 'node:path';
 
 const root = process.cwd();
-const sourceRoots = ['apps/cms', 'packages'] as const;
+const sourceRoots = ['apps/cms', 'apps/website', 'packages'] as const;
 const ignoredDirectories = new Set([
   '.output',
   '.tanstack',
@@ -51,7 +51,7 @@ for (const sourceRoot of sourceRoots) {
     }
 
     if (
-      sourceRoot === 'apps/cms' &&
+      sourceRoot.startsWith('apps/') &&
       source.includes("from 'bun:sqlite'") &&
       !file.endsWith('.server.ts') &&
       !file.endsWith('.server.test.ts') &&
@@ -61,7 +61,7 @@ for (const sourceRoot of sourceRoots) {
     }
 
     if (
-      sourceRoot === 'apps/cms' &&
+      sourceRoot.startsWith('apps/') &&
       /(?:from\s+|import\s*\()['"]@repo\/(?:cms-db|cms-service)['"]/.test(source) &&
       !file.endsWith('.server.ts') &&
       !file.endsWith('.server.test.ts') &&
@@ -80,6 +80,11 @@ for (const requiredFile of [
   'apps/cms/src/router.tsx',
   'apps/cms/src/routes/__root.tsx',
   'apps/cms/src/start.ts',
+  'apps/website/vite.config.ts',
+  'apps/website/src/client.tsx',
+  'apps/website/src/router.tsx',
+  'apps/website/src/routes/__root.tsx',
+  'apps/website/src/start.ts',
 ]) {
   if (!existsSync(join(root, requiredFile)))
     errors.push(`missing TanStack Start entry: ${requiredFile}`);

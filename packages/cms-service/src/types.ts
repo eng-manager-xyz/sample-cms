@@ -1,4 +1,9 @@
-import type { JsonObject, JsonValue, ResolvedDocument, SelectorExpression } from '@repo/cms-domain';
+import type {
+  JsonObject,
+  PublishedDocument,
+  ResolvedDocument,
+  SelectorExpression,
+} from '@repo/cms-domain';
 
 export type RouteStatus = 'live' | 'not_live' | 'archived';
 export type ProvenanceSource = 'pipeline' | 'author' | 'seed';
@@ -423,7 +428,7 @@ export type PublishedDocumentResult =
       readonly canonicalUrl: string;
       readonly routeStatus: RouteStatus;
       readonly documentHash: string;
-      readonly document: JsonValue;
+      readonly document: PublishedDocument;
     }
   | { readonly status: 404; readonly reason: 'missing' };
 
@@ -433,7 +438,7 @@ export type ServeResult =
       readonly publicationId: string;
       readonly canonicalUrl: string;
       readonly documentHash: string;
-      readonly document: JsonValue;
+      readonly document: PublishedDocument;
     }
   | {
       readonly status: 404;
