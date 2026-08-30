@@ -12,6 +12,7 @@ export const Route = createFileRoute('/$')({
   params: {
     parse: (params) => SplatParamsSchema.parse(params),
   },
+  validateSearch: () => ({}),
   loader: async ({ params }) => {
     const result = await loadPublishedPage({
       data: { canonicalUrl: canonicalPathFromSplat(params._splat) },

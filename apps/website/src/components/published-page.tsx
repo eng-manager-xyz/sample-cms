@@ -1,8 +1,8 @@
-import type { PublicPageViewModel } from '@/data/public-page';
+import type { WebsitePageViewModel } from '@/data/website-page';
 import { PublishedBlock } from './block-renderer';
 import { PublicationDrawer } from './publication-drawer';
 
-export function PublishedPage({ page }: Readonly<{ page: PublicPageViewModel }>) {
+export function PublishedPage({ page }: Readonly<{ page: WebsitePageViewModel }>) {
   return (
     <div
       className={`published-page published-page--${page.scenarioId}`}
@@ -15,7 +15,7 @@ export function PublishedPage({ page }: Readonly<{ page: PublicPageViewModel }>)
           <PublishedBlock key={placement.placementKey} page={page} placement={placement} />
         ))}
       </main>
-      <PublicationDrawer page={page} />
+      {page.renderMode === 'published' ? <PublicationDrawer page={page} /> : null}
     </div>
   );
 }

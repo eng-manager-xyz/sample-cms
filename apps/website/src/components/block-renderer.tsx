@@ -1,9 +1,9 @@
 import type { ComponentType } from 'react';
-import type { PublicPageViewModel, PublicPlacement } from '@/data/public-page';
+import type { WebsitePageViewModel, WebsitePlacement } from '@/data/website-page';
 
 export interface PublishedBlockProps {
-  readonly page: PublicPageViewModel;
-  readonly placement: PublicPlacement;
+  readonly page: WebsitePageViewModel;
+  readonly placement: WebsitePlacement;
 }
 
 type PublishedBlockComponent = ComponentType<PublishedBlockProps>;
@@ -63,14 +63,19 @@ function HeroBlock({ page, placement }: PublishedBlockProps) {
         <p className="site-eyebrow">{eyebrow}</p>
         <h1>{headline}</h1>
         <p className="site-hero__lede">
-          Local guidance, clear next steps, and a page assembled from one immutable publication.
+          {page.renderMode === 'published'
+            ? 'Local guidance, clear next steps, and a page assembled from one immutable publication.'
+            : 'Local guidance, clear next steps, and a page assembled from the current authoring resolution.'}
         </p>
         <div className="site-hero__actions" id="action">
           <a className="site-button site-button--primary" href="#details">
             Explore this page
           </a>
-          <a className="site-button site-button--quiet" href="#publication-details">
-            View publication
+          <a
+            className="site-button site-button--quiet"
+            href={page.renderMode === 'published' ? '#publication-details' : '#draft-details'}
+          >
+            {page.renderMode === 'published' ? 'View publication' : 'View draft'}
           </a>
         </div>
       </div>
@@ -118,7 +123,7 @@ function HeroAltBlock({ page, placement }: PublishedBlockProps) {
   );
 }
 
-function PromoBlock({ placement }: PublishedBlockProps) {
+function PromoBlock({ page, placement }: PublishedBlockProps) {
   const message = contentText(placement.content, 'message', 'Made for this place');
   const ordinal = placement.order + 1;
   return (
@@ -131,7 +136,11 @@ function PromoBlock({ placement }: PublishedBlockProps) {
       <div>
         <p className="site-eyebrow">{placement.placementKey.replaceAll('-', ' ')}</p>
         <h2>{message}</h2>
-        <p>Useful, local information rendered from the published block at this stable placement.</p>
+        <p>
+          Useful, local information rendered from the{' '}
+          {page.renderMode === 'published' ? 'published' : 'current authoring'} block at this stable
+          placement.
+        </p>
       </div>
       <span className="site-promo__arrow" aria-hidden="true">
         ↗

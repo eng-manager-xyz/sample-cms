@@ -1,4 +1,5 @@
 import { createServerFn } from '@tanstack/react-start';
+import { getRequestHost, setResponseHeader } from '@tanstack/react-start/server';
 import { createPublicPageViewModel, type PublicPageLoadResult } from '@/data/public-page';
 import {
   PublicPageRequestSchema,
@@ -12,16 +13,10 @@ export const loadPublishedPage = createServerFn({ method: 'GET' })
     const template = resolvePublicTemplate(data.canonicalUrl);
     if (!template) return { status: 404, reason: 'unsupported_pattern' };
 
-    const [
-      { createCmsDatabase },
-      { parsePublishedDocument },
-      { CmsService },
-      { getRequestHost, setResponseHeader },
-    ] = await Promise.all([
+    const [{ createCmsDatabase }, { parsePublishedDocument }, { CmsService }] = await Promise.all([
       import('@repo/cms-db'),
       import('@repo/cms-domain'),
       import('@repo/cms-service'),
-      import('@tanstack/react-start/server'),
     ]);
     if (
       !publicHostMatchesTemplate(

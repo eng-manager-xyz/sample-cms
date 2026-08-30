@@ -11,6 +11,10 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SplatRouteImport } from './routes/$'
+import { Route as AdminRouteImport } from './routes/admin'
+import { Route as Char91cmsPreview_Char93RouteImport } from './routes/[cms-preview_]'
+import { Route as Char91cmsPreview_Char93IndexRouteImport } from './routes/[cms-preview_].index'
+import { Route as Char91cmsPreview_Char93SplatRouteImport } from './routes/[cms-preview_].$'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -22,31 +26,79 @@ const SplatRoute = SplatRouteImport.update({
   path: '/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const Char91cmsPreview_Char93Route = Char91cmsPreview_Char93RouteImport.update({
+  id: '/cms-preview_',
+  path: '/cms-preview_',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const Char91cmsPreview_Char93IndexRoute =
+  Char91cmsPreview_Char93IndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => Char91cmsPreview_Char93Route,
+  } as any)
+const Char91cmsPreview_Char93SplatRoute =
+  Char91cmsPreview_Char93SplatRouteImport.update({
+    id: '/$',
+    path: '/$',
+    getParentRoute: () => Char91cmsPreview_Char93Route,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
+  '/admin': typeof AdminRoute
+  '/cms-preview_': typeof Char91cmsPreview_Char93RouteWithChildren
+  '/cms-preview_/$': typeof Char91cmsPreview_Char93SplatRoute
+  '/cms-preview_/': typeof Char91cmsPreview_Char93IndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
+  '/admin': typeof AdminRoute
+  '/cms-preview_/$': typeof Char91cmsPreview_Char93SplatRoute
+  '/cms-preview_': typeof Char91cmsPreview_Char93IndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
+  '/admin': typeof AdminRoute
+  '/cms-preview_': typeof Char91cmsPreview_Char93RouteWithChildren
+  '/cms-preview_/$': typeof Char91cmsPreview_Char93SplatRoute
+  '/cms-preview_/': typeof Char91cmsPreview_Char93IndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/$'
+  fullPaths:
+    | '/'
+    | '/$'
+    | '/admin'
+    | '/cms-preview_'
+    | '/cms-preview_/$'
+    | '/cms-preview_/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/$'
-  id: '__root__' | '/' | '/$'
+  to: '/' | '/$' | '/admin' | '/cms-preview_/$' | '/cms-preview_'
+  id:
+    | '__root__'
+    | '/'
+    | '/$'
+    | '/admin'
+    | '/cms-preview_'
+    | '/cms-preview_/$'
+    | '/cms-preview_/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   SplatRoute: typeof SplatRoute
+  AdminRoute: typeof AdminRoute
+  Char91cmsPreview_Char93Route: typeof Char91cmsPreview_Char93RouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -65,12 +117,58 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cms-preview_': {
+      id: '/cms-preview_'
+      path: '/cms-preview_'
+      fullPath: '/cms-preview_'
+      preLoaderRoute: typeof Char91cmsPreview_Char93RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cms-preview_/': {
+      id: '/cms-preview_/'
+      path: '/'
+      fullPath: '/cms-preview_/'
+      preLoaderRoute: typeof Char91cmsPreview_Char93IndexRouteImport
+      parentRoute: typeof Char91cmsPreview_Char93Route
+    }
+    '/cms-preview_/$': {
+      id: '/cms-preview_/$'
+      path: '/$'
+      fullPath: '/cms-preview_/$'
+      preLoaderRoute: typeof Char91cmsPreview_Char93SplatRouteImport
+      parentRoute: typeof Char91cmsPreview_Char93Route
+    }
   }
 }
+
+interface Char91cmsPreview_Char93RouteChildren {
+  Char91cmsPreview_Char93SplatRoute: typeof Char91cmsPreview_Char93SplatRoute
+  Char91cmsPreview_Char93IndexRoute: typeof Char91cmsPreview_Char93IndexRoute
+}
+
+const Char91cmsPreview_Char93RouteChildren: Char91cmsPreview_Char93RouteChildren =
+  {
+    Char91cmsPreview_Char93SplatRoute: Char91cmsPreview_Char93SplatRoute,
+    Char91cmsPreview_Char93IndexRoute: Char91cmsPreview_Char93IndexRoute,
+  }
+
+const Char91cmsPreview_Char93RouteWithChildren =
+  Char91cmsPreview_Char93Route._addFileChildren(
+    Char91cmsPreview_Char93RouteChildren,
+  )
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SplatRoute: SplatRoute,
+  AdminRoute: AdminRoute,
+  Char91cmsPreview_Char93Route: Char91cmsPreview_Char93RouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

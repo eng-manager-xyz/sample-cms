@@ -8,7 +8,7 @@ import { PublicScenarioIdSchema } from './public-path';
 
 export type PublicPlacement = PublishedPlacement;
 
-export const PublicPageViewModelSchema = z.object({
+export const PublicPageViewModelSchema = z.strictObject({
   scenarioId: PublicScenarioIdSchema,
   templateId: z.string().min(1),
   pageId: z.string().min(1),

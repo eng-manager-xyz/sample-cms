@@ -23,9 +23,9 @@ function WebsiteIndex() {
           <IndexMark />
           <span>Auteur Websites</span>
         </Link>
-        <a href="http://localhost:3000" className="index-nav__admin">
+        <Link to="/admin" className="index-nav__admin">
           Open CMS <span aria-hidden="true">↗</span>
-        </a>
+        </Link>
       </nav>
 
       <section className="index-hero">
