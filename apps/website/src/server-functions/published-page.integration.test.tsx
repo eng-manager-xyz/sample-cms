@@ -88,4 +88,35 @@ describe('published SQLite documents rendered by the standalone website', () => 
       eligible.document.placements.every((placement) => placement.provenance.sourcePriority === 0)
     ).toBe(true);
   });
+
+  test('serves added explorer pages from each template default', () => {
+    const service = new CmsService(client);
+    const pages = [
+      service.serve('tpl-store', '/fr-CA/store/1014'),
+      service.serve('eligible-vehicles', '/fr-CA/eligible-vehicles/qc/rideshare'),
+      service.serve('structural-marketing', '/pt-BR/airport/guarulhos'),
+    ];
+
+    expect(pages.every((page) => page.status === 200)).toBe(true);
+    for (const page of pages) {
+      if (page.status !== 200) throw new Error('Expected the added page to be published.');
+      expect(
+        page.document.placements.every((placement) => placement.provenance.sourcePriority === 0)
+      ).toBe(true);
+    }
+
+    const store = pages[0];
+    const eligible = pages[1];
+    if (store?.status !== 200 || eligible?.status !== 200) {
+      throw new Error('Expected default Store and Eligible Vehicles pages.');
+    }
+    expect(
+      store.document.placements.find((placement) => placement.placementKey === 'primary-hero')
+        ?.content
+    ).toEqual({ headline: 'I am Boulangerie du Vieux-Port — Québec' });
+    expect(
+      eligible.document.placements.find((placement) => placement.placementKey === 'primary-hero')
+        ?.content
+    ).toEqual({ headline: 'Drive with Uber in QC' });
+  });
 });

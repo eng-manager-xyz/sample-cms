@@ -683,10 +683,10 @@ function ResolutionPin({
     ? resolveFixturePlacements(scenario, matchingLayerIds)
     : scenario.pin.placements;
   const hasConflict = selectedRow?.conflict ?? scenario.conflictState === '2 conflicts';
-  const camoStatus = selectedRow?.lifecycle ?? 'live';
+  const routerStatus = selectedRow?.lifecycle ?? 'live';
   const auteurStatus = selectedRow?.auteurState ?? 'published';
   const requestOutcome =
-    camoStatus !== 'live'
+    routerStatus !== 'live'
       ? 404
       : auteurStatus === 'published'
         ? 200
@@ -805,13 +805,13 @@ function ResolutionPin({
             </section>
             <section className="grid grid-cols-2 gap-2" aria-label="Route and content authority">
               <div className="rounded-md border border-line bg-surface-subtle p-2">
-                <p className="text-[8px] font-semibold uppercase text-ink-faint">Camo Press</p>
+                <p className="text-[8px] font-semibold uppercase text-ink-faint">RouterService</p>
                 <Badge
                   dot
-                  tone={camoStatus === 'live' ? 'success' : 'neutral'}
+                  tone={routerStatus === 'live' ? 'success' : 'neutral'}
                   className="mt-1.5 h-5 text-[8px]"
                 >
-                  route {camoStatus.replace('_', ' ')}
+                  route {routerStatus.replace('_', ' ')}
                 </Badge>
               </div>
               <div className="rounded-md border border-line bg-surface-subtle p-2">

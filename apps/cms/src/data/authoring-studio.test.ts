@@ -2,6 +2,9 @@ import { describe, expect, test } from 'bun:test';
 
 import {
   AuthoringStudioSearchSchema,
+  authoringPanelSearch,
+  authoringScopeSearch,
+  authoringTemplateSearch,
   contentFromDraft,
   deriveBlockFormModel,
   draftValuesFromContent,
@@ -20,15 +23,18 @@ describe('AUT-541 schema-driven block form model', () => {
       AuthoringStudioSearchSchema.parse({
         canonicalUrl: '/en-US/store/1001',
         scopeId: 'variant-store-mcdonalds',
+        panel: 'cascade',
       })
     ).toEqual({
       canonicalUrl: '/en-US/store/1001',
       scopeId: 'variant-store-mcdonalds',
+      panel: 'cascade',
     });
     expect(
       AuthoringStudioSearchSchema.safeParse({ canonicalUrl: '/en-US/store/1001?draft=true' })
         .success
     ).toBe(false);
+    expect(AuthoringStudioSearchSchema.safeParse({ panel: 'sql' }).success).toBe(false);
   });
 
   test('uses registered JSON schema properties as the primary field contract', () => {
@@ -239,5 +245,64 @@ describe('AUT-541 schema-driven block form model', () => {
         environment: 'development',
       })
     ).toEqual({ status: 'unavailable', reason: 'invalid-config' });
+  });
+});
+
+describe('AUT-551 compact authoring navigation transitions', () => {
+  test('resets page and selector context when changing templates', () => {
+    expect(authoringTemplateSearch()).toEqual({ panel: 'fields' });
+  });
+});
+
+describe('AUT-550 selector mode search transitions', () => {
+  test('opens and closes selector mode without changing page or scope', () => {
+    expect(
+      authoringPanelSearch({
+        canonicalUrl: '/en-US/store/1001',
+        scopeId: 'variant-store-fast-food',
+        panel: 'cascade',
+      })
+    ).toEqual({
+      canonicalUrl: '/en-US/store/1001',
+      scopeId: 'variant-store-fast-food',
+      panel: 'cascade',
+    });
+    expect(
+      authoringPanelSearch({
+        canonicalUrl: '/en-US/store/1001',
+        scopeId: 'variant-store-fast-food',
+        panel: 'fields',
+      })
+    ).toEqual({
+      canonicalUrl: '/en-US/store/1001',
+      scopeId: 'variant-store-fast-food',
+      panel: 'fields',
+    });
+    expect(
+      authoringPanelSearch({
+        canonicalUrl: '/en-US/store/1001',
+        scopeId: 'variant-store-default',
+        panel: 'cascade',
+      })
+    ).toEqual({
+      canonicalUrl: '/en-US/store/1001',
+      scopeId: 'variant-store-default',
+      panel: 'cascade',
+    });
+  });
+
+  test('clears a selected variant to default and exits selector-only mode', () => {
+    expect(
+      authoringScopeSearch({
+        canonicalUrl: '/en-US/store/1001',
+        nextScopeId: 'variant-store-default',
+        currentPanel: 'cascade',
+        nextScopeIsDefault: true,
+      })
+    ).toEqual({
+      canonicalUrl: '/en-US/store/1001',
+      scopeId: 'variant-store-default',
+      panel: 'fields',
+    });
   });
 });

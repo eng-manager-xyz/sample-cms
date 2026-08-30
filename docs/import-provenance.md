@@ -49,12 +49,6 @@ generic dashboard data with the wall of maps, projection controls, layer stack, 
 vertical provenance pin, and publication trace. Components remain checked-in source primitives;
 there is no runtime dependency on the catalog or its CLI.
 
-The [Profound hybrid admin-panel proxy guide](https://cms.docs.tryprofound.com/hybrid/setup-admin-panel-proxy)
-was used as an additional topology reference: keep the authoring entry point separate, reserve an
-explicit preview namespace, and leave ordinary storefront routes in their published mode. Auteur's
-standalone TanStack application implements that intent as `/admin`, `/cms-preview_/*`, and a public
-catch-all. It does **not** copy the guide as a framework-specific proxy recipe.
-
 ## Replaced intentionally
 
 - PostgreSQL, Supabase/PostgREST, RLS, Supavisor, and route-binding inheritance.
@@ -65,7 +59,7 @@ catch-all. It does **not** copy the guide as a framework-specific proxy recipe.
   rendering evaluates neither CEL nor selector SQL.
 - Vercel, Bunny, ImageKit, Sentry, GitHub deployment, and production API integrations.
 - Rust image/MCP/translation services, TensorZero, Terraform, and Docker deployment surfaces.
-- Louvre-style block multi-resolve and Median's existing document/route storage model.
+- Content Service-style block multi-resolve and Median's existing document/route storage model.
 - Lexical, Monaco, media management, translation, and AI features that do not prove this model.
 - Median's `edit_mode` public-route rewrite, blind proxying, and Supabase/WorkOS-backed admin/API/auth
   path. `/cms-preview_/*` is the only draft renderer, and `/admin` is a validated-origin handoff

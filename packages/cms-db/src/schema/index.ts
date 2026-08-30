@@ -27,9 +27,9 @@ export const templates = sqliteTable(
     status: text('status', { enum: ['active', 'archived'] })
       .notNull()
       .default('active'),
-    routeAuthority: text('route_authority', { enum: ['camo_press'] })
+    routeAuthority: text('route_authority', { enum: ['router_service'] })
       .notNull()
-      .default('camo_press'),
+      .default('router_service'),
     createdAt: createdAt(),
     updatedAt: text('updated_at').notNull().default(sql`CURRENT_TIMESTAMP`),
   },
@@ -90,9 +90,9 @@ export const routeIngestions = sqliteTable(
     templateId: text('template_id')
       .notNull()
       .references(() => templates.id, { onDelete: 'restrict' }),
-    source: text('source', { enum: ['camo_press', 'seed'] })
+    source: text('source', { enum: ['router_service', 'seed'] })
       .notNull()
-      .default('camo_press'),
+      .default('router_service'),
     sourceRevision: text('source_revision').notNull(),
     status: text('status', { enum: ['running', 'succeeded', 'failed'] }).notNull(),
     checksum: text('checksum').notNull(),

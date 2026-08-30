@@ -43,6 +43,13 @@
       "when": 1788035771832,
       "tag": "0005_route-source-observed-at",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1788098987024,
+      "tag": "0006_natural_jubilee",
+      "breakpoints": true
     }
   ]
 }

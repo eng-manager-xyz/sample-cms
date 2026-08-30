@@ -26,19 +26,19 @@ approved read surface; conflicts are rejected; the winning placements and their 
 hashed; and immutable page-to-manifest rows are written. Public serving follows a current
 publication pointer and performs no selector evaluation.
 
-During the transition, Camo Press still decides whether a route exists and is `live`, `not_live`, or
-`archived`. Auteur owns content resolution and replaces Louvre's block `multiResolve` path for new
+During the transition, RouterService still decides whether a route exists and is `live`, `not_live`, or
+`archived`. Auteur owns content resolution and replaces Content Service's block `multiResolve` path for new
 content. One canonical URL must map to one template, one page instance, and one effective document.
 Here “canonical URL” means the normalized `https://{template.domain}{page.canonical_url}` identity;
 the stored `canonical_url` column is an absolute path and may repeat on a different domain.
 
 ```mermaid
 flowchart LR
-  Camo["Camo Press\nroute identity + status"] --> Inputs["Auteur authoring inputs\nslots + tags + variants + blocks"]
+  Router["RouterService\nroute identity + status"] --> Inputs["Auteur authoring inputs\nslots + tags + variants + blocks"]
   Inputs --> Compiler["Publication compiler\nselect + resolve + validate"]
   Compiler --> Published["Immutable serving model\npage pointer + manifest + provenance"]
-  Request["Public URL request"] --> Camo
-  Camo -->|live + page identity| Published
+  Request["Public URL request"] --> Router
+  Router -->|live + page identity| Published
   Published --> Render["Deterministic render"]
 ```
 
@@ -47,7 +47,7 @@ flowchart LR
 | Metaphor | Actual entity | Meaning | Where the metaphor stops |
 | --- | --- | --- | --- |
 | Wall of maps | `templates` | Every template is an isolated content space with its own URL grammar and default. | Maps have radically different cardinalities and are not comparable by physical area. |
-| Point or tile | `page_instances` | One concrete canonical URL with scalar context and Camo lifecycle state. | Instances do not have to form a complete rectangular grid. |
+| Point or tile | `page_instances` | One concrete canonical URL with scalar context and RouterService lifecycle state. | Instances do not have to form a complete rectangular grid. |
 | Dimension | `template_slots`, `page_slot_values`, `tags`, `page_tags` | A selectable property of a page. | Slots are scalar; tags are many-to-many and can have several values in one namespace. |
 | Transparent sheet | Default or non-default row in `variants`, plus `variant_revisions` and `variant_operations` | One selector-scoped layer of sparse placement decisions. | The sheet does not contain a cloned full document. |
 | Vertical pin | Preview or publication resolution for one page | Collect matching layers in priority order and determine each winning placement. | The pin is an algorithm and provenance trace, not a stored hierarchy. |
@@ -75,7 +75,7 @@ flowchart BT
 | --- | --- |
 | Template | An isolated URL grammar and content map. It owns slots, page instances, block lineages, variants, and exactly one default. |
 | Slot | An ordered static or variable URL segment, or a derived scalar dimension, declared by one template. |
-| Page instance | One canonical domain/path identity and stable route identity belonging to exactly one template, with Camo status and immutable-at-publication context. |
+| Page instance | One canonical domain/path identity and stable route identity belonging to exactly one template, with RouterService status and immutable-at-publication context. |
 | Tag | A template-scoped classification value. A page can have many explicit tag memberships, each with source/provenance. |
 | Selector | A bounded expression over an approved template-owned read surface. Authored literals are parameters; arbitrary SQL is not the language. |
 | Variant | A template-scoped selector layer with an explicit priority and sparse operations. The default is the special priority-zero variant. |
@@ -138,8 +138,8 @@ writes where a trigger is expected.
 | --- | --- | --- | --- | --- |
 | `templates` | One URL grammar; platform setup creates it. | Mutable metadata; identity is stable. | PK `id`; unique `key` and `(domain,url_pattern)`; triggers require a normalized bare-host domain. | Root of all CRUD, resolution, and publication scope. |
 | `template_slots` | One static, variable, or derived dimension; template author creates it. | Mutable during model setup; changes can invalidate all page inputs. | PK `id`; unique `(template_id,key)` and `(template_id,path_position)`; template/order index. | Defines URL parsing, input normalization, selector fields, and map projections. |
-| `route_ingestions` | One Camo/seed import attempt; ingestion worker creates and closes it. | Append-oriented; `source_observed_at` is immutable; `running` becomes `succeeded` or `failed`. | PK `id`; unique `(template_id,source,source_revision)`; required source-observation timestamp; template/status index. | Idempotency key, source freshness, and route-revision snapshot for import and publication. |
-| `page_instances` | One canonical path and Camo route identity; ingestion owns it. | Mutable authoring input; status is lifecycle-controlled by Camo. | PK `id`; unique `route_external_id`, `(template_id,canonical_url)`, and slot-value hash; triggers enforce one same-domain path owner; `(template_id,route_status)` index. | Unit selected by variants and materialized by publication. |
+| `route_ingestions` | One RouterService/seed import attempt; ingestion worker creates and closes it. | Append-oriented; `source_observed_at` is immutable; `running` becomes `succeeded` or `failed`. | PK `id`; unique `(template_id,source,source_revision)`; required source-observation timestamp; template/status index. | Idempotency key, source freshness, and route-revision snapshot for import and publication. |
+| `page_instances` | One canonical path and RouterService route identity; ingestion owns it. | Mutable authoring input; status is lifecycle-controlled by RouterService. | PK `id`; unique `route_external_id`, `(template_id,canonical_url)`, and slot-value hash; triggers enforce one same-domain path owner; `(template_id,route_status)` index. | Unit selected by variants and materialized by publication. |
 | `page_slot_values` | One page's value for one template slot; ingestion derives it. | Replaceable when the authoritative route revision changes. | PK `(page_instance_id,slot_id)`; composite FKs keep page and slot in one template; selector index `(template_id,slot_id,normalized_value,page_instance_id)`. | Approved scalar selector surface and URL explanation. |
 | `tags` | One explicit namespace/value definition; pipeline or author creates it. | Mutable label metadata; namespace/value identity is stable. | PK `id`; unique `(template_id,namespace,value)`; namespace lookup index. | Defines multi-valued selectable dimensions without hidden hierarchy inference. |
 | `page_tags` | One explicit page-to-tag membership and its source; pipeline or author assigns it. | Add/remove as classification inputs change. | PK `(page_instance_id,tag_id)`; composite FKs enforce template scope; selector index `(template_id,tag_id,page_instance_id)`. | Tag selector membership in both preview and publication. |
@@ -164,7 +164,7 @@ normalized rows become one document; they are not benchmark results.
 | Surface | Joined row(s) |
 | --- | --- |
 | Template | `tpl-store`, pattern `/{locale}/store/{store_id}` |
-| Page | `page-store-1001`, Camo identity `camo-store-1001`, status `live`, route revision `store-seed-v1` |
+| Page | `page-store-1001`, RouterService identity `router-store-1001`, status `live`, route revision `store-seed-v1` |
 | Slot values | `locale=en-US`, static `store`, `store_id=1001`, derived `store_name=McDonald's Market` |
 | Context | `store.id=1001`, `store.name=McDonald's Market`, `store.location=San Francisco` |
 | Tags | `store_type=chain_store`, `category=fast_food`, `brand=mcdonalds`; each membership source is `seed` |
@@ -198,7 +198,7 @@ The default belongs only to this template. It must never contribute to another t
 
 ### 5.2 Add and tag page instances
 
-1. Begin a `route_ingestions` attempt keyed by Camo source revision and record the immutable time
+1. Begin a `route_ingestions` attempt keyed by RouterService source revision and record the immutable time
    that source revision was observed.
 2. Upsert each `page_instances` identity, canonical URL, status, and context.
 3. Replace normalized `page_slot_values` for that route revision.
@@ -323,7 +323,7 @@ flowchart TD
 
 The repository has two intentionally separate TanStack Start applications. `apps/cms` is the
 authoring and publication HUD on port `3000`; `apps/website` is the rendering surface on port
-`3001`. This keeps the useful part of Median/Profound's hybrid topology—a separate admin entry, an
+`3001`. This keeps the useful part of Median's hybrid topology—a separate admin entry, an
 explicit preview namespace, a catch-all page route, and a block registry—without carrying over its
 remote fetch, CEL, Supabase, auth, or route-tree inheritance model.
 
@@ -341,7 +341,7 @@ CMS authoring mutation
 ```
 
 The public catch-all recognizes exactly the three proof grammars and dispatches each grammar to one
-template. `CmsService.serveWithEvidence` reads the current Camo-owned `route_status` and active
+template. `CmsService.serveWithEvidence` reads the current RouterService-owned `route_status` and active
 publication pointer in the same materialized query. Expanded documents require that single query;
 manifest documents add one ordered manifest/block query. Both shapes execute zero selector
 statements. The website calls `serve`, validates the returned value at the shared
@@ -480,20 +480,20 @@ measurements.
 ```mermaid
 sequenceDiagram
   participant Client
-  participant Camo as Camo Press
+  participant Router as RouterService
   participant Auteur as Auteur serving API
   participant DB as Materialized read model
   participant Renderer
 
-  Client->>Camo: GET canonical URL
-  Camo->>Camo: Resolve route identity and status
+  Client->>Router: GET canonical URL
+  Router->>Router: Resolve route identity and status
   alt not_live or archived
-    Camo-->>Client: 404 according to route policy
+    Router-->>Client: 404 according to route policy
   else live
-    Camo->>Auteur: page identity + canonical URL + route revision
+    Router->>Auteur: page identity + canonical URL + route revision
     Auteur->>DB: Read current publication pointer
     Auteur->>DB: Read published page + manifest + block versions
-    Note over Auteur,DB: No selector SQL and no Louvre multiResolve
+    Note over Auteur,DB: No selector SQL and no Content Service multiResolve
     DB-->>Auteur: immutable document + provenance/context
     Auteur->>Renderer: deterministic render input
     Renderer-->>Client: 200 response
@@ -501,9 +501,9 @@ sequenceDiagram
 ```
 
 The transition interface must carry a stable page/route identity, canonical URL, lifecycle status,
-and route revision. Publication stores the route revision it compiled. If Camo reports a newer or
+and route revision. Publication stores the route revision it compiled. If RouterService reports a newer or
 incompatible revision, Auteur must follow an explicit stale-content policy rather than silently
-serving an untraceable mix. A future Auteur takeover can replace the Camo adapter while preserving
+serving an untraceable mix. A future Auteur takeover can replace the RouterService adapter while preserving
 the same route-authority contract; takeover is outside this prototype.
 
 For the standalone proof, the `website` server function occupies the Auteur serving/renderer side
@@ -525,7 +525,7 @@ The production recommendation is developed in
 | Priority | Same-priority overlap on one placement fails. | Explicit positive integers; default is `0`. | UI may suggest priorities/specificity but may never silently decide them. |
 | Slot storage | Template isolation and selector safety remain explicit. | Normalized `page_slot_values` and `page_tags`. | Generated/wide columns or derived read surfaces for hot TiDB dimensions. |
 | Expressions | Evaluation is deterministic and code-free. | Restricted dotted-path interpolation against JSON context. | Publish-time expansion, render-time evaluation, or a measured hybrid. |
-| Route state | Camo is route existence/status authority during transition. | Service proofs return `200` for `live` and `404` for `not_live`/`archived`; the scale publisher compiles the eligible fixture rows. | Whether production `not_live` pages are precompiled, retained from a former publication, or omitted. |
+| Route state | RouterService is route existence/status authority during transition. | Service proofs return `200` for `live` and `404` for `not_live`/`archived`; the scale publisher compiles the eligible fixture rows. | Whether production `not_live` pages are precompiled, retained from a former publication, or omitted. |
 | Tag ownership | Membership and source are explicit; no hidden hierarchy inference. | `pipeline`, `author`, or `seed` provenance per definition/assignment. | Conflict policy, freshness SLA, and whether authors can override pipeline assignments. |
 | Constraints | Canonical domain/path uniqueness, one default, template-scoped FKs, and immutability are mandatory. | SQLite checks, indexes, composite FKs, and triggers. | Which selected TiDB version enforces directly versus service API, grants, and audit checks. |
 

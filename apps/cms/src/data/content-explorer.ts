@@ -2,6 +2,9 @@ import * as z from 'zod';
 
 const CANONICAL_URL_PATTERN = /^\/(?!\/)[^\s?#]*$/;
 
+export const CONTENT_EXPLORER_PAGE_OPTION_LIMIT = 100;
+export const CONTENT_EXPLORER_SELECTOR_SAMPLE_LIMIT = 10;
+
 export const FixedTemplateSlugSchema = z.enum(['stores', 'eligible-vehicles', 'structural-proof']);
 export type FixedTemplateSlug = z.infer<typeof FixedTemplateSlugSchema>;
 
@@ -13,8 +16,9 @@ export const CanonicalUrlSchema = z
   .regex(CANONICAL_URL_PATTERN, 'Use an absolute canonical path without a query or hash.');
 
 export const ContentExplorerSearchSchema = z.object({
-  view: z.enum(['tree', 'table']).optional().default('tree'),
+  view: z.enum(['tree', 'table', 'selectors']).optional().default('tree'),
   template: FixedTemplateSlugSchema.optional().default('stores'),
+  canonicalUrl: CanonicalUrlSchema.optional(),
   q: z.string().trim().max(120).optional().default(''),
   cursor: z.string().max(1_024).optional(),
 });
@@ -25,6 +29,8 @@ export const ContentExplorerInputSchema = z.object({
   q: z.string().trim().max(120).default(''),
   cursor: z.string().max(1_024).optional(),
   limit: z.int().min(1).max(50).default(20),
+  selectedCanonicalUrl: CanonicalUrlSchema.optional(),
+  includeSelectors: z.boolean().optional(),
 });
 export type ContentExplorerInput = z.infer<typeof ContentExplorerInputSchema>;
 
@@ -87,10 +93,56 @@ const ContentExplorerPageSchema = z.object({
 });
 export type ContentExplorerPage = z.infer<typeof ContentExplorerPageSchema>;
 
+const ContentPageNavigationSegmentSchema = z.object({
+  slotId: z.string().min(1),
+  key: z.string().min(1),
+  label: z.string().min(1),
+  kind: z.enum(['static', 'variable']),
+  pathPosition: z.int().min(0),
+  staticValue: z.string().nullable(),
+  defaultValue: z.string().nullable(),
+  selectedValue: z.string().nullable(),
+});
+const ContentPageNavigationOptionSchema = z.object({
+  pageId: z.string().min(1),
+  canonicalUrl: CanonicalUrlSchema,
+  routeStatus: z.enum(['live', 'not_live', 'archived']),
+  slotValues: z.record(z.string().min(1), z.string()),
+});
+export type ContentPageNavigationOption = z.infer<typeof ContentPageNavigationOptionSchema>;
+
+export const ContentPageNavigationSchema = z.object({
+  segments: z.array(ContentPageNavigationSegmentSchema),
+  defaultPage: ContentPageNavigationOptionSchema.nullable(),
+  selectedPage: ContentPageNavigationOptionSchema.nullable(),
+  options: z.array(ContentPageNavigationOptionSchema).max(CONTENT_EXPLORER_PAGE_OPTION_LIMIT),
+  totalCount: z.int().min(0),
+  truncated: z.boolean(),
+});
+export type ContentPageNavigation = z.infer<typeof ContentPageNavigationSchema>;
+
+export const ContentSelectorSummarySchema = z.object({
+  id: z.string().min(1),
+  activeRevisionId: z.string().min(1),
+  name: z.string().min(1),
+  isDefault: z.boolean(),
+  priority: z.int().min(0),
+  status: z.enum(['draft', 'active']),
+  selector: z.string().trim().min(1).max(4_096),
+  exactMatchCount: z.int().min(0),
+  affectedPlacementCount: z.int().min(0),
+  selectedPageMatches: z.boolean().nullable(),
+  sampleCanonicalUrls: z.array(CanonicalUrlSchema).max(CONTENT_EXPLORER_SELECTOR_SAMPLE_LIMIT),
+  sampleUrlsTruncated: z.boolean(),
+});
+export type ContentSelectorSummary = z.infer<typeof ContentSelectorSummarySchema>;
+
 export const ContentExplorerSnapshotSchema = z.object({
   templates: z.array(ContentTemplateSummarySchema).length(3),
   selectedTemplate: FixedTemplateSlugSchema,
   query: z.string().max(120),
+  pageNavigation: ContentPageNavigationSchema,
+  selectors: z.array(ContentSelectorSummarySchema),
   pages: z.array(ContentExplorerPageSchema).max(50),
   filteredCount: z.int().min(0),
   previousCursor: z.string().nullable(),

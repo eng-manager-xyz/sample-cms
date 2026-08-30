@@ -18,7 +18,7 @@ const columns: ColumnDef<InstanceRow>[] = [
   { accessorKey: 'canonicalUrl', header: 'Canonical URL' },
   { accessorKey: 'dimensionSummary', header: 'Dimensions' },
   { accessorKey: 'matchedLayers', header: 'Sheets' },
-  { accessorKey: 'lifecycle', header: 'Camo Press' },
+  { accessorKey: 'lifecycle', header: 'RouterService' },
   { accessorKey: 'auteurState', header: 'Auteur' },
 ];
 

@@ -26,6 +26,197 @@ function tableCount(database: CmsDatabaseClient, table: string): number {
   );
 }
 
+function legacySeedService(database: CmsDatabaseClient, templateId: string): CmsService {
+  const idsByScope = new Map<string, number>();
+  return new CmsService(database, {
+    now: () => '2026-01-03T00:00:00.000Z',
+    createId: (scope) => {
+      const sequence = (idsByScope.get(scope) ?? 0) + 1;
+      idsByScope.set(scope, sequence);
+      return `${templateId}:legacy-seed:${scope}:${sequence}`;
+    },
+  });
+}
+
+function seedLegacyTwoPageScenario(
+  database: CmsDatabaseClient,
+  scenarioId: 'eligible-vehicles' | 'structural-proof'
+): void {
+  const registration = compactScenarioRegistry[scenarioId];
+  const service = legacySeedService(database, registration.templateId);
+  const eligible = scenarioId === 'eligible-vehicles';
+  service.createTemplate({
+    id: registration.templateId,
+    key: registration.templateId,
+    name: eligible ? 'Eligible Vehicles' : 'Structural replacement',
+    domain: 'www.uber.com',
+    urlPattern: eligible
+      ? '/{locale}/eligible-vehicles/{state}/{slug}'
+      : '/{locale}/airport/{slug}',
+    description: 'Legacy compact two-page fixture.',
+  });
+
+  const slots = eligible
+    ? [
+        {
+          id: 'editable-eligible-slot-locale',
+          key: 'locale',
+          label: 'Locale',
+          kind: 'variable' as const,
+          pathPosition: 0,
+        },
+        {
+          id: 'editable-eligible-slot-resource',
+          key: 'resource',
+          label: 'Resource',
+          kind: 'static' as const,
+          pathPosition: 1,
+          staticValue: 'eligible-vehicles',
+        },
+        {
+          id: 'editable-eligible-slot-state',
+          key: 'state',
+          label: 'State',
+          kind: 'variable' as const,
+          pathPosition: 2,
+        },
+        {
+          id: 'editable-eligible-slot-slug',
+          key: 'slug',
+          label: 'Slug',
+          kind: 'variable' as const,
+          pathPosition: 3,
+        },
+        {
+          id: 'editable-eligible-slot-country',
+          key: 'country',
+          label: 'Country',
+          kind: 'derived' as const,
+        },
+        {
+          id: 'editable-eligible-slot-language',
+          key: 'language',
+          label: 'Language',
+          kind: 'derived' as const,
+        },
+      ]
+    : [
+        {
+          id: 'editable-structural-slot-locale',
+          key: 'locale',
+          label: 'Locale',
+          kind: 'variable' as const,
+          pathPosition: 0,
+        },
+        {
+          id: 'editable-structural-slot-resource',
+          key: 'resource',
+          label: 'Resource',
+          kind: 'static' as const,
+          pathPosition: 1,
+          staticValue: 'airport',
+        },
+        {
+          id: 'editable-structural-slot-slug',
+          key: 'slug',
+          label: 'Slug',
+          kind: 'variable' as const,
+          pathPosition: 2,
+        },
+        {
+          id: 'editable-structural-slot-code',
+          key: 'airport_code',
+          label: 'Airport code',
+          kind: 'derived' as const,
+        },
+      ];
+  for (const slot of slots) service.createTemplateSlot(registration.templateId, slot);
+
+  if (eligible) {
+    for (const page of [
+      { locale: 'en-US', state: 'CA', purpose: 'premium', country: 'US', language: 'en' },
+      { locale: 'es-US', state: 'TX', purpose: 'delivery', country: 'US', language: 'es' },
+    ] as const) {
+      const id = `eligible:${page.locale}:${page.state}:${page.purpose}`;
+      service.createPage(registration.templateId, {
+        id,
+        canonicalUrl: `/${page.locale}/eligible-vehicles/${page.state.toLowerCase()}/${page.purpose}`,
+        routeExternalId: `router:${id}`,
+        routeStatus: 'live',
+        routeRevision: 'editable-eligible-v1',
+        context: {
+          locale: page.locale,
+          state: page.state,
+          purpose: page.purpose,
+          country: page.country,
+        },
+        slotValues: {
+          locale: page.locale,
+          resource: 'eligible-vehicles',
+          state: page.state.toLowerCase(),
+          slug: page.purpose,
+          country: page.country,
+          language: page.language,
+        },
+      });
+    }
+  } else {
+    for (const page of [
+      { slug: 'current', airportCode: 'PDX' },
+      { slug: 'hero-alt', airportCode: 'LAX' },
+    ] as const) {
+      service.createPage(registration.templateId, {
+        id: `structural-page:${page.slug}`,
+        canonicalUrl: `/en-US/airport/${page.slug}`,
+        routeExternalId: `router:structural:${page.slug}`,
+        routeStatus: 'live',
+        routeRevision: 'editable-structural-v1',
+        context: { locale: 'en-US', slug: page.slug, airportCode: page.airportCode },
+        slotValues: {
+          locale: 'en-US',
+          resource: 'airport',
+          slug: page.slug,
+          airport_code: page.airportCode,
+        },
+      });
+    }
+  }
+
+  service.createDefaultPlacement(registration.templateId, {
+    revisionId: `${registration.templateId}:legacy-default:r2`,
+    placementKey: 'primary-hero',
+    lineage: {
+      id: `${registration.templateId}:legacy-lineage:primary-hero`,
+      key: 'primary-hero',
+      label: 'primary-hero',
+    },
+    blockVersionId: `${registration.templateId}:legacy-block:primary-hero:v1`,
+    blockTypeKey: 'hero',
+    content: {
+      headline: eligible ? 'Drive with Uber in {{ state }}' : 'Airport rides made simple',
+    },
+    createdBy: 'legacy-compact-seed',
+    position: { kind: 'end' },
+  });
+  service.createVariant(registration.templateId, {
+    id: registration.requiredVariantId,
+    revisionId: `${registration.requiredVariantId}:r1`,
+    key: eligible ? 'ca-premium-exact' : 'hero-alt-airports',
+    name: eligible ? 'CA premium exact' : 'Hero alt airports',
+    priority: eligible ? 40 : 30,
+    status: 'active',
+    selector: eligible
+      ? "country = 'US' AND state = 'ca' AND slug = 'premium'"
+      : "airport_code IN ('LAX', 'SFO', 'JFK')",
+    createdBy: 'legacy-compact-seed',
+    mode: 'linked',
+  });
+  service.publish(registration.templateId, {
+    id: eligible ? 'editable-eligible-publication-1' : 'editable-structural-publication-1',
+    createdBy: 'legacy-compact-seed',
+  });
+}
+
 describe('compact published scenario seed', () => {
   test('provisions all three current publications and replays without writes', () => {
     ensureCompactPublishedScenarios(client);
@@ -37,6 +228,47 @@ describe('compact published scenario seed', () => {
       ).toBe(true);
       expect(service.serve(registration.templateId, registration.canonicalUrl).status).toBe(200);
     }
+
+    expect(
+      client.sqlite
+        .query<{ currentDocumentCount: number; pageCount: number; templateId: string }, []>(
+          `SELECT pages.template_id AS templateId,
+                  count(*) AS pageCount,
+                  (SELECT count(*)
+                   FROM published_page_documents AS documents
+                   JOIN current_publications AS current
+                     ON current.template_id = documents.template_id
+                    AND current.publication_id = documents.publication_id
+                   WHERE documents.template_id = pages.template_id) AS currentDocumentCount
+           FROM page_instances AS pages
+           GROUP BY pages.template_id
+           ORDER BY pages.template_id`
+        )
+        .all()
+    ).toEqual([
+      { templateId: 'eligible-vehicles', pageCount: 14, currentDocumentCount: 14 },
+      { templateId: 'structural-marketing', pageCount: 14, currentDocumentCount: 14 },
+      { templateId: 'tpl-store', pageCount: 14, currentDocumentCount: 14 },
+    ]);
+    expect(tableCount(client, 'page_instances')).toBe(42);
+    expect(tableCount(client, 'page_slot_values')).toBe(196);
+    expect(tableCount(client, 'page_tags')).toBe(4);
+    expect(tableCount(client, 'publications')).toBe(4);
+    expect(tableCount(client, 'published_page_documents')).toBe(44);
+    expect(
+      client.sqlite
+        .query<{ publicationId: string; rowCount: number; status: string }, []>(
+          `SELECT current.publication_id AS publicationId,
+                  ingestions.row_count AS rowCount,
+                  ingestions.status
+           FROM current_publications AS current
+           JOIN route_ingestions AS ingestions
+             ON ingestions.template_id = current.template_id
+            AND ingestions.id = 'ing-store-compact-2'
+           WHERE current.template_id = 'tpl-store'`
+        )
+        .get()
+    ).toEqual({ publicationId: 'publication-store-2', rowCount: 12, status: 'succeeded' });
 
     const countsBeforeReplay = {
       templates: tableCount(client, 'templates'),
@@ -156,6 +388,32 @@ describe('compact published scenario seed', () => {
     ).toHaveLength(22);
   });
 
+  test('keeps the added explorer pages on the template default selectors', () => {
+    ensureCompactPublishedScenarios(client);
+    const service = new CmsService(client);
+
+    expect(service.previewSelector('tpl-store', "brand = 'mcdonalds'", 50).totalCount).toBe(1);
+    expect(
+      service.previewSelector(
+        'eligible-vehicles',
+        "country = 'US' AND state = 'ca' AND slug = 'premium'",
+        50
+      ).totalCount
+    ).toBe(1);
+    expect(
+      service.previewSelector('structural-marketing', "airport_code IN ('LAX', 'SFO', 'JFK')", 50)
+        .totalCount
+    ).toBe(1);
+
+    for (const [templateId, pageId] of [
+      ['tpl-store', 'page-store-1014'],
+      ['eligible-vehicles', 'eligible:fr-CA:QC:rideshare'],
+      ['structural-marketing', 'structural-page:guarulhos'],
+    ] as const) {
+      expect(service.resolvePage(templateId, pageId).document.matchedVariantIds).toEqual([]);
+    }
+  });
+
   test('reproduces compact IDs and publication hashes in a fresh database', async () => {
     ensureCompactPublishedScenarios(client);
     const replayClient = await createTestDatabase();
@@ -183,7 +441,9 @@ describe('compact published scenario seed', () => {
              JOIN published_page_documents AS documents
                ON documents.template_id = current.template_id
               AND documents.publication_id = current.publication_id
-             WHERE current.template_id IN ('eligible-vehicles', 'structural-marketing')
+             WHERE current.template_id IN (
+               'eligible-vehicles', 'structural-marketing', 'tpl-store'
+             )
              ORDER BY current.template_id, documents.canonical_url`
           )
           .all(),
@@ -512,6 +772,224 @@ describe('compact published scenario seed', () => {
     const registration = ensureCompactPublishedScenario(client, 'eligible-vehicles');
     expect(registration).toBe(compactScenarioRegistry['eligible-vehicles']);
     expect(compactScenarioIsComplete(client, 'eligible-vehicles')).toBe(true);
+  });
+
+  for (const fixture of [
+    {
+      scenarioId: 'eligible-vehicles',
+      templateId: 'eligible-vehicles',
+      legacyPublicationId: 'editable-eligible-publication-1',
+      expansionPublicationId: 'editable-eligible-publication-2',
+      failurePageId: 'eligible:en-US:TX:premium',
+      addedPageId: 'eligible:fr-CA:QC:rideshare',
+      addedCanonicalUrl: '/fr-CA/eligible-vehicles/qc/rideshare',
+      triggerName: 'fail_eligible_legacy_expansion',
+    },
+    {
+      scenarioId: 'structural-proof',
+      templateId: 'structural-marketing',
+      legacyPublicationId: 'editable-structural-publication-1',
+      expansionPublicationId: 'editable-structural-publication-2',
+      failurePageId: 'structural-page:boston-logan',
+      addedPageId: 'structural-page:guarulhos',
+      addedCanonicalUrl: '/pt-BR/airport/guarulhos',
+      triggerName: 'fail_structural_legacy_expansion',
+    },
+  ] as const) {
+    test(`upgrades the legacy two-page ${fixture.scenarioId} publication atomically`, () => {
+      seedLegacyTwoPageScenario(client, fixture.scenarioId);
+      const service = new CmsService(client);
+      const legacyDocuments = client.sqlite
+        .query<
+          {
+            createdAt: string;
+            documentHash: string;
+            pageInstanceId: string;
+            renderedDocumentJson: string | null;
+            resolvedDataJson: string;
+          },
+          [string, string]
+        >(
+          `SELECT page_instance_id AS pageInstanceId,
+                  resolved_data_json AS resolvedDataJson,
+                  rendered_document_json AS renderedDocumentJson,
+                  document_hash AS documentHash,
+                  created_at AS createdAt
+           FROM published_page_documents
+           WHERE template_id = ? AND publication_id = ?
+           ORDER BY page_instance_id`
+        )
+        .all(fixture.templateId, fixture.legacyPublicationId);
+      expect(legacyDocuments).toHaveLength(2);
+      expect(
+        client.sqlite
+          .query<{ previousPublicationId: string | null; publicationId: string }, [string]>(
+            `SELECT current.publication_id AS publicationId,
+                    publications.previous_publication_id AS previousPublicationId
+             FROM current_publications AS current
+             JOIN publications
+               ON publications.template_id = current.template_id
+              AND publications.id = current.publication_id
+             WHERE current.template_id = ?`
+          )
+          .get(fixture.templateId)
+      ).toEqual({ publicationId: fixture.legacyPublicationId, previousPublicationId: null });
+
+      client.sqlite.exec(`
+        CREATE TRIGGER ${fixture.triggerName}
+        BEFORE INSERT ON page_instances
+        WHEN NEW.template_id = '${fixture.templateId}' AND NEW.id = '${fixture.failurePageId}'
+        BEGIN
+          SELECT RAISE(ABORT, 'forced legacy compact expansion failure');
+        END;
+      `);
+      expect(() => ensureCompactPublishedScenario(client, fixture.scenarioId)).toThrow(
+        'forced legacy compact expansion failure'
+      );
+      expect(
+        client.sqlite
+          .query<{ count: number }, [string]>(
+            'SELECT count(*) AS count FROM page_instances WHERE template_id = ?'
+          )
+          .get(fixture.templateId)?.count
+      ).toBe(2);
+      expect(
+        client.sqlite
+          .query<{ count: number }, [string, string]>(
+            'SELECT count(*) AS count FROM publications WHERE template_id = ? AND id = ?'
+          )
+          .get(fixture.templateId, fixture.expansionPublicationId)?.count
+      ).toBe(0);
+      expect(
+        client.sqlite
+          .query<{ publicationId: string }, [string]>(
+            'SELECT publication_id AS publicationId FROM current_publications WHERE template_id = ?'
+          )
+          .get(fixture.templateId)
+      ).toEqual({ publicationId: fixture.legacyPublicationId });
+
+      client.sqlite.exec(`DROP TRIGGER ${fixture.triggerName}`);
+      expect(ensureCompactPublishedScenario(client, fixture.scenarioId)).toBe(
+        compactScenarioRegistry[fixture.scenarioId]
+      );
+      expect(compactScenarioIsComplete(client, fixture.scenarioId)).toBe(true);
+      expect(
+        client.sqlite
+          .query<{ count: number }, [string]>(
+            'SELECT count(*) AS count FROM page_instances WHERE template_id = ?'
+          )
+          .get(fixture.templateId)?.count
+      ).toBe(14);
+      expect(
+        client.sqlite
+          .query<{ count: number }, [string, string]>(
+            `SELECT count(*) AS count
+             FROM published_page_documents
+             WHERE template_id = ? AND publication_id = ?`
+          )
+          .get(fixture.templateId, fixture.expansionPublicationId)?.count
+      ).toBe(14);
+      expect(
+        client.sqlite
+          .query<{ previousPublicationId: string | null; publicationId: string }, [string]>(
+            `SELECT current.publication_id AS publicationId,
+                    publications.previous_publication_id AS previousPublicationId
+             FROM current_publications AS current
+             JOIN publications
+               ON publications.template_id = current.template_id
+              AND publications.id = current.publication_id
+             WHERE current.template_id = ?`
+          )
+          .get(fixture.templateId)
+      ).toEqual({
+        publicationId: fixture.expansionPublicationId,
+        previousPublicationId: fixture.legacyPublicationId,
+      });
+      expect(
+        client.sqlite
+          .query<
+            {
+              createdAt: string;
+              documentHash: string;
+              pageInstanceId: string;
+              renderedDocumentJson: string | null;
+              resolvedDataJson: string;
+            },
+            [string, string]
+          >(
+            `SELECT page_instance_id AS pageInstanceId,
+                    resolved_data_json AS resolvedDataJson,
+                    rendered_document_json AS renderedDocumentJson,
+                    document_hash AS documentHash,
+                    created_at AS createdAt
+             FROM published_page_documents
+             WHERE template_id = ? AND publication_id = ?
+             ORDER BY page_instance_id`
+          )
+          .all(fixture.templateId, fixture.legacyPublicationId)
+      ).toEqual(legacyDocuments);
+      expect(
+        service.resolvePage(fixture.templateId, fixture.addedPageId).document.matchedVariantIds
+      ).toEqual([]);
+      expect(service.serve(fixture.templateId, fixture.addedCanonicalUrl).status).toBe(200);
+
+      const countsBeforeReplay = {
+        pages: tableCount(client, 'page_instances'),
+        publications: tableCount(client, 'publications'),
+        documents: tableCount(client, 'published_page_documents'),
+      };
+      ensureCompactPublishedScenario(client, fixture.scenarioId);
+      expect({
+        pages: tableCount(client, 'page_instances'),
+        publications: tableCount(client, 'publications'),
+        documents: tableCount(client, 'published_page_documents'),
+      }).toEqual(countsBeforeReplay);
+    });
+  }
+
+  test('rolls back a failed Store expansion before retrying all twelve pages', () => {
+    client.sqlite.exec(`
+      CREATE TRIGGER fail_compact_store_expansion
+      BEFORE INSERT ON page_instances
+      WHEN NEW.id = 'page-store-1007'
+      BEGIN
+        SELECT RAISE(ABORT, 'forced Store expansion failure');
+      END;
+    `);
+
+    expect(() => ensureCompactPublishedScenario(client, 'stores')).toThrow();
+    expect(
+      client.sqlite
+        .query<{ count: number }, []>(
+          "SELECT count(*) AS count FROM page_instances WHERE id LIKE 'page-store-10%'"
+        )
+        .get()?.count
+    ).toBe(2);
+    expect(
+      client.sqlite
+        .query<{ count: number }, []>(
+          "SELECT count(*) AS count FROM route_ingestions WHERE id = 'ing-store-compact-2'"
+        )
+        .get()?.count
+    ).toBe(0);
+    expect(
+      client.sqlite
+        .query<{ publicationId: string }, []>(
+          "SELECT publication_id AS publicationId FROM current_publications WHERE template_id = 'tpl-store'"
+        )
+        .get()
+    ).toEqual({ publicationId: 'publication-store-1' });
+
+    client.sqlite.exec('DROP TRIGGER fail_compact_store_expansion');
+    expect(ensureCompactPublishedScenario(client, 'stores')).toBe(compactScenarioRegistry.stores);
+    expect(compactScenarioIsComplete(client, 'stores')).toBe(true);
+    expect(
+      client.sqlite
+        .query<{ count: number }, []>(
+          "SELECT count(*) AS count FROM page_instances WHERE template_id = 'tpl-store'"
+        )
+        .get()?.count
+    ).toBe(14);
   });
 
   test('serving current pages is read-only and never evaluates selector SQL or CEL', () => {

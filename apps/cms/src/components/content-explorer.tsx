@@ -5,11 +5,13 @@ import {
   FileText,
   Folder,
   FolderOpen,
+  GitBranch,
   ListTree,
   Search,
   Table2,
 } from 'lucide-react';
 import * as z from 'zod';
+import { TemplatePageNavigator } from '@/components/template-page-navigator';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -343,6 +345,115 @@ function TableView({
   );
 }
 
+function SelectorView({
+  snapshot,
+  template,
+  canonicalUrl,
+}: Readonly<{
+  snapshot: ContentExplorerProps['snapshot'];
+  template: ContentTemplateSummary;
+  canonicalUrl: string;
+}>) {
+  return (
+    <section aria-labelledby="template-selectors-heading" className="space-y-3">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h3 id="template-selectors-heading" className="text-sm font-semibold text-ink">
+            Template-wide selectors
+          </h3>
+          <p className="mt-1 max-w-2xl text-[11px] leading-5 text-ink-muted">
+            These predicates select pages across {template.name}. The preview page above is context,
+            not selector ownership.
+          </p>
+        </div>
+        <Badge tone="info">{snapshot.selectors.length} scopes</Badge>
+      </div>
+
+      <ol className="space-y-2">
+        {snapshot.selectors.map((selector) => {
+          const firstMatch = selector.sampleCanonicalUrls[0];
+          return (
+            <li key={selector.id} className="rounded-lg border border-line bg-canvas p-3 shadow-sm">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h4 className="text-xs font-semibold text-ink">{selector.name}</h4>
+                    <Badge tone={selector.isDefault ? 'neutral' : 'info'}>
+                      {selector.isDefault ? 'Template default' : `P${selector.priority}`}
+                    </Badge>
+                    <Badge tone={selector.status === 'active' ? 'success' : 'warning'} dot>
+                      {selector.status}
+                    </Badge>
+                    {selector.selectedPageMatches === null ? null : (
+                      <Badge tone={selector.selectedPageMatches ? 'success' : 'neutral'}>
+                        {selector.selectedPageMatches
+                          ? 'Matches preview'
+                          : 'Does not match preview'}
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="mt-2 text-[10px] font-semibold uppercase tracking-[0.1em] text-ink-faint">
+                    Authored predicate
+                  </p>
+                  <code className="mt-1 block overflow-x-auto rounded-md bg-ink px-2.5 py-2 font-mono text-[10px] leading-5 text-canvas">
+                    {selector.selector}
+                  </code>
+                </div>
+                <dl className="grid min-w-48 grid-cols-2 gap-x-4 gap-y-2 text-[10px]">
+                  <div>
+                    <dt className="text-ink-faint">Matching pages</dt>
+                    <dd className="mt-0.5 text-sm font-semibold text-ink">
+                      {selector.exactMatchCount.toLocaleString()}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-ink-faint">Local placements</dt>
+                    <dd className="mt-0.5 text-sm font-semibold text-ink">
+                      {selector.affectedPlacementCount.toLocaleString()}
+                    </dd>
+                  </div>
+                </dl>
+              </div>
+
+              {selector.sampleCanonicalUrls.length > 0 ? (
+                <p className="mt-2 truncate font-mono text-[10px] text-ink-muted">
+                  Sample: {selector.sampleCanonicalUrls.join(' · ')}
+                  {selector.sampleUrlsTruncated ? ' · …' : ''}
+                </p>
+              ) : (
+                <p className="mt-2 text-[10px] text-warning-strong">
+                  This selector matches no pages.
+                </p>
+              )}
+
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <Link
+                  to="/author/$templateId"
+                  params={{ templateId: template.slug }}
+                  search={{ canonicalUrl, scopeId: selector.id, panel: 'cascade' }}
+                  className="inline-flex h-8 items-center gap-1.5 rounded-md border border-line-strong bg-canvas px-3 text-xs font-medium text-ink outline-none hover:bg-surface-muted focus-visible:ring-2 focus-visible:ring-focus"
+                >
+                  <GitBranch aria-hidden="true" className="size-3.5" /> View selector
+                </Link>
+                {firstMatch && firstMatch !== canonicalUrl ? (
+                  <Link
+                    to="/author/$templateId"
+                    params={{ templateId: template.slug }}
+                    search={{ canonicalUrl: firstMatch, scopeId: selector.id, panel: 'cascade' }}
+                    className="inline-flex h-8 items-center rounded-md px-3 text-xs font-medium text-accent-strong outline-none hover:bg-accent-soft focus-visible:ring-2 focus-visible:ring-focus"
+                  >
+                    Preview first match
+                  </Link>
+                ) : null}
+              </div>
+            </li>
+          );
+        })}
+      </ol>
+    </section>
+  );
+}
+
 function Pagination({
   search,
   previousCursor,
@@ -406,6 +517,11 @@ function Pagination({
 export function ContentExplorer({ snapshot, search }: Readonly<ContentExplorerProps>) {
   const navigate = useNavigate({ from: '/content' });
   const template = selectedTemplate(snapshot.templates, snapshot.selectedTemplate);
+  const previewCanonicalUrl =
+    snapshot.pageNavigation.selectedPage?.canonicalUrl ??
+    snapshot.pageNavigation.defaultPage?.canonicalUrl ??
+    snapshot.pageNavigation.options[0]?.canonicalUrl ??
+    '';
 
   return (
     <section className="mx-auto w-full max-w-[1480px] space-y-4 p-4 sm:p-5 lg:p-6">
@@ -528,24 +644,72 @@ export function ContentExplorer({ snapshot, search }: Readonly<ContentExplorerPr
                 <Table2 aria-hidden="true" className="size-3.5" />
                 Table
               </Link>
+              <Link
+                to="/content"
+                search={{ ...search, view: 'selectors', cursor: undefined }}
+                aria-current={search.view === 'selectors' ? 'page' : undefined}
+                className={cn(
+                  'inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-xs font-medium outline-none focus-visible:ring-2 focus-visible:ring-focus',
+                  search.view === 'selectors'
+                    ? 'bg-canvas text-ink shadow-sm'
+                    : 'text-ink-muted hover:text-ink'
+                )}
+              >
+                <GitBranch aria-hidden="true" className="size-3.5" />
+                Selectors
+              </Link>
             </nav>
+          </div>
+
+          <div className="mb-4 space-y-2 border-b border-line pb-4">
+            <TemplatePageNavigator
+              key={snapshot.selectedTemplate}
+              navigation={snapshot.pageNavigation}
+              canonicalUrl={previewCanonicalUrl}
+              onPageChange={(page) => {
+                void navigate({
+                  replace: true,
+                  search: { ...search, canonicalUrl: page.canonicalUrl, cursor: undefined },
+                });
+              }}
+            />
+            {previewCanonicalUrl ? (
+              <div className="flex justify-end">
+                <Link
+                  to="/author/$templateId"
+                  params={{ templateId: template.slug }}
+                  search={{ canonicalUrl: previewCanonicalUrl }}
+                  className="inline-flex h-8 items-center rounded-md border border-line-strong bg-canvas px-3 text-xs font-medium text-ink outline-none hover:bg-surface-muted focus-visible:ring-2 focus-visible:ring-focus"
+                >
+                  Preview in studio
+                </Link>
+              </div>
+            ) : null}
           </div>
 
           {search.view === 'tree' ? (
             <TreeView snapshot={snapshot} view={search.view} />
+          ) : search.view === 'selectors' ? (
+            <SelectorView
+              snapshot={snapshot}
+              template={template}
+              canonicalUrl={previewCanonicalUrl}
+            />
           ) : (
             <TableView snapshot={snapshot} template={template} />
           )}
 
-          <div className="mt-4 border-t border-line pt-4">
-            <Pagination
-              search={search}
-              previousCursor={snapshot.previousCursor}
-              nextCursor={snapshot.nextCursor}
-              visibleCount={snapshot.pages.length}
-              totalCount={snapshot.filteredCount}
-            />
-          </div>
+          {search.view === 'selectors' ? null : (
+            <div className="mt-4 border-t border-line pt-4">
+              <Pagination
+                search={search}
+                previousCursor={snapshot.previousCursor}
+                nextCursor={snapshot.nextCursor}
+                visibleCount={snapshot.pages.length}
+                totalCount={snapshot.filteredCount}
+              />
+            </div>
+          )}
         </Card>
       </div>
     </section>

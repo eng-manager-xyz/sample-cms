@@ -39,8 +39,9 @@ export function ScenarioSwitcher({
         return destination === 'template' ? (
           <Link
             key={scenario.id}
-            to="/templates/$templateId"
+            to="/author/$templateId"
             params={{ templateId: scenario.id }}
+            search={{ canonicalUrl: scenario.pin.canonicalUrl }}
             aria-current={active ? 'page' : undefined}
             className={className}
           >

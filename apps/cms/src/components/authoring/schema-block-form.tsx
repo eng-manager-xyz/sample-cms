@@ -31,6 +31,11 @@ export interface BlockFormSaveInput {
 
 type BlockFormPosition = NonNullable<BlockFormSaveInput['position']>;
 
+export interface BlockFormInsertion {
+  readonly position: BlockFormPosition;
+  readonly referencePlacementKey?: string;
+}
+
 interface BlockFormState {
   readonly blockTypeKey: string;
   readonly placementKey: string;
@@ -144,6 +149,7 @@ function initialBlockFormState(input: {
   readonly placement?: CmsWorkspacePlacement;
   readonly blockTypes: readonly CmsWorkspaceBlockType[];
   readonly placementKeys: readonly string[];
+  readonly insertion?: BlockFormInsertion;
 }): BlockFormState {
   const typeKey = input.placement?.blockType ?? input.blockTypes[0]?.key ?? 'hero';
   const blockType = selectedBlockType(input.blockTypes, typeKey);
@@ -156,8 +162,8 @@ function initialBlockFormState(input: {
   return {
     blockTypeKey: blockType.key,
     placementKey: input.placement?.placementKey ?? '',
-    position: 'end',
-    referencePlacementKey: input.placementKeys[0] ?? '',
+    position: input.insertion?.position ?? 'end',
+    referencePlacementKey: input.insertion?.referencePlacementKey ?? input.placementKeys[0] ?? '',
     values: draftValuesFromContent(model.fields, parseContentJson(contentJson)),
     rawJson: contentJson,
     rawDirty: false,
@@ -605,6 +611,7 @@ export function SchemaBlockForm({
   inspectField,
   hasUnsavedChanges,
   onDiscard,
+  initialInsertion,
 }: Readonly<{
   mode: 'add' | 'edit';
   placement?: CmsWorkspacePlacement;
@@ -617,10 +624,11 @@ export function SchemaBlockForm({
   inspectField: (source: string) => Promise<CmsWorkspaceFieldInspection>;
   hasUnsavedChanges: boolean;
   onDiscard: () => void;
+  initialInsertion?: BlockFormInsertion;
 }>) {
   const [formState, dispatch] = useReducer(
     blockFormReducer,
-    { placement, blockTypes, placementKeys },
+    { placement, blockTypes, placementKeys, insertion: initialInsertion },
     initialBlockFormState
   );
   const {
@@ -648,7 +656,12 @@ export function SchemaBlockForm({
   const discard = (): void => {
     dispatch({
       type: 'reset',
-      state: initialBlockFormState({ placement, blockTypes, placementKeys }),
+      state: initialBlockFormState({
+        placement,
+        blockTypes,
+        placementKeys,
+        insertion: initialInsertion,
+      }),
     });
     onDiscard();
   };

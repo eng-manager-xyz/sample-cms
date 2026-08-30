@@ -13,10 +13,10 @@ test('the authoring-contract migrations upgrade populated schema-v1 rows safely'
       VALUES ('legacy-template', 'legacy', 'Legacy', '/{slug}');
 
       INSERT INTO route_ingestions (
-        id, template_id, source, source_revision, status, checksum, row_count,
+        id, template_id, source_revision, status, checksum, row_count,
         started_at, completed_at, created_at
       ) VALUES (
-        'legacy-ingestion', 'legacy-template', 'seed', 'legacy-route-v1',
+        'legacy-ingestion', 'legacy-template', 'legacy-route-v1',
         'succeeded', 'legacy-checksum', 1, '2025-12-31T23:59:58.000Z',
         '2025-12-31T23:59:59.000Z', '2025-12-31T23:59:58.000Z'
       );
@@ -65,6 +65,7 @@ test('the authoring-contract migrations upgrade populated schema-v1 rows safely'
     sqlite.exec(await readMigration('0003_domain-path-canonical-identity.sql'));
     sqlite.exec(await readMigration('0004_selector-validation-and-preview-metadata.sql'));
     sqlite.exec(await readMigration('0005_route-source-observed-at.sql'));
+    sqlite.exec(await readMigration('0006_natural_jubilee.sql'));
 
     expect(
       sqlite
@@ -100,6 +101,21 @@ test('the authoring-contract migrations upgrade populated schema-v1 rows safely'
         )
         .get()
     ).toEqual({ sourceObservedAt: '2025-12-31T23:59:58.000Z' });
+    expect(
+      sqlite
+        .query<{ routeAuthority: string }, []>(
+          `SELECT route_authority AS routeAuthority
+           FROM templates WHERE id = 'legacy-template'`
+        )
+        .get()
+    ).toEqual({ routeAuthority: 'router_service' });
+    expect(
+      sqlite
+        .query<{ source: string }, []>(
+          `SELECT source FROM route_ingestions WHERE id = 'legacy-ingestion'`
+        )
+        .get()
+    ).toEqual({ source: 'router_service' });
 
     expect(() =>
       sqlite.exec(`

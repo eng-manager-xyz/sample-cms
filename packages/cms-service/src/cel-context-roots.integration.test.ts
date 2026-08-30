@@ -15,7 +15,7 @@ test('unions legacy top-level CEL aliases across heterogeneous page contexts', a
     service.createPage('tpl-store', {
       id: 'page-store-heterogeneous-context',
       canonicalUrl: '/en-US/store/1003',
-      routeExternalId: 'camo-store-heterogeneous-context',
+      routeExternalId: 'router-store-heterogeneous-context',
       routeStatus: 'live',
       routeRevision: 'store-seed-v2',
       context: {

@@ -9,7 +9,7 @@ INSERT OR IGNORE INTO templates (
   '/{locale}/store/{store_id}',
   'Sparse selector and manifest-reuse proof template',
   'active',
-  'camo_press',
+  'router_service',
   '2026-01-01T00:00:00.000Z',
   '2026-01-01T00:00:00.000Z'
 );
@@ -44,13 +44,13 @@ INSERT OR IGNORE INTO page_instances (
   last_ingestion_id, slot_value_hash, context_json, created_at, updated_at
 ) VALUES
   (
-    'page-store-1001', 'tpl-store', '/en-US/store/1001', 'camo-store-1001', 'live',
+    'page-store-1001', 'tpl-store', '/en-US/store/1001', 'router-store-1001', 'live',
     'store-seed-v1', 'ing-store-seed-1', 'ad34c82b43166d4823b61f6190ea475c65d3eaee35d87ee86cfe02ec08e8b11a',
     '{"locale":"en-US","store":{"id":1001,"name":"McDonald''s Market","location":"San Francisco"}}',
     '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z'
   ),
   (
-    'page-store-1002', 'tpl-store', '/en-US/store/1002', 'camo-store-1002', 'live',
+    'page-store-1002', 'tpl-store', '/en-US/store/1002', 'router-store-1002', 'live',
     'store-seed-v1', 'ing-store-seed-1', 'e9e61f1e643b84e92daa2fde8979ea84fda00f8461a063a7a3ccb53f9b5e3627',
     '{"locale":"en-US","store":{"id":1002,"name":"Neighborhood Kitchen","location":"Oakland"}}',
     '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z'
@@ -90,12 +90,12 @@ INSERT OR IGNORE INTO route_audit_log (
   previous_status, next_status, detail_json, created_at
 ) VALUES
   (
-    'audit-store-1001-insert', 'ing-store-seed-1', 'page-store-1001', 'camo-store-1001',
+    'audit-store-1001-insert', 'ing-store-seed-1', 'page-store-1001', 'router-store-1001',
     '/en-US/store/1001', 'insert', NULL, 'live', '{"source":"deterministic-seed"}',
     '2026-01-01T00:00:00.000Z'
   ),
   (
-    'audit-store-1002-insert', 'ing-store-seed-1', 'page-store-1002', 'camo-store-1002',
+    'audit-store-1002-insert', 'ing-store-seed-1', 'page-store-1002', 'router-store-1002',
     '/en-US/store/1002', 'insert', NULL, 'live', '{"source":"deterministic-seed"}',
     '2026-01-01T00:00:00.000Z'
   );

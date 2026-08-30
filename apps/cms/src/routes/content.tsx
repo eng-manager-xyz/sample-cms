@@ -8,7 +8,9 @@ import { loadContentExplorer } from '@/server-functions/content.functions';
 export const Route = createFileRoute('/content')({
   validateSearch: (search) => ContentExplorerSearchSchema.parse(search),
   loaderDeps: ({ search }) => ({
+    view: search.view,
     template: search.template,
+    canonicalUrl: search.canonicalUrl,
     q: search.q,
     cursor: search.cursor,
   }),
@@ -21,6 +23,8 @@ export const Route = createFileRoute('/content')({
           q: deps.q,
           cursor: deps.cursor,
           limit: 20,
+          selectedCanonicalUrl: deps.canonicalUrl,
+          includeSelectors: deps.view === 'selectors',
         },
       }),
     ]);
@@ -39,6 +43,7 @@ function ContentExplorerRoute() {
       schemaVersion={health.schemaVersion}
       section="content"
       breadcrumb="Content explorer"
+      templateId={search.template}
     >
       <ContentExplorer snapshot={snapshot} search={search} />
     </AppShell>

@@ -26,7 +26,7 @@ current-publication pointer.
 There is **no route-tree content inheritance** in this model. A URL path is represented by ordered
 slots, but parent/child path position never determines content precedence. Inheritance comes only
 from one template-owned default plus matching selector variants with explicit integer priority.
-Camo Press remains the route identity/status authority at the transition seam.
+RouterService remains the route identity/status authority at the transition seam.
 
 ### Executable publication-document contract
 
@@ -256,8 +256,8 @@ tests, but is not an alternate ownership path.
 | ---: | --- | --- | --- | --- |
 | 1 | `templates` | One domain plus URL grammar/content map. Template administration owns it. | Mutable metadata and active/archived status; stable identity. | PK `id`; unique `key` and `(domain,url_pattern)`; normalized bare-host domain plus pattern/status checks; every dependent content row stays template-scoped. |
 | 2 | `template_slots` | One static, variable, or derived scalar dimension. Template administration owns it. | Mutable model input; changes can require route re-ingestion/publication. | PK `id`; FK `template_id`; unique template/key and template/path position; kind-shape and non-negative-position checks; `(template_id,path_position)` lookup. |
-| 3 | `route_ingestions` | One idempotent Camo or seed import attempt. Route ingestion owns it. | Append-oriented; immutable `source_observed_at` records when the source state was observed; `running` closes as `succeeded` or `failed`. | PK `id`; FK template; unique `(template_id,source,source_revision)`; required source-observation timestamp; template/status index; completion-shape and row-count checks. |
-| 4 | `page_instances` | One stable Camo route identity and canonical path inside a template/domain. Route ingestion owns it. | Mutable authoring input; lifecycle status changes by authoritative import. | PK `id`; FK template and last ingestion; unique external ID, `(template_id,canonical_url)`, and `(template_id,slot_value_hash)`; domain-plus-path uniqueness triggers; JSON context and absolute-path checks; `(template_id,route_status)` index. |
+| 3 | `route_ingestions` | One idempotent RouterService or seed import attempt. Route ingestion owns it. | Append-oriented; immutable `source_observed_at` records when the source state was observed; `running` closes as `succeeded` or `failed`. | PK `id`; FK template; unique `(template_id,source,source_revision)`; required source-observation timestamp; template/status index; completion-shape and row-count checks. |
+| 4 | `page_instances` | One stable RouterService route identity and canonical path inside a template/domain. Route ingestion owns it. | Mutable authoring input; lifecycle status changes by authoritative import. | PK `id`; FK template and last ingestion; unique external ID, `(template_id,canonical_url)`, and `(template_id,slot_value_hash)`; domain-plus-path uniqueness triggers; JSON context and absolute-path checks; `(template_id,route_status)` index. |
 | 5 | `page_slot_values` | One page's normalized value for one declared slot. Route ingestion derives it. | Replaceable when route inputs change. | PK `(page_instance_id,slot_id)`; composite page/template and slot/template FKs; selector index `(template_id,slot_id,normalized_value,page_instance_id)`. |
 | 6 | `tags` | One template-local namespace/value definition with label, description, and source. Tag pipeline or authoring owns it. | Mutable display metadata; stable semantic identity. | PK `id`; FK template; optional same-template parent; unique `(template_id,namespace,value)`; namespace/value index. Parent rows do not imply membership. |
 | 7 | `page_tags` | One explicit page-to-tag membership and source. Tag pipeline or authoring owns it. | Add/remove when classifications change. | PK `(page_instance_id,tag_id)`; composite same-template FKs; `(template_id,tag_id,page_instance_id)` selector index. |
@@ -369,7 +369,7 @@ The migration's payload check rejects malformed tombstones that carry a block ve
 | Operation | Reads/writes normalized authoring tables | Reads/writes published tables |
 | --- | --- | --- |
 | Template/slot setup | Write templates/slots/default rows | None until publish |
-| Camo ingestion | Write ingestion/page/slot/tag/audit rows | None; current publication remains stable |
+| RouterService ingestion | Write ingestion/page/slot/tag/audit rows | None; current publication remains stable |
 | Selector preview | Read approved page/slot/tag projection and variant revisions | Optionally compare current published document |
 | Explicit website preview (`/cms-preview_/*`) | Resolve current draft by template and canonical URL through a read-only connection | None; response is no-store and never activates a publication |
 | Block edit | Append block version and variant revision/operations | None until publish |
@@ -613,7 +613,7 @@ not the public request path.
   no order; an `order` must have a non-negative order and no block.
 - A publication row records the prior published result as a rollback target. The current pointer is
   the only serving-state row intended to change during activation/rollback.
-- `published_page_documents.route_status` is the compiled status snapshot; Camo Press remains the
+- `published_page_documents.route_status` is the compiled status snapshot; RouterService remains the
   live route authority during transition.
 
 ## Validation

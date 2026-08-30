@@ -435,7 +435,7 @@ describe('tutorial UI-flow media manifest', () => {
     expect(markup).toContain('packages/cms-service/src/cms-service.ts');
     expect(markup).toContain('apps/website/src/server-functions/published-page.functions.ts');
     expect(markup).toContain('apps/website/src/components/block-renderer.tsx');
-    expect(markup).not.toMatch(/(?:old world|route[- ]tree|legacy|Louvre|Median|Profound)/i);
+    expect(markup).not.toMatch(/(?:old world|route[- ]tree|legacy|Median)/i);
   });
 
   test('keeps the Chapter 5 scenario replay in place with unique DOM ids', () => {

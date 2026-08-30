@@ -124,9 +124,7 @@ describe('current Auteur tutorial contract', () => {
 
   test('does not teach retired systems, donor history, or proposed production architecture', () => {
     const retiredTeaching = [
-      /\bLouvre\b/i,
       /\bMedian\b/i,
-      /\bProfound\b/i,
       /route[- ]tree/i,
       /legacy (?:request|architecture|content system)/i,
       /old request path/i,
@@ -134,7 +132,6 @@ describe('current Auteur tutorial contract', () => {
       /big[- ]bang/i,
       /transition architecture/i,
       /during the transition/i,
-      /Camo Press\s*[→-]\s*Auteur/i,
     ];
     const proposedProductionTeaching = [
       /\bTiDB\b/i,

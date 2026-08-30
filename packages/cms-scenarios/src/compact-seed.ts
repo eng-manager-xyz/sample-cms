@@ -5,24 +5,166 @@ import { CmsService, CmsServiceError } from '@repo/cms-service';
 const SEED_ACTOR = 'compact-scenario-seed';
 const SEED_NOW = '2026-01-04T00:00:00.000Z';
 
+const STORE_EXPLORER_PAGES = [
+  {
+    id: 'page-store-1003',
+    storeId: 1003,
+    locale: 'en-CA',
+    name: 'Maple Market',
+    location: 'Toronto',
+  },
+  {
+    id: 'page-store-1004',
+    storeId: 1004,
+    locale: 'en-US',
+    name: 'Sunrise Deli',
+    location: 'Seattle',
+  },
+  {
+    id: 'page-store-1005',
+    storeId: 1005,
+    locale: 'es-US',
+    name: 'Cocina Mission',
+    location: 'San Francisco',
+  },
+  {
+    id: 'page-store-1006',
+    storeId: 1006,
+    locale: 'fr-CA',
+    name: 'Marché du Plateau',
+    location: 'Montréal',
+  },
+  {
+    id: 'page-store-1007',
+    storeId: 1007,
+    locale: 'en-US',
+    name: 'Lakeside Grill',
+    location: 'Chicago',
+  },
+  {
+    id: 'page-store-1008',
+    storeId: 1008,
+    locale: 'es-US',
+    name: 'Tacos del Sol',
+    location: 'Los Angeles',
+  },
+  {
+    id: 'page-store-1009',
+    storeId: 1009,
+    locale: 'en-CA',
+    name: 'Pacific Pantry',
+    location: 'Vancouver',
+  },
+  {
+    id: 'page-store-1010',
+    storeId: 1010,
+    locale: 'fr-CA',
+    name: 'Café du Canal',
+    location: 'Montréal',
+  },
+  {
+    id: 'page-store-1011',
+    storeId: 1011,
+    locale: 'en-US',
+    name: 'Desert Kitchen',
+    location: 'Phoenix',
+  },
+  {
+    id: 'page-store-1012',
+    storeId: 1012,
+    locale: 'es-US',
+    name: 'Casa Verde',
+    location: 'Austin',
+  },
+  {
+    id: 'page-store-1013',
+    storeId: 1013,
+    locale: 'en-CA',
+    name: 'Prairie Table',
+    location: 'Calgary',
+  },
+  {
+    id: 'page-store-1014',
+    storeId: 1014,
+    locale: 'fr-CA',
+    name: 'Boulangerie du Vieux-Port',
+    location: 'Québec',
+  },
+] as const;
+
+const ELIGIBLE_EXPLORER_PAGES = [
+  { locale: 'en-US', state: 'CA', purpose: 'delivery', country: 'US', language: 'en' },
+  { locale: 'en-US', state: 'NY', purpose: 'rideshare', country: 'US', language: 'en' },
+  { locale: 'en-US', state: 'TX', purpose: 'premium', country: 'US', language: 'en' },
+  { locale: 'es-US', state: 'CA', purpose: 'rideshare', country: 'US', language: 'es' },
+  { locale: 'es-US', state: 'NY', purpose: 'delivery', country: 'US', language: 'es' },
+  { locale: 'es-US', state: 'TX', purpose: 'premium', country: 'US', language: 'es' },
+  { locale: 'en-CA', state: 'BC', purpose: 'delivery', country: 'CA', language: 'en' },
+  { locale: 'en-CA', state: 'ON', purpose: 'premium', country: 'CA', language: 'en' },
+  { locale: 'en-CA', state: 'QC', purpose: 'rideshare', country: 'CA', language: 'en' },
+  { locale: 'fr-CA', state: 'BC', purpose: 'premium', country: 'CA', language: 'fr' },
+  { locale: 'fr-CA', state: 'ON', purpose: 'delivery', country: 'CA', language: 'fr' },
+  { locale: 'fr-CA', state: 'QC', purpose: 'rideshare', country: 'CA', language: 'fr' },
+] as const;
+
+const STRUCTURAL_EXPLORER_PAGES = [
+  { locale: 'en-US', slug: 'sea-tac', airportCode: 'SEA' },
+  { locale: 'en-US', slug: 'chicago-ohare', airportCode: 'ORD' },
+  { locale: 'en-US', slug: 'boston-logan', airportCode: 'BOS' },
+  { locale: 'es-US', slug: 'miami', airportCode: 'MIA' },
+  { locale: 'en-CA', slug: 'toronto-pearson', airportCode: 'YYZ' },
+  { locale: 'fr-CA', slug: 'montreal-trudeau', airportCode: 'YUL' },
+  { locale: 'en-GB', slug: 'heathrow', airportCode: 'LHR' },
+  { locale: 'fr-FR', slug: 'charles-de-gaulle', airportCode: 'CDG' },
+  { locale: 'de-DE', slug: 'brandenburg', airportCode: 'BER' },
+  { locale: 'es-ES', slug: 'barajas', airportCode: 'MAD' },
+  { locale: 'ja-JP', slug: 'haneda', airportCode: 'HND' },
+  { locale: 'pt-BR', slug: 'guarulhos', airportCode: 'GRU' },
+] as const;
+
+const REQUIRED_STORE_PAGE_IDS = [
+  'page-store-1001',
+  'page-store-1002',
+  ...STORE_EXPLORER_PAGES.map((page) => page.id),
+] as const;
+const REQUIRED_ELIGIBLE_PAGE_IDS = [
+  'eligible:en-US:CA:premium',
+  'eligible:es-US:TX:delivery',
+  ...ELIGIBLE_EXPLORER_PAGES.map((page) => `eligible:${page.locale}:${page.state}:${page.purpose}`),
+] as const;
+const REQUIRED_STRUCTURAL_PAGE_IDS = [
+  'structural-page:current',
+  'structural-page:hero-alt',
+  ...STRUCTURAL_EXPLORER_PAGES.map((page) => `structural-page:${page.slug}`),
+] as const;
+
 export const compactScenarioRegistry = {
   stores: {
     templateId: 'tpl-store',
     pageId: 'page-store-1001',
     canonicalUrl: '/en-US/store/1001',
     requiredVariantId: 'variant-store-chain',
+    requiredPageIds: REQUIRED_STORE_PAGE_IDS,
+    seedPublicationId: 'publication-store-2',
+    seedIngestionId: 'ing-store-compact-2',
   },
   'eligible-vehicles': {
     templateId: 'eligible-vehicles',
     pageId: 'eligible:en-US:CA:premium',
     canonicalUrl: '/en-US/eligible-vehicles/ca/premium',
     requiredVariantId: 'editable-eligible-exact',
+    requiredPageIds: REQUIRED_ELIGIBLE_PAGE_IDS,
+    seedPublicationId: 'editable-eligible-publication-2',
+    seedIngestionId: null,
   },
   'structural-proof': {
     templateId: 'structural-marketing',
     pageId: 'structural-page:hero-alt',
     canonicalUrl: '/en-US/airport/hero-alt',
     requiredVariantId: 'editable-structural-hero-alt',
+    requiredPageIds: REQUIRED_STRUCTURAL_PAGE_IDS,
+    seedPublicationId: 'editable-structural-publication-2',
+    seedIngestionId: null,
   },
 } as const;
 
@@ -101,6 +243,179 @@ function createDefaultPlacement(
   });
 }
 
+function seedStoreExplorerPages(client: CmsDatabaseClient): void {
+  const registration = compactScenarioRegistry.stores;
+  const service = deterministicService(client, registration.templateId);
+  const existingPageCount = STORE_EXPLORER_PAGES.filter((page) =>
+    service.getPage(registration.templateId, page.id)
+  ).length;
+  if (existingPageCount === STORE_EXPLORER_PAGES.length) return;
+  if (existingPageCount > 0) {
+    throw new CmsServiceError(
+      'CONFLICT',
+      'The Store explorer page seed is partially initialized; reset and reseed the local database.'
+    );
+  }
+
+  client.sqlite
+    .transaction(() => {
+      const ingestion = service.importRouterServiceRoutes({
+        id: registration.seedIngestionId,
+        templateId: registration.templateId,
+        sourceRevision: 'store-compact-v2',
+        observedAt: SEED_NOW,
+        routes: STORE_EXPLORER_PAGES.map((page) => ({
+          id: page.id,
+          canonicalUrl: `/${page.locale}/store/${page.storeId}`,
+          routeExternalId: `router-store-${page.storeId}`,
+          routeStatus: 'live',
+          routeRevision: 'store-compact-v2',
+          context: {
+            locale: page.locale,
+            store: { id: page.storeId, name: page.name, location: page.location },
+          },
+          slotValues: {
+            locale: page.locale,
+            store: 'store',
+            store_id: page.storeId,
+            store_name: page.name,
+          },
+        })),
+      });
+      if (
+        ingestion.idempotent ||
+        ingestion.inserted !== STORE_EXPLORER_PAGES.length ||
+        ingestion.rowCount !== STORE_EXPLORER_PAGES.length
+      ) {
+        throw new CmsServiceError(
+          'CONFLICT',
+          'The Store explorer page import did not insert the complete deterministic page set.'
+        );
+      }
+      const publication = service.publish(registration.templateId, {
+        id: registration.seedPublicationId,
+        createdBy: SEED_ACTOR,
+      });
+      if (publication.pageCount !== registration.requiredPageIds.length) {
+        throw new CmsServiceError(
+          'CONFLICT',
+          'The Store explorer publication did not materialize every required page.'
+        );
+      }
+    })
+    .immediate();
+}
+
+function createEligibleExplorerPage(
+  service: CmsService,
+  templateId: string,
+  page: (typeof ELIGIBLE_EXPLORER_PAGES)[number]
+): void {
+  const id = `eligible:${page.locale}:${page.state}:${page.purpose}`;
+  service.createPage(templateId, {
+    id,
+    canonicalUrl: `/${page.locale}/eligible-vehicles/${page.state.toLowerCase()}/${page.purpose}`,
+    routeExternalId: `router:${id}`,
+    routeStatus: 'live',
+    routeRevision: 'editable-eligible-v1',
+    context: {
+      locale: page.locale,
+      state: page.state,
+      purpose: page.purpose,
+      country: page.country,
+    },
+    slotValues: {
+      locale: page.locale,
+      resource: 'eligible-vehicles',
+      state: page.state.toLowerCase(),
+      slug: page.purpose,
+      country: page.country,
+      language: page.language,
+    },
+  });
+}
+
+function createStructuralExplorerPage(
+  service: CmsService,
+  templateId: string,
+  page: (typeof STRUCTURAL_EXPLORER_PAGES)[number]
+): void {
+  service.createPage(templateId, {
+    id: `structural-page:${page.slug}`,
+    canonicalUrl: `/${page.locale}/airport/${page.slug}`,
+    routeExternalId: `router:structural:${page.slug}`,
+    routeStatus: 'live',
+    routeRevision: 'editable-structural-v1',
+    context: { locale: page.locale, slug: page.slug, airportCode: page.airportCode },
+    slotValues: {
+      locale: page.locale,
+      resource: 'airport',
+      slug: page.slug,
+      airport_code: page.airportCode,
+    },
+  });
+}
+
+function seedExistingExplorerPages(
+  client: CmsDatabaseClient,
+  scenarioId: 'eligible-vehicles' | 'structural-proof'
+): void {
+  const registration = compactScenarioRegistry[scenarioId];
+  const service = deterministicService(client, registration.templateId);
+  const pageIds =
+    scenarioId === 'eligible-vehicles'
+      ? ELIGIBLE_EXPLORER_PAGES.map(
+          (page) => `eligible:${page.locale}:${page.state}:${page.purpose}`
+        )
+      : STRUCTURAL_EXPLORER_PAGES.map((page) => `structural-page:${page.slug}`);
+  const missingPageIds = new Set(
+    pageIds.filter((pageId) => !service.getPage(registration.templateId, pageId))
+  );
+  const seedPublication = publicationState(
+    client,
+    registration.templateId,
+    registration.seedPublicationId
+  );
+  if (missingPageIds.size === 0 && seedPublication) return;
+  if (seedPublication) {
+    throw new CmsServiceError(
+      'CONFLICT',
+      `Compact scenario "${scenarioId}" has an immutable expansion publication without the complete page set.`
+    );
+  }
+
+  client.sqlite
+    .transaction(() => {
+      if (scenarioId === 'eligible-vehicles') {
+        for (const page of ELIGIBLE_EXPLORER_PAGES) {
+          const pageId = `eligible:${page.locale}:${page.state}:${page.purpose}`;
+          if (missingPageIds.has(pageId)) {
+            createEligibleExplorerPage(service, registration.templateId, page);
+          }
+        }
+      } else {
+        for (const page of STRUCTURAL_EXPLORER_PAGES) {
+          const pageId = `structural-page:${page.slug}`;
+          if (missingPageIds.has(pageId)) {
+            createStructuralExplorerPage(service, registration.templateId, page);
+          }
+        }
+      }
+      const publication = service.publish(registration.templateId, {
+        id: registration.seedPublicationId,
+        createdBy: SEED_ACTOR,
+        forceNewPublication: true,
+      });
+      if (publication.pageCount !== registration.requiredPageIds.length) {
+        throw new CmsServiceError(
+          'CONFLICT',
+          `Compact scenario "${scenarioId}" did not publish every explorer page.`
+        );
+      }
+    })
+    .immediate();
+}
+
 function seedEligibleVehicles(client: CmsDatabaseClient): void {
   const templateId = compactScenarioRegistry['eligible-vehicles'].templateId;
   const service = deterministicService(client, templateId);
@@ -147,38 +462,36 @@ function seedEligibleVehicles(client: CmsDatabaseClient): void {
   ] as const) {
     service.createTemplateSlot(templateId, slot);
   }
-  service.createPage(templateId, {
-    id: 'eligible:en-US:CA:premium',
-    canonicalUrl: '/en-US/eligible-vehicles/ca/premium',
-    routeExternalId: 'camo:eligible:en-US:CA:premium',
-    routeStatus: 'live',
-    routeRevision: 'editable-eligible-v1',
-    context: { locale: 'en-US', state: 'CA', purpose: 'premium', country: 'US' },
-    slotValues: {
-      locale: 'en-US',
-      resource: 'eligible-vehicles',
-      state: 'ca',
-      slug: 'premium',
-      country: 'US',
-      language: 'en',
-    },
-  });
-  service.createPage(templateId, {
-    id: 'eligible:es-US:TX:delivery',
-    canonicalUrl: '/es-US/eligible-vehicles/tx/delivery',
-    routeExternalId: 'camo:eligible:es-US:TX:delivery',
-    routeStatus: 'live',
-    routeRevision: 'editable-eligible-v1',
-    context: { locale: 'es-US', state: 'TX', purpose: 'delivery', country: 'US' },
-    slotValues: {
-      locale: 'es-US',
-      resource: 'eligible-vehicles',
-      state: 'tx',
-      slug: 'delivery',
-      country: 'US',
-      language: 'es',
-    },
-  });
+  for (const page of [
+    { locale: 'en-US', state: 'CA', purpose: 'premium', country: 'US', language: 'en' },
+    { locale: 'es-US', state: 'TX', purpose: 'delivery', country: 'US', language: 'es' },
+  ] as const) {
+    const id = `eligible:${page.locale}:${page.state}:${page.purpose}`;
+    service.createPage(templateId, {
+      id,
+      canonicalUrl: `/${page.locale}/eligible-vehicles/${page.state.toLowerCase()}/${page.purpose}`,
+      routeExternalId: `router:${id}`,
+      routeStatus: 'live',
+      routeRevision: 'editable-eligible-v1',
+      context: {
+        locale: page.locale,
+        state: page.state,
+        purpose: page.purpose,
+        country: page.country,
+      },
+      slotValues: {
+        locale: page.locale,
+        resource: 'eligible-vehicles',
+        state: page.state.toLowerCase(),
+        slug: page.purpose,
+        country: page.country,
+        language: page.language,
+      },
+    });
+  }
+  for (const page of ELIGIBLE_EXPLORER_PAGES) {
+    createEligibleExplorerPage(service, templateId, page);
+  }
 
   const placements = [
     ['navigation', 'navigation', { label: 'Eligible Vehicles' }],
@@ -214,7 +527,7 @@ function seedEligibleVehicles(client: CmsDatabaseClient): void {
     });
   });
   service.publish(templateId, {
-    id: 'editable-eligible-publication-1',
+    id: compactScenarioRegistry['eligible-vehicles'].seedPublicationId,
     createdBy: SEED_ACTOR,
   });
 }
@@ -263,19 +576,27 @@ function seedStructuralProof(client: CmsDatabaseClient): void {
   ] as const) {
     service.createTemplateSlot(templateId, slot);
   }
-  for (const [slug, code] of [
-    ['current', 'PDX'],
-    ['hero-alt', 'LAX'],
+  for (const page of [
+    { locale: 'en-US', slug: 'current', airportCode: 'PDX' },
+    { locale: 'en-US', slug: 'hero-alt', airportCode: 'LAX' },
   ] as const) {
     service.createPage(templateId, {
-      id: `structural-page:${slug}`,
-      canonicalUrl: `/en-US/airport/${slug}`,
-      routeExternalId: `camo:structural:${slug}`,
+      id: `structural-page:${page.slug}`,
+      canonicalUrl: `/${page.locale}/airport/${page.slug}`,
+      routeExternalId: `router:structural:${page.slug}`,
       routeStatus: 'live',
       routeRevision: 'editable-structural-v1',
-      context: { locale: 'en-US', slug, airportCode: code },
-      slotValues: { locale: 'en-US', resource: 'airport', slug, airport_code: code },
+      context: { locale: page.locale, slug: page.slug, airportCode: page.airportCode },
+      slotValues: {
+        locale: page.locale,
+        resource: 'airport',
+        slug: page.slug,
+        airport_code: page.airportCode,
+      },
     });
+  }
+  for (const page of STRUCTURAL_EXPLORER_PAGES) {
+    createStructuralExplorerPage(service, templateId, page);
   }
 
   const placementKeys = [
@@ -322,7 +643,7 @@ function seedStructuralProof(client: CmsDatabaseClient): void {
     createdBy: SEED_ACTOR,
   });
   service.publish(templateId, {
-    id: 'editable-structural-publication-1',
+    id: compactScenarioRegistry['structural-proof'].seedPublicationId,
     createdBy: SEED_ACTOR,
   });
 }
@@ -336,7 +657,10 @@ export function compactScenarioIsComplete(
   try {
     if (
       !service.getTemplate(registration.templateId) ||
-      !service.getPage(registration.templateId, registration.pageId)
+      !service.getPage(registration.templateId, registration.pageId) ||
+      !registration.requiredPageIds.every((pageId) =>
+        service.getPage(registration.templateId, pageId)
+      )
     ) {
       return false;
     }
@@ -347,6 +671,33 @@ export function compactScenarioIsComplete(
       !variants.some((variant) => variant.id === registration.requiredVariantId)
     ) {
       return false;
+    }
+    const seedPublicationPages = client.sqlite
+      .query<{ pageId: string }, [string, string]>(
+        `SELECT page_instance_id AS pageId
+         FROM published_page_documents
+         WHERE template_id = ? AND publication_id = ?
+         ORDER BY page_instance_id`
+      )
+      .all(registration.templateId, registration.seedPublicationId);
+    const requiredPageIds = new Set(registration.requiredPageIds);
+    if (
+      seedPublicationPages.length !== requiredPageIds.size ||
+      seedPublicationPages.some(({ pageId }) => !requiredPageIds.has(pageId))
+    ) {
+      return false;
+    }
+    if (registration.seedIngestionId) {
+      const ingestion = client.sqlite
+        .query<{ rowCount: number; status: string }, [string, string]>(
+          `SELECT row_count AS rowCount, status
+           FROM route_ingestions
+           WHERE template_id = ? AND id = ?`
+        )
+        .get(registration.templateId, registration.seedIngestionId);
+      if (ingestion?.status !== 'succeeded' || ingestion.rowCount !== STORE_EXPLORER_PAGES.length) {
+        return false;
+      }
     }
     const current = publicationState(client, registration.templateId);
     if (
@@ -543,6 +894,8 @@ export function ensureCompactPublishedScenario(
   const registration = compactScenarioRegistry[scenarioId];
   const service = new CmsService(client);
   if (service.getTemplate(registration.templateId)) {
+    if (scenarioId === 'stores') seedStoreExplorerPages(client);
+    else seedExistingExplorerPages(client, scenarioId);
     upgradeCurrentManifestPublication(client, registration);
     if (!compactScenarioIsComplete(client, scenarioId)) {
       throw new CmsServiceError(

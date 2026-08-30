@@ -396,7 +396,7 @@ export async function runPersistedDenseEligibleVehiclesProof(): Promise<DensePer
       service.createPage(templateId, {
         id: page.id,
         canonicalUrl: page.canonicalUrl,
-        routeExternalId: `camo:${page.id}`,
+        routeExternalId: `router:${page.id}`,
         routeStatus: 'live',
         routeRevision: 'dense-v1',
         context: { dimensions: page.dimensions as JsonObject },
@@ -642,7 +642,7 @@ export async function runPersistedStructuralProof(): Promise<StructuralPersisten
       service.createPage(templateId, {
         id: `structural-page:${slug}`,
         canonicalUrl: `/en-US/product/${slug}`,
-        routeExternalId: `camo:structural:${slug}`,
+        routeExternalId: `router:structural:${slug}`,
         routeStatus: 'live',
         routeRevision: 'structural-v1',
         context: { locale: 'en-US', slug },
@@ -834,7 +834,7 @@ export async function runStoreServiceProof(): Promise<StoreServiceEvidence> {
     service.createPage(templateId, {
       id: 'page-store-1003',
       canonicalUrl: '/en-US/store/1003',
-      routeExternalId: 'camo-store-1003',
+      routeExternalId: 'router-store-1003',
       routeStatus: 'archived',
       routeRevision: 'store-service-v1',
       context: {

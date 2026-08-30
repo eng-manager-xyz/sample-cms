@@ -106,7 +106,7 @@ bun run --filter website test
 | Type replacement | Structural proofs retain `primary-hero` while changing `hero` to `hero_alt`. |
 | Immutability | Direct update/delete tests cover block versions, variant revisions/operations, route audit, publications, manifests/items, and page documents. |
 | Route lifecycle | Service proof returns `200` for `live` and `404` for `not_live` and `archived`; archived reactivation is rejected. |
-| Idempotency | Camo source revision import and identical publication input hash both reuse their logical result. |
+| Idempotency | RouterService source revision import and identical publication input hash both reuse their logical result. |
 | Atomic failure | Injected write/conflict failures leave the former current pointer active and create no partial publication rows. |
 | Rollback | Store and structural persisted proofs restore the retained baseline document hash exactly. |
 
@@ -214,7 +214,7 @@ tag-count duration, full query-plan steps, and process memory are measurements i
 envelope. They vary with host and cache state and are not copied as fixed expectations.
 
 The replayed seed inserts zero pages, reports the same identity hash, and leaves both page and tag
-membership counts unchanged. Database health is `ok` on schema version 6 with zero foreign-key
+membership counts unchanged. Database health is `ok` on schema version 7 with zero foreign-key
 violations. These are executable idempotency checks, not assumptions derived from a repeatable seed
 algorithm.
 
@@ -441,15 +441,15 @@ or errors.
   prototype.
 - Atomic write-failure and rollback tests use bounded fixtures; repeating destructive failure
   injection across one million rows would add cost without changing the transaction invariant.
-- Camo Press and Louvre are represented by tested transition contracts, not production traffic.
+- RouterService and Content Service are represented by tested transition contracts, not production traffic.
 - The standalone website proves a read-only local SQLite serving boundary and deterministic block
-  registry. It is not a deployed multi-host service, CDN integration, or production Camo adapter.
+  registry. It is not a deployed multi-host service, CDN integration, or production RouterService adapter.
 - `/cms-preview_/*` proves route and cache isolation, but production authentication and authorization
   are deliberately absent; preview fails closed unless explicitly enabled. `/admin` is a validated
   link gateway, not a reverse proxy, iframe, SSO boundary, or replacement CMS API.
 - TiDB selector plans, transaction chunking, partition/global-index behavior, hot keys, constraints,
   and cache topology require the named proof spikes in ADR 0001.
-- The production policy for `not_live` precompilation, Camo revision drift, tag freshness/ownership,
+- The production policy for `not_live` precompilation, RouterService revision drift, tag freshness/ownership,
   and expanded-versus-manifest serving remains open.
 
 ## Final five-phase result

@@ -36,7 +36,7 @@ describe('AUT-514/AUT-542 persisted authoring workbench', () => {
 
     expect(store).toMatchObject({
       templateId: 'tpl-store',
-      currentPublicationId: 'publication-store-1',
+      currentPublicationId: 'publication-store-2',
     });
     const storeHero = store.placements.find(
       (placement) => placement.placementKey === 'primary-hero'
@@ -61,7 +61,7 @@ describe('AUT-514/AUT-542 persisted authoring workbench', () => {
     ]);
     expect(dense).toMatchObject({
       templateId: 'eligible-vehicles',
-      currentPublicationId: 'editable-eligible-publication-1',
+      currentPublicationId: 'editable-eligible-publication-2',
     });
     expect(dense.placements).toHaveLength(7);
     expect(dense.placements.every((placement) => placement.sourcePriority === 0)).toBe(true);
@@ -176,7 +176,7 @@ describe('AUT-514/AUT-542 persisted authoring workbench', () => {
     const rolledBack = executeCmsCommand(client, { kind: 'rollback', scenarioId: 'stores' });
     expect(rolledBack.workspace.currentPublicationId).toBe(initial.currentPublicationId);
     expect(rolledBack.workspace.currentDocumentHash).toBe(initial.currentDocumentHash);
-    expect(rolledBack.workspace.rollbackPublicationId).toBeNull();
+    expect(rolledBack.workspace.rollbackPublicationId).toBe('publication-store-1');
 
     const deleted = executeCmsCommand(client, {
       kind: 'deletePlacement',
@@ -241,7 +241,7 @@ describe('AUT-514/AUT-542 persisted authoring workbench', () => {
 
   test('persists linked and blank variants, selector revisions, copy-on-write, tombstones, and revert', () => {
     const preview = previewCmsSelector(client, 'stores', "brand = 'mcdonalds'");
-    expect(preview).toMatchObject({ totalCount: 1, templatePageCount: 2 });
+    expect(preview).toMatchObject({ totalCount: 1, templatePageCount: 14 });
     expect(() => previewCmsSelector(client, 'stores', 'DROP TABLE pages')).toThrow();
 
     const linked = executeCmsCommand(client, {
@@ -959,7 +959,7 @@ describe('AUT-514/AUT-542 persisted authoring workbench', () => {
     });
     expect(preview).toMatchObject({
       totalCount: 1,
-      templatePageCount: 2,
+      templatePageCount: 14,
       selectedPageMatches: true,
       truncated: false,
     });
@@ -998,7 +998,7 @@ describe('AUT-514/AUT-542 persisted authoring workbench', () => {
     }).workspace;
     expect(revised.canonicalUrl).toBe('/en-US/eligible-vehicles/ca/premium');
     expect(revised.variants.find((variant) => variant.id === created.scopeId)?.selector).toBe(
-      "slug = 'premium' AND state = 'ca'"
+      "state = 'ca' AND slug = 'premium'"
     );
   });
 
@@ -1020,11 +1020,11 @@ describe('AUT-514/AUT-542 persisted authoring workbench', () => {
     expect(preview).toMatchObject({
       normalizedSelector: "brand = 'mcdonalds'",
       totalCount: 2,
-      templatePageCount: 2,
+      templatePageCount: 14,
       truncated: true,
       selectedPageMatches: true,
       affectedPlacementCount: 1,
-      warnings: ['full_template'],
+      warnings: [],
     });
     expect(preview.samplePages).toHaveLength(1);
     expect(preview.approvedFields.map((field) => field.name)).toContain('tag.brand');
@@ -1321,9 +1321,11 @@ describe('AUT-543 typed publication lifecycle backend', () => {
       throw new Error('Expected a publishable reviewed Store draft.');
     }
     expect(preflight.affectedActivePages).toMatchObject({
-      count: 2,
-      sampleCanonicalUrls: ['/en-US/store/1001', '/en-US/store/1002'],
+      count: 14,
+      truncated: true,
     });
+    expect(preflight.affectedActivePages.sampleCanonicalUrls).toHaveLength(10);
+    expect(preflight.affectedActivePages.sampleCanonicalUrls).toContain('/en-US/store/1001');
     const publicBefore = new CmsService(client).serve('tpl-store', '/en-US/store/1001');
     expect(() =>
       publishCmsPublication(client, {

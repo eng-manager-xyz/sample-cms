@@ -1,138 +1,29 @@
-import {
-  ArrowDown,
-  ArrowUp,
-  FileClock,
-  GitBranch,
-  Layers3,
-  PanelRight,
-  Plus,
-  RotateCcw,
-  Trash2,
-} from 'lucide-react';
+import { FileClock, GitBranch, Layers3, PanelRight, Plus, RotateCcw } from 'lucide-react';
 
-import { CanvasBlock } from '@/components/authoring/canvas-block';
-import { type BlockFormSaveInput, SchemaBlockForm } from '@/components/authoring/schema-block-form';
-import { SelectorWorkspace } from '@/components/selector-workspace';
+import { CanvasBlock, HiddenCanvasBlock } from '@/components/authoring/canvas-block';
+import {
+  type BlockFormInsertion,
+  type BlockFormSaveInput,
+  SchemaBlockForm,
+} from '@/components/authoring/schema-block-form';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { publishedWebsiteHref, type WebsiteOriginState } from '@/data/authoring-studio';
 import type { ScenarioFixture } from '@/data/scenario-fixtures';
-import type { SelectorWorkspacePreviewInput } from '@/data/selector-workspace';
 import type {
   CmsCommand,
-  CmsCommandResult,
   CmsWorkspaceFieldInspection,
   CmsWorkspacePlacement,
   CmsWorkspaceSnapshot,
-  SelectorPreviewSnapshot,
 } from '@/data/sqlite-authoring';
 import { cn } from '@/lib/cn';
 
 export type AuthoringInspectorTab = 'fields' | 'cascade' | 'history';
 
-function PlacementStructureRow({
-  placement,
-  selected,
-  index,
-  count,
-  isDefault,
-  pending,
-  onSelect,
-  onMove,
-  onDelete,
-  onRevert,
-}: Readonly<{
-  placement: CmsWorkspacePlacement;
-  selected: boolean;
-  index: number;
-  count: number;
-  isDefault: boolean;
-  pending: boolean;
-  onSelect: () => void;
-  onMove: (direction: 'up' | 'down') => void;
-  onDelete: () => void;
-  onRevert: () => void;
-}>) {
-  const localContentOperation = !placement.inherited;
-  return (
-    <li
-      className={cn(
-        'rounded-lg border px-2 py-2',
-        selected ? 'border-accent/35 bg-accent-soft/55' : 'border-line bg-canvas'
-      )}
-    >
-      <button
-        type="button"
-        disabled={pending}
-        className="w-full rounded-md px-1 py-0.5 text-left outline-none focus-visible:ring-2 focus-visible:ring-focus"
-        aria-pressed={selected}
-        onClick={onSelect}
-      >
-        <span className="flex items-center justify-between gap-2">
-          <span className="min-w-0 truncate text-xs font-semibold text-ink">
-            {index + 1}. {placement.placementKey}
-          </span>
-          <Badge tone={placement.inherited ? 'neutral' : 'info'}>
-            {placement.inherited ? 'Inherited' : 'Local'}
-          </Badge>
-        </span>
-        <span className="mt-1 flex items-center gap-1.5 text-[10px] text-ink-faint">
-          <span>{placement.blockType}</span>
-          <span aria-hidden="true">·</span>
-          <span>v{placement.versionNumber}</span>
-          {placement.draftDifference !== 'same' ? (
-            <span className="text-warning-strong">· draft {placement.draftDifference}</span>
-          ) : null}
-        </span>
-      </button>
-      <div className="mt-2 flex items-center gap-1 border-t border-line/70 pt-2">
-        <Button
-          size="icon"
-          variant="ghost"
-          disabled={pending || index === 0}
-          aria-label={`Move ${placement.placementKey} up`}
-          onClick={() => onMove('up')}
-        >
-          <ArrowUp aria-hidden="true" className="size-3.5" />
-        </Button>
-        <Button
-          size="icon"
-          variant="ghost"
-          disabled={pending || index === count - 1}
-          aria-label={`Move ${placement.placementKey} down`}
-          onClick={() => onMove('down')}
-        >
-          <ArrowDown aria-hidden="true" className="size-3.5" />
-        </Button>
-        {!isDefault && localContentOperation ? (
-          <Button
-            size="icon"
-            variant="ghost"
-            disabled={pending}
-            aria-label={`Revert local operation for ${placement.placementKey}`}
-            onClick={onRevert}
-          >
-            <RotateCcw aria-hidden="true" className="size-3.5" />
-          </Button>
-        ) : null}
-        <Button
-          size="icon"
-          variant="ghost"
-          className="ml-auto text-danger-strong"
-          disabled={pending}
-          aria-label={`${isDefault ? 'Delete' : 'Hide'} ${placement.placementKey}`}
-          onClick={onDelete}
-        >
-          <Trash2 aria-hidden="true" className="size-3.5" />
-        </Button>
-      </div>
-    </li>
-  );
-}
-
-export function AuthoringStructurePane({
+export function AuthoringCanvasPane({
   scenarioId,
   workspace,
+  websiteOrigin,
   selectedPlacementKey,
   addingBlock,
   actionsDisabled,
@@ -142,162 +33,18 @@ export function AuthoringStructurePane({
 }: Readonly<{
   scenarioId: ScenarioFixture['id'];
   workspace: CmsWorkspaceSnapshot;
+  websiteOrigin: WebsiteOriginState;
   selectedPlacementKey?: string;
   addingBlock: boolean;
   actionsDisabled: boolean;
-  onStartAdd: () => void;
+  onStartAdd: (insertion: BlockFormInsertion) => void;
   onSelectPlacement: (placementKey: string) => void;
   runPlacementCommand: (command: CmsCommand) => void;
 }>) {
   const selectedVariant = workspace.variants.find((variant) => variant.id === workspace.scopeId);
+  const isDefault = Boolean(selectedVariant?.isDefault);
   const hasLocalOrder =
-    !selectedVariant?.isDefault &&
-    workspace.placements.some((placement) => !placement.orderInherited);
-  return (
-    <aside className="min-h-0 rounded-xl border border-line bg-surface-subtle p-3 xl:sticky xl:top-[84px] xl:max-h-[calc(100vh-7rem)] xl:overflow-y-auto">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="flex items-center gap-1.5 text-xs font-semibold text-ink">
-            <Layers3 aria-hidden="true" className="size-3.5" /> Structure
-          </p>
-          <p className="mt-1 text-[10px] text-ink-faint">
-            {workspace.placements.length} visible · {workspace.tombstones.length} hidden
-          </p>
-        </div>
-        <div className="flex items-center gap-1.5">
-          {hasLocalOrder ? (
-            <Button
-              size="sm"
-              variant="ghost"
-              disabled={actionsDisabled}
-              title="Remove this variation's complete local order and inherit the prior sequence"
-              onClick={() =>
-                runPlacementCommand({
-                  kind: 'revertOrder',
-                  scenarioId,
-                  scopeId: workspace.scopeId,
-                  canonicalUrl: workspace.canonicalUrl,
-                })
-              }
-            >
-              <RotateCcw aria-hidden="true" className="size-3.5" /> Revert order
-            </Button>
-          ) : null}
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={actionsDisabled}
-            title={
-              actionsDisabled && !workspace.scopeMatchesSamplePage
-                ? 'This scope does not match the displayed canonical page.'
-                : undefined
-            }
-            onClick={onStartAdd}
-          >
-            <Plus aria-hidden="true" className="size-3.5" /> Add
-          </Button>
-        </div>
-      </div>
-      <ol className="mt-3 space-y-2">
-        {workspace.placements.map((placement, index) => (
-          <PlacementStructureRow
-            key={placement.placementKey}
-            placement={placement}
-            selected={!addingBlock && placement.placementKey === selectedPlacementKey}
-            index={index}
-            count={workspace.placements.length}
-            isDefault={Boolean(selectedVariant?.isDefault)}
-            pending={actionsDisabled}
-            onSelect={() => onSelectPlacement(placement.placementKey)}
-            onMove={(direction) =>
-              runPlacementCommand({
-                kind: 'movePlacement',
-                scenarioId,
-                scopeId: workspace.scopeId,
-                canonicalUrl: workspace.canonicalUrl,
-                placementKey: placement.placementKey,
-                direction,
-              })
-            }
-            onDelete={() =>
-              runPlacementCommand({
-                kind: 'deletePlacement',
-                scenarioId,
-                scopeId: workspace.scopeId,
-                canonicalUrl: workspace.canonicalUrl,
-                placementKey: placement.placementKey,
-              })
-            }
-            onRevert={() =>
-              runPlacementCommand({
-                kind: 'revertPlacement',
-                scenarioId,
-                scopeId: workspace.scopeId,
-                canonicalUrl: workspace.canonicalUrl,
-                placementKey: placement.placementKey,
-              })
-            }
-          />
-        ))}
-      </ol>
-      {workspace.tombstones.length > 0 ? (
-        <section className="mt-5 border-t border-line pt-4">
-          <h2 className="text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-faint">
-            Tombstones
-          </h2>
-          <ul className="mt-2 space-y-2">
-            {workspace.tombstones.map((tombstone) => (
-              <li
-                key={tombstone.placementKey}
-                className="rounded-lg border border-warning/25 bg-warning-soft/45 p-2.5"
-              >
-                <p className="truncate text-xs font-semibold text-warning-strong">
-                  {tombstone.placementKey}
-                </p>
-                <p className="mt-1 text-[10px] text-ink-muted">
-                  Hides {tombstone.hiddenPlacement?.blockType ?? 'a lower placement'}
-                </p>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="mt-2"
-                  disabled={actionsDisabled}
-                  onClick={() =>
-                    runPlacementCommand({
-                      kind: 'revertPlacement',
-                      scenarioId,
-                      scopeId: workspace.scopeId,
-                      canonicalUrl: workspace.canonicalUrl,
-                      placementKey: tombstone.placementKey,
-                    })
-                  }
-                >
-                  <RotateCcw aria-hidden="true" className="size-3.5" /> Revert
-                </Button>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
-    </aside>
-  );
-}
-
-export function AuthoringCanvasPane({
-  workspace,
-  websiteOrigin,
-  selectedPlacementKey,
-  addingBlock,
-  selectionDisabled,
-  onSelectPlacement,
-}: Readonly<{
-  workspace: CmsWorkspaceSnapshot;
-  websiteOrigin: WebsiteOriginState;
-  selectedPlacementKey?: string;
-  addingBlock: boolean;
-  selectionDisabled: boolean;
-  onSelectPlacement: (placementKey: string) => void;
-}>) {
+    !isDefault && workspace.placements.some((placement) => !placement.orderInherited);
   const publishedHref =
     websiteOrigin.status === 'ready'
       ? publishedWebsiteHref(workspace.canonicalUrl, websiteOrigin.origin)
@@ -319,7 +66,25 @@ export function AuthoringCanvasPane({
             and higher matching layers may change the website result.
           </p>
         </div>
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5">
+          {hasLocalOrder ? (
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={actionsDisabled}
+              title="Remove this variation's local order and inherit the prior sequence"
+              onClick={() =>
+                runPlacementCommand({
+                  kind: 'revertOrder',
+                  scenarioId,
+                  scopeId: workspace.scopeId,
+                  canonicalUrl: workspace.canonicalUrl,
+                })
+              }
+            >
+              <RotateCcw aria-hidden="true" className="size-3.5" /> Revert order
+            </Button>
+          ) : null}
           <Badge tone="info">private preview resolution</Badge>
           <Badge tone="neutral">{workspace.matchedVariantRevisionIds.length} matched layers</Badge>
           {!workspace.scopeMatchesSamplePage ? (
@@ -327,17 +92,84 @@ export function AuthoringCanvasPane({
           ) : null}
         </div>
       </div>
-      <div className="overflow-hidden rounded-xl border border-line-strong bg-canvas shadow-[0_12px_35px_rgba(22,22,26,0.08)]">
-        {workspace.placements.length > 0 ? (
-          workspace.placements.map((placement) => (
-            <CanvasBlock
-              key={placement.placementKey}
-              placement={placement}
-              selected={!addingBlock && placement.placementKey === selectedPlacementKey}
-              disabled={selectionDisabled}
-              onSelect={() => onSelectPlacement(placement.placementKey)}
-            />
-          ))
+      <div className="isolate rounded-xl border border-line-strong bg-canvas shadow-[0_12px_35px_rgba(22,22,26,0.08)]">
+        {workspace.placements.length > 0 || workspace.tombstones.length > 0 ? (
+          [
+            ...workspace.placements.map((placement) => ({
+              kind: 'visible' as const,
+              order: placement.order,
+              placement,
+            })),
+            ...workspace.tombstones.map((tombstone, index) => ({
+              kind: 'hidden' as const,
+              order: tombstone.hiddenPlacement?.order ?? workspace.placements.length + index,
+              tombstone,
+            })),
+          ]
+            .sort((left, right) => left.order - right.order)
+            .map((item) =>
+              item.kind === 'visible' ? (
+                <CanvasBlock
+                  key={item.placement.placementKey}
+                  placement={item.placement}
+                  selected={!addingBlock && item.placement.placementKey === selectedPlacementKey}
+                  disabled={actionsDisabled}
+                  index={item.placement.order}
+                  count={workspace.placements.length}
+                  isDefault={isDefault}
+                  onSelect={() => onSelectPlacement(item.placement.placementKey)}
+                  onAdd={(position) =>
+                    onStartAdd({
+                      position,
+                      referencePlacementKey: item.placement.placementKey,
+                    })
+                  }
+                  onMove={(direction) =>
+                    runPlacementCommand({
+                      kind: 'movePlacement',
+                      scenarioId,
+                      scopeId: workspace.scopeId,
+                      canonicalUrl: workspace.canonicalUrl,
+                      placementKey: item.placement.placementKey,
+                      direction,
+                    })
+                  }
+                  onToggleVisibility={() =>
+                    runPlacementCommand({
+                      kind: 'deletePlacement',
+                      scenarioId,
+                      scopeId: workspace.scopeId,
+                      canonicalUrl: workspace.canonicalUrl,
+                      placementKey: item.placement.placementKey,
+                    })
+                  }
+                  onRevert={() =>
+                    runPlacementCommand({
+                      kind: 'revertPlacement',
+                      scenarioId,
+                      scopeId: workspace.scopeId,
+                      canonicalUrl: workspace.canonicalUrl,
+                      placementKey: item.placement.placementKey,
+                    })
+                  }
+                />
+              ) : (
+                <HiddenCanvasBlock
+                  key={`hidden:${item.tombstone.placementKey}`}
+                  tombstone={item.tombstone}
+                  disabled={actionsDisabled}
+                  onRestore={() =>
+                    runPlacementCommand({
+                      kind: 'revertPlacement',
+                      scenarioId,
+                      scopeId: workspace.scopeId,
+                      canonicalUrl: workspace.canonicalUrl,
+                      placementKey: item.tombstone.placementKey,
+                    })
+                  }
+                />
+              )
+            )
         ) : (
           <div className="grid min-h-80 place-items-center px-8 text-center">
             <div>
@@ -346,6 +178,15 @@ export function AuthoringCanvasPane({
               <p className="mt-1 text-xs text-ink-muted">
                 Add a registered block or revert a tombstone.
               </p>
+              <Button
+                size="sm"
+                variant="outline"
+                className="mt-4"
+                disabled={actionsDisabled}
+                onClick={() => onStartAdd({ position: 'end' })}
+              >
+                <Plus aria-hidden="true" className="size-3.5" /> Add block
+              </Button>
             </div>
           </div>
         )}
@@ -461,10 +302,10 @@ function HistoryPanel({ placement }: Readonly<{ placement?: CmsWorkspacePlacemen
 }
 
 export function AuthoringInspectorPane({
-  scenarioId,
   workspace,
   selectedPlacement,
   addingBlock,
+  addInsertion,
   inspectorTab,
   inspectorNavigationDisabled,
   pending,
@@ -475,33 +316,28 @@ export function AuthoringInspectorPane({
   onSave,
   onFormDirty,
   inspectField,
-  runCommand,
-  previewSelector,
 }: Readonly<{
-  scenarioId: ScenarioFixture['id'];
   workspace: CmsWorkspaceSnapshot;
   selectedPlacement?: CmsWorkspacePlacement;
   addingBlock: boolean;
-  inspectorTab: AuthoringInspectorTab;
+  addInsertion?: BlockFormInsertion;
+  inspectorTab: Exclude<AuthoringInspectorTab, 'cascade'>;
   inspectorNavigationDisabled: boolean;
   pending: boolean;
   placementActionsDisabled: boolean;
   serverError: string | null;
-  onTabChange: (tab: AuthoringInspectorTab) => void;
+  onTabChange: (tab: Exclude<AuthoringInspectorTab, 'cascade'>) => void;
   onDiscardChanges: () => void;
   onSave: (input: BlockFormSaveInput) => Promise<void>;
   onFormDirty: (description: string) => void;
   inspectField: (source: string) => Promise<CmsWorkspaceFieldInspection>;
-  runCommand: (command: CmsCommand) => Promise<CmsCommandResult>;
-  previewSelector: (input: SelectorWorkspacePreviewInput) => Promise<SelectorPreviewSnapshot>;
 }>) {
   return (
-    <aside className="min-h-0 rounded-xl border border-line bg-canvas xl:sticky xl:top-[84px] xl:max-h-[calc(100vh-7rem)] xl:overflow-y-auto">
+    <aside className="min-h-0 rounded-xl border border-line bg-canvas xl:sticky xl:top-32 xl:max-h-[calc(100vh-9rem)] xl:overflow-y-auto">
       <div className="sticky top-0 z-10 flex border-b border-line bg-canvas p-1.5">
         {(
           [
             ['fields', 'Fields', GitBranch],
-            ['cascade', 'Cascade', Layers3],
             ['history', 'History', FileClock],
           ] as const
         ).map(([tab, label, Icon]) => (
@@ -553,20 +389,21 @@ export function AuthoringInspectorPane({
                 className="mb-4 rounded-lg border border-warning/25 bg-warning-soft p-3 text-[11px] leading-4 text-warning-strong"
               >
                 This selector does not match <code>{workspace.canonicalUrl}</code>. Block changes
-                are disabled; update the selector in Cascade or choose a matching scope.
+                are disabled; use View selector to update it or choose a matching scope.
               </p>
             ) : null}
             {addingBlock || selectedPlacement ? (
               <SchemaBlockForm
                 key={
                   addingBlock
-                    ? `add:${workspace.scopeId}:${workspace.placements.length}`
+                    ? `add:${workspace.scopeId}:${addInsertion?.position ?? 'end'}:${addInsertion?.referencePlacementKey ?? 'none'}:${workspace.placements.length}`
                     : `${workspace.scopeId}:${selectedPlacement?.blockVersionId}`
                 }
                 mode={addingBlock ? 'add' : 'edit'}
                 {...(selectedPlacement && !addingBlock ? { placement: selectedPlacement } : {})}
                 blockTypes={workspace.blockTypes}
                 placementKeys={workspace.placements.map((placement) => placement.placementKey)}
+                {...(addingBlock && addInsertion ? { initialInsertion: addInsertion } : {})}
                 pending={placementActionsDisabled}
                 serverError={serverError}
                 onSave={onSave}
@@ -579,15 +416,6 @@ export function AuthoringInspectorPane({
               <p className="text-xs text-ink-muted">Add a block to begin authoring.</p>
             )}
           </>
-        ) : null}
-        {inspectorTab === 'cascade' ? (
-          <SelectorWorkspace
-            scenarioId={scenarioId}
-            workspace={workspace}
-            pending={pending}
-            runCommand={runCommand}
-            previewSelector={previewSelector}
-          />
         ) : null}
         {inspectorTab === 'history' ? <HistoryPanel placement={selectedPlacement} /> : null}
       </div>
