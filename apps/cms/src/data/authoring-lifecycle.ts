@@ -7,7 +7,7 @@ const PersistedDraftStatusSchema = z.enum(['saved', 'draft-saved']);
 
 const AnnouncementSchema = z.string().trim().min(1).max(500);
 
-export const AuthoringLifecycleStateSchema = z.discriminatedUnion('status', [
+const AuthoringLifecycleStateSchema = z.discriminatedUnion('status', [
   z.strictObject({
     status: z.literal('saved'),
     announcement: AnnouncementSchema,

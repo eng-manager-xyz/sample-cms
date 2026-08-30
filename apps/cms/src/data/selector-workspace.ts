@@ -3,10 +3,10 @@ import * as z from 'zod';
 import { CanonicalUrlSchema } from './content-explorer';
 import { ScenarioIdSchema } from './scenario-fixtures';
 
-export const SelectorScalarSchema = z.union([z.string(), z.number(), z.boolean(), z.null()]);
+const SelectorScalarSchema = z.union([z.string(), z.number(), z.boolean(), z.null()]);
 export type SelectorScalar = z.infer<typeof SelectorScalarSchema>;
 
-export const SelectorFieldSchema = z.object({
+const SelectorFieldSchema = z.object({
   name: z.string().min(1),
   kind: z.enum(['builtin', 'slot', 'tag']),
   cardinality: z.enum(['scalar', 'multi']),
@@ -15,7 +15,7 @@ export const SelectorFieldSchema = z.object({
 });
 export type SelectorField = z.infer<typeof SelectorFieldSchema>;
 
-export const SelectorBuilderClauseSchema = z.object({
+const SelectorBuilderClauseSchema = z.object({
   id: z.string().min(1),
   field: z.string().min(1),
   operator: z.enum(['=', 'IN']),
@@ -23,7 +23,7 @@ export const SelectorBuilderClauseSchema = z.object({
 });
 export type SelectorBuilderClause = z.infer<typeof SelectorBuilderClauseSchema>;
 
-export const SelectorBuilderSchema = z.object({
+const SelectorBuilderSchema = z.object({
   combinator: z.enum(['AND', 'OR']),
   clauses: z.array(SelectorBuilderClauseSchema).min(1).max(12),
 });
@@ -39,14 +39,14 @@ export const SelectorWorkspacePreviewInputSchema = z.object({
 });
 export type SelectorWorkspacePreviewInput = z.infer<typeof SelectorWorkspacePreviewInputSchema>;
 
-export const SelectorSamplePageSchema = z.object({
+const SelectorSamplePageSchema = z.object({
   pageId: z.string().min(1),
   canonicalUrl: CanonicalUrlSchema,
   routeStatus: z.enum(['live', 'not_live', 'archived']),
   contextHash: z.string().min(1),
 });
 
-export const SelectorOverlapSchema = z.object({
+const SelectorOverlapSchema = z.object({
   variantId: z.string().min(1),
   variantRevisionId: z.string().min(1),
   variantName: z.string().min(1),

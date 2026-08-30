@@ -31,7 +31,6 @@ export type ContentExplorerInput = z.infer<typeof ContentExplorerInputSchema>;
 export const TemplateWorkspaceSearchSchema = z.object({
   canonicalUrl: CanonicalUrlSchema.optional(),
 });
-export type TemplateWorkspaceSearch = z.infer<typeof TemplateWorkspaceSearchSchema>;
 
 const ContentTemplateSlotSchema = z.object({
   id: z.string().min(1),
@@ -49,7 +48,7 @@ const ContentGrammarSegmentSchema = z.object({
   value: z.string().min(1),
 });
 
-export const ContentTemplateSummarySchema = z.object({
+const ContentTemplateSummarySchema = z.object({
   slug: FixedTemplateSlugSchema,
   templateId: z.string().min(1),
   name: z.string().min(1),
@@ -75,7 +74,7 @@ export const ContentTemplateSummarySchema = z.object({
 });
 export type ContentTemplateSummary = z.infer<typeof ContentTemplateSummarySchema>;
 
-export const ContentExplorerPageSchema = z.object({
+const ContentExplorerPageSchema = z.object({
   id: z.string().min(1),
   templateId: z.string().min(1),
   canonicalUrl: CanonicalUrlSchema,
