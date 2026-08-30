@@ -1,17 +1,17 @@
 {
   "evidenceVersion": 1,
   "run": {
-    "startedAt": "2026-08-30T04:19:31.360Z",
-    "finishedAt": "2026-08-30T04:35:12.787Z",
-    "elapsedMilliseconds": 941377.6217499999,
+    "startedAt": "2026-08-30T05:57:28.086Z",
+    "finishedAt": "2026-08-30T06:13:19.633Z",
+    "elapsedMilliseconds": 951546.6214170001,
     "invocation": [
       "bun",
       "run",
       "scripts/run-scenario-evidence.ts",
       "--output",
-      "docs/evidence/store-1m.json",
+      ".data/aut537-store-1m.json",
       "--database",
-      ".data/store-1m.sqlite",
+      ".data/aut537-store-1m.sqlite",
       "--pages",
       "1000000",
       "--samples",
@@ -21,11 +21,11 @@
       "--seed",
       "1592639710"
     ],
-    "gitCommit": "6d02c0de16b3745b32df22b42fe0afca559300f6",
+    "gitCommit": "c5202af8179b31420f061000ebb9214d4afb4d69",
     "workingTreeBeforeRun": "",
-    "bunLockSha256": "3df8a64cc151ce6315f378f312eaef4d1e876e9e7097023c9411d8f937ee51cc",
+    "bunLockSha256": "d3b09f80f0edb5c80de0d140e94a49f9f6f1ba740509a29224f0dd0f85777e29",
     "packageManagerPin": "bun@1.3.14",
-    "databasePath": ".data/store-1m.sqlite",
+    "databasePath": ".data/aut537-store-1m.sqlite",
     "databaseFileBytes": 3205939200,
     "progressCheckpoints": [
       {
@@ -251,17 +251,17 @@
       "cpuModel": "Apple M4 Max",
       "logicalCpuCount": 16,
       "physicalMemoryBytes": 51539607552,
-      "diskFreeBytesBeforeReportWrite": 82244124672
+      "diskFreeBytesBeforeReportWrite": 77733195776
     },
     "process": {
-      "userCpuMicroseconds": 813432362,
-      "systemCpuMicroseconds": 105358266,
-      "maxRssBytes": 580419584
+      "userCpuMicroseconds": 833607932,
+      "systemCpuMicroseconds": 113477627,
+      "maxRssBytes": 579534848
     }
   },
   "scenarioReport": {
     "reportVersion": 1,
-    "generatedAt": "2026-08-30T04:35:12.787Z",
+    "generatedAt": "2026-08-30T06:13:19.632Z",
     "issues": ["AUT-527", "AUT-528", "AUT-529", "AUT-530"],
     "environment": {
       "platform": "darwin",
@@ -272,23 +272,23 @@
     "timings": [
       {
         "name": "dense-eligible-vehicles",
-        "elapsedMilliseconds": 27.420959000000003
+        "elapsedMilliseconds": 28.135000000000005
       },
       {
         "name": "store",
-        "elapsedMilliseconds": 940961.14175
+        "elapsedMilliseconds": 951093.656792
       },
       {
         "name": "structural-replacement",
-        "elapsedMilliseconds": 6.572750000000013
+        "elapsedMilliseconds": 6.991291999999987
       },
       {
         "name": "generated-determinism",
-        "elapsedMilliseconds": 219.67024999999998
+        "elapsedMilliseconds": 228.40337499999998
       },
       {
         "name": "cms-service-integration",
-        "elapsedMilliseconds": 154.4024999999674
+        "elapsedMilliseconds": 180.12879200000316
       }
     ],
     "denseEligibleVehicles": {
@@ -413,7 +413,7 @@
           }
         ]
       },
-      "publicationElapsedMilliseconds": 12.611666999999997,
+      "publicationElapsedMilliseconds": 12.988041000000003,
       "publicationSerializedBytes": 38047,
       "broadGolden": {
         "pageId": "eligible:en-US:NY:delivery",
@@ -561,7 +561,7 @@
         "existingPageCountBeforeSeed": 0,
         "reusedExistingSeed": false,
         "seedIdentityHash": "db6a7fbaf290e4d386de6d5bccbcd19c927e0830aba78586d3f04ba415c22ec0",
-        "elapsedMilliseconds": 61272.986124999996
+        "elapsedMilliseconds": 64471.8865
       },
       "seedReplay": {
         "requestedPageCount": 1000000,
@@ -569,7 +569,7 @@
         "existingPageCountBeforeSeed": 1000000,
         "reusedExistingSeed": true,
         "seedIdentityHash": "db6a7fbaf290e4d386de6d5bccbcd19c927e0830aba78586d3f04ba415c22ec0",
-        "elapsedMilliseconds": 63.23841700000048,
+        "elapsedMilliseconds": 67.78345800000534,
         "pageCountUnchanged": true,
         "tagMembershipCountUnchanged": true
       },
@@ -643,9 +643,9 @@
       },
       "benchmark": {
         "scalePageCount": 1000000,
-        "canonicalLookupP50Milliseconds": 0.006750000058673322,
-        "canonicalLookupP95Milliseconds": 0.008000000030733645,
-        "tagMembershipCountMilliseconds": 499.63650000002235,
+        "canonicalLookupP50Milliseconds": 0.006792000029236078,
+        "canonicalLookupP95Milliseconds": 0.008832999970763922,
+        "tagMembershipCountMilliseconds": 542.2562499999767,
         "mcdonaldsPageCount": 50001,
         "burgerKingPageCount": 50000,
         "genericFastFoodPageCount": 100000
@@ -1079,7 +1079,7 @@
             }
           ],
           "sampleTruncated": true,
-          "previewElapsedMilliseconds": 764.4645409999939,
+          "previewElapsedMilliseconds": 778.221915999995,
           "planSteps": [
             "SEARCH p USING INDEX page_instances_template_canonical_unique (template_id=?)",
             "CORRELATED SCALAR SUBQUERY 1",
@@ -1136,7 +1136,7 @@
             }
           ],
           "sampleTruncated": true,
-          "previewElapsedMilliseconds": 767.8886659999989,
+          "previewElapsedMilliseconds": 781.1967500000028,
           "planSteps": [
             "SEARCH p USING INDEX page_instances_template_canonical_unique (template_id=?)",
             "CORRELATED SCALAR SUBQUERY 1",
@@ -1193,7 +1193,7 @@
             }
           ],
           "sampleTruncated": true,
-          "previewElapsedMilliseconds": 704.736625000005,
+          "previewElapsedMilliseconds": 721.3807500000112,
           "planSteps": [
             "SEARCH p USING INDEX page_instances_template_canonical_unique (template_id=?)",
             "CORRELATED SCALAR SUBQUERY 1",
@@ -1250,7 +1250,7 @@
             }
           ],
           "sampleTruncated": true,
-          "previewElapsedMilliseconds": 715.4651670000021,
+          "previewElapsedMilliseconds": 729.302457999991,
           "planSteps": [
             "SEARCH p USING INDEX page_instances_template_canonical_unique (template_id=?)",
             "CORRELATED SCALAR SUBQUERY 1",
@@ -1291,11 +1291,11 @@
           "eligiblePageCount": 1000002,
           "sampledPageCount": 50,
           "truncated": true,
-          "elapsedMilliseconds": 48.22191700000258,
+          "elapsedMilliseconds": 51.90287499999977,
           "usesIndex": true
         },
-        "publicationElapsedMilliseconds": 562129.469916,
-        "publishedDocumentsPerSecond": 1778.9531656282527,
+        "publicationElapsedMilliseconds": 584488.0350830001,
+        "publishedDocumentsPerSecond": 1710.9024308050975,
         "estimatedManifestPageStorageBytes": 862480639,
         "logicalExpandedRenderedDocumentBytes": 1143681174,
         "idempotentRepublish": {
@@ -1304,7 +1304,7 @@
           "reusedCurrentPublication": true,
           "reusedManifestCount": 5,
           "logicalExpandedRenderedDocumentBytes": 1143681174,
-          "elapsedMilliseconds": 247391.28983300005,
+          "elapsedMilliseconds": 252550.0625,
           "documentRowsUnchanged": true
         },
         "pageToManifestDedup": {
@@ -1334,8 +1334,8 @@
             "\n  SELECT items.ordinal, items.placement_key AS placementKey,\n         items.block_version_id AS blockVersionId, types.key AS blockType,\n         versions.content_json AS contentJson,\n         items.source_variant_revision_id AS sourceRevisionId,\n         items.source_operation_id AS sourceOperationId,\n         items.source_priority AS sourcePriority\n  FROM document_manifest_items AS items\n  JOIN document_manifests AS manifests ON manifests.id = items.manifest_id\n  JOIN block_versions AS versions ON versions.id = items.block_version_id\n  JOIN block_lineages AS lineages ON lineages.id = versions.lineage_id\n  JOIN block_types AS types ON types.id = versions.block_type_id\n  WHERE manifests.template_id = ? AND manifests.id = ?\n    AND lineages.template_id = manifests.template_id\n  ORDER BY items.ordinal\n"
           ],
           "sampleCount": 250,
-          "p50Milliseconds": 0.1735000000335276,
-          "p95Milliseconds": 0.32466599997133017
+          "p50Milliseconds": 0.19745799992233515,
+          "p95Milliseconds": 0.43116599996574223
         }
       },
       "publicServeReadPath": {
@@ -1346,8 +1346,8 @@
           "\n  SELECT pages.route_status AS currentRouteStatus,\n         current.publication_id AS publicationId,\n         documents.page_instance_id AS pageInstanceId,\n         documents.manifest_id AS manifestId,\n         documents.document_hash AS documentHash,\n         documents.rendered_document_json AS renderedDocumentJson,\n         documents.resolved_data_json AS resolvedDataJson\n  FROM page_instances AS pages\n  LEFT JOIN current_publications AS current\n    ON current.template_id = pages.template_id\n  LEFT JOIN published_page_documents AS documents\n    ON documents.template_id = pages.template_id\n   AND documents.page_instance_id = pages.id\n   AND documents.publication_id = current.publication_id\n  WHERE pages.template_id = ? AND pages.canonical_url = ?\n"
         ],
         "sampleCount": 100,
-        "p50Milliseconds": 0.01699999999254942,
-        "p95Milliseconds": 0.02350000001024455
+        "p50Milliseconds": 0.017499999958090484,
+        "p95Milliseconds": 0.028374999994412065
       },
       "interpolationManifestSharing": {
         "firstPageId": "page-store-1001",
@@ -1708,7 +1708,7 @@
           }
         ]
       },
-      "publicationElapsedMilliseconds": 2.9635839999999973,
+      "publicationElapsedMilliseconds": 3.0846249999999884,
       "publicationSerializedBytes": 7455,
       "revertEvidence": {
         "restoredDefaultHero": true,
@@ -1776,13 +1776,13 @@
         "failedPublicationLeftPriorPointerActive": true,
         "failedPublicationLeftNoRows": true,
         "publicationEvidence": {
-          "seedElapsedMilliseconds": 68.12137499998789,
+          "seedElapsedMilliseconds": 88.06358399998862,
           "pageCount": 24,
           "manifestCount": 24,
           "rowsWritten": 218,
           "estimatedStorageBytes": 21120,
           "logicalExpandedRenderedDocumentBytes": 52816,
-          "durationMilliseconds": 20.223875000025146,
+          "durationMilliseconds": 22.44791600003373,
           "persistedPublicationCount": 1,
           "persistedPageDocumentCount": 24,
           "persistedManifestCount": 24,
@@ -1814,14 +1814,14 @@
         "changedPublicationId": "structural-publication:changed",
         "rollbackRestoredBaselineHash": true,
         "publicationEvidence": {
-          "seedElapsedMilliseconds": 19.93245800002478,
+          "seedElapsedMilliseconds": 22.103666999959387,
           "baseline": {
             "pageCount": 2,
             "manifestCount": 1,
             "rowsWritten": 29,
             "estimatedStorageBytes": 1189,
             "logicalExpandedRenderedDocumentBytes": 14467,
-            "durationMilliseconds": 4.358917000005022
+            "durationMilliseconds": 4.146416999981739
           },
           "changed": {
             "pageCount": 2,
@@ -1829,7 +1829,7 @@
             "rowsWritten": 28,
             "estimatedStorageBytes": 1189,
             "logicalExpandedRenderedDocumentBytes": 14203,
-            "durationMilliseconds": 4.702249999972992
+            "durationMilliseconds": 4.220249999896623
           },
           "persistedPublicationCount": 2,
           "persistedPageDocumentCount": 4,
@@ -1871,8 +1871,8 @@
             "\n  SELECT pages.route_status AS currentRouteStatus,\n         current.publication_id AS publicationId,\n         documents.page_instance_id AS pageInstanceId,\n         documents.manifest_id AS manifestId,\n         documents.document_hash AS documentHash,\n         documents.rendered_document_json AS renderedDocumentJson,\n         documents.resolved_data_json AS resolvedDataJson\n  FROM page_instances AS pages\n  LEFT JOIN current_publications AS current\n    ON current.template_id = pages.template_id\n  LEFT JOIN published_page_documents AS documents\n    ON documents.template_id = pages.template_id\n   AND documents.page_instance_id = pages.id\n   AND documents.publication_id = current.publication_id\n  WHERE pages.template_id = ? AND pages.canonical_url = ?\n"
           ],
           "sampleCount": 100,
-          "p50Milliseconds": 0.01699999999254942,
-          "p95Milliseconds": 0.02741699991747737
+          "p50Milliseconds": 0.017207999946549535,
+          "p95Milliseconds": 0.024457999970763922
         },
         "publicationIds": ["store-publication:baseline", "store-publication:changed"],
         "documentHashes": [
