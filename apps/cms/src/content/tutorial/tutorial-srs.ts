@@ -3,14 +3,14 @@ import * as z from 'zod';
 const MINUTE_MS = 60_000;
 const DAY_MINUTES = 1_440;
 
-export const TutorialCardIdSchema = z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
+const TutorialCardIdSchema = z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
 export type TutorialCardId = z.infer<typeof TutorialCardIdSchema>;
 
-export const TutorialRatingSchema = z.enum(['again', 'hard', 'good', 'easy']);
+const TutorialRatingSchema = z.enum(['again', 'hard', 'good', 'easy']);
 export type TutorialRating = z.infer<typeof TutorialRatingSchema>;
 
-export const TutorialCardPhaseSchema = z.enum(['new', 'learning', 'review', 'relearning']);
-export type TutorialCardPhase = z.infer<typeof TutorialCardPhaseSchema>;
+const TutorialCardPhaseSchema = z.enum(['new', 'learning', 'review', 'relearning']);
+type TutorialCardPhase = z.infer<typeof TutorialCardPhaseSchema>;
 
 export const TutorialCardStateSchema = z.object({
   phase: TutorialCardPhaseSchema.default('new'),
@@ -24,7 +24,7 @@ export const TutorialCardStateSchema = z.object({
 });
 export type TutorialCardState = z.infer<typeof TutorialCardStateSchema>;
 
-export const TutorialReviewLogSchema = z.object({
+const TutorialReviewLogSchema = z.object({
   rating: TutorialRatingSchema,
   phase: TutorialCardPhaseSchema,
   intervalMinutes: z.int().min(0),
@@ -32,8 +32,6 @@ export const TutorialReviewLogSchema = z.object({
   reviewedAt: z.int().min(0),
   elapsedMinutes: z.number().min(0),
 });
-export type TutorialReviewLog = z.infer<typeof TutorialReviewLogSchema>;
-
 const EaseDeltaSchema = z.object({
   again: z.number(),
   hard: z.number(),
@@ -41,7 +39,7 @@ const EaseDeltaSchema = z.object({
   easy: z.number(),
 });
 
-export const TutorialSchedulerConfigSchema = z.object({
+const TutorialSchedulerConfigSchema = z.object({
   learningStepsMinutes: z.array(z.number().positive()).min(1),
   relearningStepsMinutes: z.array(z.number().positive()).min(1),
   graduatingIntervalDays: z.number().positive(),
@@ -56,7 +54,7 @@ export const TutorialSchedulerConfigSchema = z.object({
 });
 export type TutorialSchedulerConfig = z.infer<typeof TutorialSchedulerConfigSchema>;
 
-export const TutorialSchedulerConfigOverrideSchema = z.object({
+const TutorialSchedulerConfigOverrideSchema = z.object({
   learningStepsMinutes: z.array(z.number().positive()).min(1).optional(),
   relearningStepsMinutes: z.array(z.number().positive()).min(1).optional(),
   graduatingIntervalDays: z.number().positive().optional(),
@@ -92,7 +90,7 @@ const SchedulerOptionsSchema = z.object({
 });
 export type TutorialSchedulerOptions = z.infer<typeof SchedulerOptionsSchema>;
 
-export const TutorialReviewResultSchema = z.object({
+const TutorialReviewResultSchema = z.object({
   state: TutorialCardStateSchema,
   log: TutorialReviewLogSchema,
 });
@@ -341,13 +339,11 @@ export function buildStudyDeck(
   return [...dueCards.map((card) => card.id), ...newCards];
 }
 
-export const TutorialProgressReviewSchema = z.object({
+const TutorialProgressReviewSchema = z.object({
   cardId: TutorialCardIdSchema,
   ...TutorialReviewLogSchema.shape,
 });
-export type TutorialProgressReview = z.infer<typeof TutorialProgressReviewSchema>;
-
-export const TUTORIAL_PROGRESS_VERSION = 1 as const;
+const TUTORIAL_PROGRESS_VERSION = 1 as const;
 
 const TutorialProgressV0Schema = z.strictObject({
   version: z.literal(0).optional(),
@@ -436,7 +432,7 @@ export function recordTutorialReview(
   });
 }
 
-export const TutorialProgressSummarySchema = z.object({
+const TutorialProgressSummarySchema = z.object({
   total: z.int().min(0),
   due: z.int().min(0),
   mastered: z.int().min(0),

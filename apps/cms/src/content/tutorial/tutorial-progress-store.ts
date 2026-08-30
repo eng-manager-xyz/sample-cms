@@ -6,7 +6,7 @@ import {
   type TutorialProgress,
 } from './tutorial-srs';
 
-export const TUTORIAL_PROGRESS_STORAGE_KEY = 'auteur:tutorial-learning:v1';
+const TUTORIAL_PROGRESS_STORAGE_KEY = 'auteur:tutorial-learning:v1';
 
 const serverProgress = createTutorialProgress();
 let browserProgress = serverProgress;

@@ -51,8 +51,6 @@ export const ComprehensionQuestionSchema = z
     );
     addDuplicateIssue(question.sourceSectionIds, context, ['sourceSectionIds'], 'source section');
   });
-export type ComprehensionQuestion = z.infer<typeof ComprehensionQuestionSchema>;
-
 export const ChapterQuestionnaireSchema = z
   .object({
     id: LearningIdSchema,
@@ -87,12 +85,10 @@ export const ChapterQuestionnaireSchema = z
   });
 export type ChapterQuestionnaire = z.infer<typeof ChapterQuestionnaireSchema>;
 
-export const TeachBackCriterionSchema = z.object({
+const TeachBackCriterionSchema = z.object({
   id: LearningIdSchema,
   label: z.string().trim().min(1),
 });
-export type TeachBackCriterion = z.infer<typeof TeachBackCriterionSchema>;
-
 export const TeachBackCardSchema = z
   .object({
     kind: z.literal('teach-back'),
@@ -173,8 +169,6 @@ export const TutorialLearningContentSchema = z
 
     addDuplicateIssue(learningCardIds, context, [], 'learning card id');
   });
-export type TutorialLearningContent = z.infer<typeof TutorialLearningContentSchema>;
-
 const learningContent = TutorialLearningContentSchema.parse({
   questionnaires: [
     {
@@ -844,19 +838,16 @@ export const tutorialLearningCardIds = [
   ...teachBackCards.map((card) => card.id),
 ];
 
-export const QuestionnaireAnswersSchema = z.record(LearningIdSchema, z.int().min(0));
-export type QuestionnaireAnswers = z.infer<typeof QuestionnaireAnswersSchema>;
+const QuestionnaireAnswersSchema = z.record(LearningIdSchema, z.int().min(0));
 
-export const QuestionnaireQuestionResultSchema = z.object({
+const QuestionnaireQuestionResultSchema = z.object({
   questionId: LearningIdSchema,
   selectedIndex: z.int().min(0).nullable(),
   answered: z.boolean(),
   correct: z.boolean(),
   explanation: z.string().min(1),
 });
-export type QuestionnaireQuestionResult = z.infer<typeof QuestionnaireQuestionResultSchema>;
-
-export const QuestionnaireScoreSchema = z.object({
+const QuestionnaireScoreSchema = z.object({
   questionnaireId: LearningIdSchema,
   answered: z.int().min(0),
   correct: z.int().min(0),
@@ -916,7 +907,7 @@ export function scoreQuestionnaire(
   });
 }
 
-export const TeachBackScoreSchema = z.object({
+const TeachBackScoreSchema = z.object({
   cardId: LearningIdSchema,
   met: z.int().min(0),
   total: z.int().positive(),
