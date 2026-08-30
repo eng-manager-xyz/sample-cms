@@ -64,8 +64,8 @@ The envelope's `run` object is the authoritative environment record. It includes
 | Inputs | page/sample/case counts and deterministic seed in `invocation` |
 
 The current bounded envelope was generated from clean governed commit
-`f2e7fba8392ab37546291b9867e44116dd171595`; unlike the retained million-row scratch evidence,
-this revision resolves directly in the AUT-533 branch.
+`0d02c761e9a3941ad22ffded83dadf8397c53448`; the revision resolves directly in the AUT-536
+branch and uses the current website-enabled lockfile.
 
 The evidence runner records the exact pre-run tree state instead of assuming it was clean. The
 delivery verifier requires committed evidence to have an empty pre-run dirty-state record and the
@@ -245,21 +245,20 @@ Run this only after stopping the development server and unrelated indexers:
 bun run scenarios:benchmark:1m
 ```
 
-The authoritative stress run completed successfully from clean scratch commit
-`37b789b26e0116ce1fa95321ad4b6b3d95cd3453`. That commit is an ancestor of the AUT-533 transfer
-source `1c227cf28eabd3a1ddf86768d5767a0fecbbdfe1`; this governed checkout transfers the artifacts, not
-the scratch Git history, so the evidence commit is intentionally anchored through AUT-533 rather
-than expected to resolve locally. The machine-readable source is `docs/evidence/store-1m.json`;
-values below are copied from that envelope rather than inferred from the bounded run.
+The authoritative stress run completed successfully from clean governed commit
+`6d02c0de16b3745b32df22b42fe0afca559300f6`. That revision includes the AUT-536 implementation and
+bounded evidence commit, resolves locally in this branch, and uses the current lockfile. The
+machine-readable source is `docs/evidence/store-1m.json`; values below are copied from that envelope
+rather than inferred from the bounded run.
 
 | Run provenance and host | Measured result |
 | --- | --- |
-| Git / pre-run tree | scratch `37b789b26e0116ce1fa95321ad4b6b3d95cd3453` / clean |
-| Lock SHA-256 / package-manager pin | `1a6e0ed8bfdb74dfb8048560186c64bee2eaa5416a0f68442c0ddc609ad46670` / `bun@1.3.14` |
+| Git / pre-run tree | `6d02c0de16b3745b32df22b42fe0afca559300f6` / clean |
+| Lock SHA-256 / package-manager pin | `3df8a64cc151ce6315f378f312eaef4d1e876e9e7097023c9411d8f937ee51cc` / `bun@1.3.14` |
 | Runtime | actual Bun `1.3.11`; SQLite `3.43.2` |
 | Host | macOS Darwin `24.6.0`, arm64 Apple M4 Max, 16 logical CPUs, 51,539,607,552 bytes (48 GiB) physical memory |
-| Wall / CPU | 995,049.950 ms wall; 845.820 s user CPU; 122.422 s system CPU |
-| Maximum resident memory | 591,757,312 bytes (564.34 MiB) |
+| Wall / CPU | 941,377.622 ms wall; 813.432 s user CPU; 105.358 s system CPU |
+| Maximum resident memory | 580,419,584 bytes (553.53 MiB) |
 | Final database | 3,205,939,200 bytes (2.986 GiB), 782,700 × 4,096-byte pages, zero freelist pages |
 
 | Persisted cardinality | Exact result |
@@ -274,7 +273,7 @@ values below are copied from that envelope rather than inferred from the bounded
 | Publications / page documents | 2 / 1,000,004 |
 | Manifests / manifest items | 5 / 20 |
 
-The initial seed took 69,115.674 ms. Replaying the same scale identity took 188.719 ms, inserted zero
+The initial seed took 61,272.986 ms. Replaying the same scale identity took 63.238 ms, inserted zero
 rows, reproduced the same SHA-256 identity, and left page and membership counts unchanged. Integrity
 was `ok` on schema v6 with zero foreign-key violations.
 
@@ -286,14 +285,14 @@ for the requested ordering. Each selector preview used the canonical-page index 
 
 | Selector | Exact matches | Preview time |
 | --- | ---: | ---: |
-| `store_type = 'chain_store'` | 500,001 | 798.851 ms |
-| `category = 'fast_food'` | 200,001 | 773.975 ms |
-| `brand = 'burger_king'` | 50,000 | 733.673 ms |
-| `brand = 'mcdonalds'` | 50,001 | 739.034 ms |
+| `store_type = 'chain_store'` | 500,001 | 764.465 ms |
+| `category = 'fast_food'` | 200,001 | 767.889 ms |
+| `brand = 'burger_king'` | 50,000 | 704.737 ms |
+| `brand = 'mcdonalds'` | 50,001 | 715.465 ms |
 
-The bounded 50-row publication preview over all 1,000,002 eligible pages took 53.156 ms. The full
-generic publication took 594,347.476 ms and persisted 1,000,002 documents at a measured local rate
-of 1,682.52 documents/second. The identical-input compile took 262,674.584 ms, returned the same
+The bounded 50-row publication preview over all 1,000,002 eligible pages took 48.222 ms. The full
+generic publication took 562,129.470 ms and persisted 1,000,002 documents at a measured local rate
+of 1,778.95 documents/second. The identical-input compile took 247,391.290 ms, returned the same
 publication ID and input hash, reproduced exactly 1,143,681,174 logical expanded payload bytes, and
 added no page-document rows.
 
@@ -310,10 +309,10 @@ added no page-document rows.
 | SQLite allocation before/after publication | 1,895,190,528 / 3,205,939,200 bytes |
 | Actual publication allocation delta | 1,310,748,672 bytes (1,310.75 bytes/document) |
 
-Across 250 full-scale samples, indexed canonical lookup measured 0.007667 ms p50 and 0.009417 ms
-p95. Manifest reconstruction measured 0.164250 ms p50 and 0.304500 ms p95, using exactly two SQL
+Across 250 full-scale samples, indexed canonical lookup measured 0.006750 ms p50 and 0.008000 ms
+p95. Manifest reconstruction measured 0.173500 ms p50 and 0.324666 ms p95, using exactly two SQL
 statements and zero selector statements per request. The separate expanded serving fixture used one
-SQL statement and zero selectors, measuring 0.014292 ms p50 and 0.019500 ms p95. These local
+SQL statement and zero selectors, measuring 0.017000 ms p50 and 0.023500 ms p95. These local
 hot-cache SQLite measurements compare shapes; they are not production SLOs. No resource limitation
 occurred.
 
