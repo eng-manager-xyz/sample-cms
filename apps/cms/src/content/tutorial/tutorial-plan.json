@@ -1,0 +1,297 @@
+{
+  "title": "From Route Trees to the Wall of Maps",
+  "subtitle": "A progressive field guide to Auteur's selector-scoped content architecture",
+  "audience": "Designers, content architects, engineers, and product partners",
+  "readingSpeedWordsPerMinute": 190,
+  "totalBudgetMinutes": 180,
+  "chapters": [
+    {
+      "id": "why-the-architecture-changes",
+      "number": 1,
+      "title": "Why the architecture changes",
+      "kicker": "Old world → transition",
+      "sections": [
+        {
+          "id": "old-request-path",
+          "number": "1.1",
+          "title": "The old request path",
+          "readMinutes": 5,
+          "mediaMinutes": 1,
+          "digestMinutes": 2,
+          "prerequisite": null,
+          "visual": "generated-old-world-cutaway"
+        },
+        {
+          "id": "route-tree-trap",
+          "number": "1.2",
+          "title": "The route-tree inheritance trap",
+          "readMinutes": 6,
+          "mediaMinutes": 1,
+          "digestMinutes": 2,
+          "prerequisite": "1.1",
+          "visual": "route-tree-comparison"
+        },
+        {
+          "id": "transition-not-replacement",
+          "number": "1.3",
+          "title": "Transition, not replacement",
+          "readMinutes": 6,
+          "mediaMinutes": 1,
+          "digestMinutes": 2,
+          "prerequisite": "1.2",
+          "visual": "camo-auteur-seam"
+        },
+        {
+          "id": "what-proof-means",
+          "number": "1.4",
+          "title": "What the prototype can prove",
+          "readMinutes": 5,
+          "mediaMinutes": 0,
+          "digestMinutes": 2,
+          "prerequisite": "1.3",
+          "visual": "evidence-labels"
+        }
+      ]
+    },
+    {
+      "id": "relational-grammar",
+      "number": 2,
+      "title": "The relational grammar",
+      "kicker": "Maps → points → dimensions",
+      "sections": [
+        {
+          "id": "maps-points-dimensions",
+          "number": "2.1",
+          "title": "Maps, points, and dimensions",
+          "readMinutes": 6,
+          "mediaMinutes": 1,
+          "digestMinutes": 2,
+          "prerequisite": "1.4",
+          "visual": "pixi-wall-intro"
+        },
+        {
+          "id": "route-classification-inputs",
+          "number": "2.2",
+          "title": "Route and classification inputs",
+          "readMinutes": 6,
+          "mediaMinutes": 0,
+          "digestMinutes": 2,
+          "prerequisite": "2.1",
+          "visual": "normalized-row-trace"
+        },
+        {
+          "id": "placements-content",
+          "number": "2.3",
+          "title": "Stable placements and immutable content",
+          "readMinutes": 6,
+          "mediaMinutes": 0,
+          "digestMinutes": 2,
+          "prerequisite": "2.2",
+          "visual": "placement-lineage"
+        },
+        {
+          "id": "authoring-serving",
+          "number": "2.4",
+          "title": "Authoring state versus serving state",
+          "readMinutes": 6,
+          "mediaMinutes": 1,
+          "digestMinutes": 2,
+          "prerequisite": "2.3",
+          "visual": "compiler-boundary"
+        }
+      ]
+    },
+    {
+      "id": "wall-algebra",
+      "number": 3,
+      "title": "The wall-of-maps algebra",
+      "kicker": "Selectors → masks → folds",
+      "sections": [
+        {
+          "id": "define-algebra",
+          "number": "3.1",
+          "title": "Define the algebra",
+          "readMinutes": 6,
+          "mediaMinutes": 1,
+          "digestMinutes": 3,
+          "prerequisite": "2.4",
+          "visual": "three-linear-space"
+        },
+        {
+          "id": "safe-mask",
+          "number": "3.2",
+          "title": "From authored selector to safe mask",
+          "readMinutes": 6,
+          "mediaMinutes": 1,
+          "digestMinutes": 2,
+          "prerequisite": "3.1",
+          "visual": "selector-pipeline"
+        },
+        {
+          "id": "deterministic-fold",
+          "number": "3.3",
+          "title": "Conflict predicate and deterministic fold",
+          "readMinutes": 6,
+          "mediaMinutes": 1,
+          "digestMinutes": 3,
+          "prerequisite": "3.2",
+          "visual": "three-resolution-pin"
+        },
+        {
+          "id": "publication-projection",
+          "number": "3.4",
+          "title": "Projection into a publication",
+          "readMinutes": 6,
+          "mediaMinutes": 1,
+          "digestMinutes": 2,
+          "prerequisite": "3.3",
+          "visual": "manifest-equivalence"
+        }
+      ]
+    },
+    {
+      "id": "proof-shapes",
+      "number": 4,
+      "title": "Three executable proof shapes",
+      "kicker": "Dense → sparse → structural",
+      "sections": [
+        {
+          "id": "dense-eligible",
+          "number": "4.1",
+          "title": "Dense Eligible Vehicles",
+          "readMinutes": 6,
+          "mediaMinutes": 1,
+          "digestMinutes": 3,
+          "prerequisite": "3.4",
+          "visual": "eligible-video-and-pixi"
+        },
+        {
+          "id": "sparse-stores",
+          "number": "4.2",
+          "title": "Sparse Stores at one million",
+          "readMinutes": 6,
+          "mediaMinutes": 1,
+          "digestMinutes": 3,
+          "prerequisite": "4.1",
+          "visual": "stores-video-and-pixi"
+        },
+        {
+          "id": "structural-replacement",
+          "number": "4.3",
+          "title": "Structural type replacement",
+          "readMinutes": 6,
+          "mediaMinutes": 1,
+          "digestMinutes": 3,
+          "prerequisite": "4.2",
+          "visual": "structural-video-and-three"
+        },
+        {
+          "id": "compare-shapes",
+          "number": "4.4",
+          "title": "Compare the three shapes",
+          "readMinutes": 6,
+          "mediaMinutes": 1,
+          "digestMinutes": 3,
+          "prerequisite": "4.3",
+          "visual": "shape-comparison"
+        }
+      ]
+    },
+    {
+      "id": "operate-hud",
+      "number": 5,
+      "title": "Operate the HUD as an author",
+      "kicker": "See → change → publish",
+      "sections": [
+        {
+          "id": "navigate-wall",
+          "number": "5.1",
+          "title": "Navigate the Wall of Maps",
+          "readMinutes": 5,
+          "mediaMinutes": 1,
+          "digestMinutes": 2,
+          "prerequisite": "4.4",
+          "visual": "wall-ui-walkthrough"
+        },
+        {
+          "id": "inspect-layers",
+          "number": "5.2",
+          "title": "Inspect selectors, layers, and points",
+          "readMinutes": 5,
+          "mediaMinutes": 1,
+          "digestMinutes": 2,
+          "prerequisite": "5.1",
+          "visual": "pin-ui-walkthrough"
+        },
+        {
+          "id": "crud",
+          "number": "5.3",
+          "title": "Perform block and variant CRUD",
+          "readMinutes": 5,
+          "mediaMinutes": 1,
+          "digestMinutes": 3,
+          "prerequisite": "5.2",
+          "visual": "scenario-flow-videos"
+        },
+        {
+          "id": "publish-rollback",
+          "number": "5.4",
+          "title": "Publish, inspect, and roll back",
+          "readMinutes": 5,
+          "mediaMinutes": 1,
+          "digestMinutes": 3,
+          "prerequisite": "5.3",
+          "visual": "publication-video"
+        }
+      ]
+    },
+    {
+      "id": "tradeoffs",
+      "number": 6,
+      "title": "Interpret tradeoffs and unfinished production work",
+      "kicker": "Evidence → decisions",
+      "sections": [
+        {
+          "id": "payloads-manifests",
+          "number": "6.1",
+          "title": "Expanded payloads versus manifests",
+          "readMinutes": 5,
+          "mediaMinutes": 1,
+          "digestMinutes": 3,
+          "prerequisite": "5.4",
+          "visual": "byte-evidence"
+        },
+        {
+          "id": "rebuild-production",
+          "number": "6.2",
+          "title": "Full rebuild versus production publication",
+          "readMinutes": 6,
+          "mediaMinutes": 1,
+          "digestMinutes": 3,
+          "prerequisite": "6.1",
+          "visual": "tidb-protocol"
+        },
+        {
+          "id": "open-policies",
+          "number": "6.3",
+          "title": "Explicitly unresolved policies",
+          "readMinutes": 5,
+          "mediaMinutes": 0,
+          "digestMinutes": 3,
+          "prerequisite": "6.2",
+          "visual": "decision-ledger"
+        },
+        {
+          "id": "review-handoff",
+          "number": "6.4",
+          "title": "Architecture review and handoff",
+          "readMinutes": 5,
+          "mediaMinutes": 0,
+          "digestMinutes": 4,
+          "prerequisite": "6.3",
+          "visual": "review-checklist"
+        }
+      ]
+    }
+  ]
+}

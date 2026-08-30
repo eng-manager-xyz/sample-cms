@@ -25,6 +25,8 @@ See [the import provenance record](docs/import-provenance.md) for the retained a
 - TanStack Start, Router, Query, and Table
 - React 19 and TypeScript
 - Tailwind CSS 4 and shadcn-style components/blocks
+- Lazy Three.js and PixiJS explanatory models
+- React Markdown/GFM with vendored Atkinson Hyperlegible Next variable fonts
 - Local SQLite through Bun's native driver and Drizzle ORM
 - Bun test, Biome, and Fallow
 
@@ -48,6 +50,16 @@ delegate to the same `CmsService` used by the executable proofs. The Store found
 Eligible Vehicles/structural workbenches are real SQLite rows; the projection, comparison, and
 million-cardinality panels remain clearly labeled explanatory fixtures.
 
+The chaptered architecture tutorial lives at `/tutorial`. Its typed plan joins six Markdown
+chapters to exactly four sections each, enforces a three-hour-or-less uninterrupted path and a
+30-minute per-section ceiling, and requires every section to build on the immediately preceding
+one. Five reviewed UI-flow capture bundles provide MP4/WebM, posters, timed descriptions, complete
+transcripts, and SHA-256 provenance under `apps/cms/public/media/tutorial/flows/`. They are embedded
+only as visibly labeled reviewed previews; approved integration remains fail-closed pending final
+Linear/source approval. Editorial-image provenance is separate in `illustrations.manifest.json`;
+it records the requester's AUT-533 acceptance of the OpenAI-generated illustrations as substitutes
+for the originally requested Google Imagen output.
+
 The standard validation commands are:
 
 ```bash
@@ -62,6 +74,12 @@ bun run skills:verify
 bun run fallow:audit
 bun run five-phase-pass
 ```
+
+The media suite always checks the committed derivatives, hashes, exact description transcripts,
+and manifest/schema coherence. When `ffprobe` is available on `PATH` (or through
+`FFPROBE_PATH=/absolute/path/to/ffprobe`), it also re-probes every MP4/WebM codec, pixel format,
+frame size, frame rate, audio stream count, and measured duration. That probe test reports skipped
+on machines without the optional binary rather than making the Bun workspace unreproducible.
 
 `scenarios:evidence:bounded` writes the reproducible 1,000-page proof envelope to
 `docs/evidence/bounded-report.json`. Use `bun run scenarios:benchmark:1m` only for the explicit
@@ -86,7 +104,7 @@ manifest reuse, idempotent republish, atomic failure behavior, and rollback.
 ## Workspace shape
 
 ```text
-apps/cms                 TanStack Start authoring and inspection HUD
+apps/cms                 TanStack Start authoring, inspection HUD, and architecture tutorial
 packages/cms-db          SQLite schema, migrations, repositories, and deterministic fixtures
 packages/cms-domain      Selector, resolution, provenance, and publication domain logic
 packages/cms-service     Transactional authoring, preview, publish, rollback, and serve boundary

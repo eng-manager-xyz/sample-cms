@@ -1,0 +1,643 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://auteur.local/schemas/tutorial-flow-manifest-v2.json",
+  "title": "Auteur tutorial UI-flow media manifest",
+  "description": "Fail-closed metadata for silent, real-UI tutorial captures. Reviewed captures may appear only as visibly labeled previews; only approved and fully verified entries are ready for approved integration.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "packageStatus",
+    "integrationMode",
+    "readyForApprovedIntegration",
+    "media"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "const": 2
+    },
+    "packageStatus": {
+      "enum": ["draft", "reviewed", "approved"]
+    },
+    "integrationMode": {
+      "enum": ["not-integrated", "reviewed-preview", "approved"]
+    },
+    "readyForApprovedIntegration": {
+      "type": "boolean"
+    },
+    "media": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": {
+        "$ref": "#/$defs/uiFlowVideo"
+      },
+      "allOf": [
+        {
+          "contains": {
+            "properties": {
+              "id": {
+                "const": "store-authoring-v1"
+              },
+              "scenarioId": {
+                "const": "stores"
+              }
+            }
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "properties": {
+              "id": {
+                "const": "eligible-vehicles-authoring-v1"
+              },
+              "scenarioId": {
+                "const": "eligible-vehicles"
+              }
+            }
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "properties": {
+              "id": {
+                "const": "structural-replacement-authoring-v1"
+              },
+              "scenarioId": {
+                "const": "structural-proof"
+              }
+            }
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "properties": {
+              "id": {
+                "const": "wall-navigation-v1"
+              },
+              "scenarioId": {
+                "const": null
+              }
+            }
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "properties": {
+              "id": {
+                "const": "pin-inspection-v1"
+              },
+              "scenarioId": {
+                "const": "stores"
+              }
+            }
+          },
+          "minContains": 1,
+          "maxContains": 1
+        }
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "packageStatus": {
+            "const": "approved"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "integrationMode": {
+            "const": "approved"
+          },
+          "readyForApprovedIntegration": {
+            "const": true
+          },
+          "media": {
+            "items": {
+              "properties": {
+                "status": {
+                  "const": "approved"
+                },
+                "captureStatus": {
+                  "const": "verified"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "packageStatus": {
+            "const": "reviewed"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "integrationMode": {
+            "const": "reviewed-preview"
+          },
+          "readyForApprovedIntegration": {
+            "const": false
+          },
+          "media": {
+            "items": {
+              "properties": {
+                "status": {
+                  "const": "reviewed"
+                },
+                "captureStatus": {
+                  "const": "verified"
+                },
+                "verification": {
+                  "properties": {
+                    "probe": {
+                      "const": "passed"
+                    },
+                    "accessibilityReview": {
+                      "const": "passed"
+                    },
+                    "visualReview": {
+                      "const": "passed"
+                    },
+                    "approvalTimestamp": {
+                      "type": "null"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "packageStatus": {
+            "const": "draft"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "integrationMode": {
+            "const": "not-integrated"
+          },
+          "readyForApprovedIntegration": {
+            "const": false
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "nullableString": {
+      "type": ["string", "null"]
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "publicPath": {
+      "type": "string",
+      "pattern": "^/media/tutorial/flows/[a-z0-9][a-z0-9.-]+$"
+    },
+    "captureState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["seed", "scenarioScope", "expectedInitialPublication", "disposableDatabase"],
+      "properties": {
+        "seed": {
+          "type": "string",
+          "minLength": 1
+        },
+        "scenarioScope": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expectedInitialPublication": {
+          "type": "string",
+          "minLength": 1
+        },
+        "disposableDatabase": {
+          "const": true
+        }
+      }
+    },
+    "codecProbe": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["codec", "pixelFormat"],
+      "properties": {
+        "codec": {
+          "$ref": "#/$defs/nullableString"
+        },
+        "pixelFormat": {
+          "$ref": "#/$defs/nullableString"
+        }
+      }
+    },
+    "integrityFile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "path", "state", "bytes", "sha256"],
+      "properties": {
+        "role": {
+          "enum": ["mp4", "webm", "poster", "descriptions-vtt"]
+        },
+        "path": {
+          "$ref": "#/$defs/publicPath"
+        },
+        "state": {
+          "enum": ["pending", "verified"]
+        },
+        "bytes": {
+          "type": ["integer", "null"],
+          "minimum": 1
+        },
+        "sha256": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/sha256"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "verified"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "bytes": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "sha256": {
+                "$ref": "#/$defs/sha256"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "bytes": {
+                "type": "null"
+              },
+              "sha256": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["probe", "accessibilityReview", "visualReview", "approvalTimestamp"],
+      "properties": {
+        "probe": {
+          "enum": ["pending", "passed"]
+        },
+        "accessibilityReview": {
+          "enum": ["pending", "passed"]
+        },
+        "visualReview": {
+          "enum": ["pending", "passed"]
+        },
+        "approvalTimestamp": {
+          "oneOf": [
+            {
+              "type": "string",
+              "format": "date-time"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "uiFlowVideo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "id",
+        "kind",
+        "scenarioId",
+        "title",
+        "purpose",
+        "evidenceClass",
+        "status",
+        "captureStatus",
+        "sources",
+        "poster",
+        "descriptionsVtt",
+        "transcript",
+        "route",
+        "additionalRoutes",
+        "captureState",
+        "durationMs",
+        "width",
+        "height",
+        "fps",
+        "hasAudio",
+        "codecs",
+        "alt",
+        "longDescription",
+        "files",
+        "gitCommit",
+        "lockfileSha256",
+        "databaseSchemaVersion",
+        "capturedAt",
+        "verification",
+        "notes"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "const": 1
+        },
+        "id": {
+          "enum": [
+            "store-authoring-v1",
+            "eligible-vehicles-authoring-v1",
+            "structural-replacement-authoring-v1",
+            "wall-navigation-v1",
+            "pin-inspection-v1"
+          ]
+        },
+        "kind": {
+          "const": "ui-flow-video"
+        },
+        "scenarioId": {
+          "enum": ["stores", "eligible-vehicles", "structural-proof", null]
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "purpose": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidenceClass": {
+          "const": "real-ui-capture"
+        },
+        "status": {
+          "enum": ["draft", "reviewed", "approved"]
+        },
+        "captureStatus": {
+          "enum": ["pending", "captured", "verified"]
+        },
+        "sources": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mp4", "webm"],
+          "properties": {
+            "mp4": {
+              "$ref": "#/$defs/publicPath"
+            },
+            "webm": {
+              "$ref": "#/$defs/publicPath"
+            }
+          }
+        },
+        "poster": {
+          "$ref": "#/$defs/publicPath"
+        },
+        "descriptionsVtt": {
+          "$ref": "#/$defs/publicPath"
+        },
+        "transcript": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "route": {
+          "type": "string",
+          "pattern": "^/"
+        },
+        "additionalRoutes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^/"
+          }
+        },
+        "captureState": {
+          "$ref": "#/$defs/captureState"
+        },
+        "durationMs": {
+          "type": ["integer", "null"],
+          "minimum": 20000,
+          "maximum": 35000
+        },
+        "width": {
+          "const": 1440
+        },
+        "height": {
+          "const": 900
+        },
+        "fps": {
+          "const": 30
+        },
+        "hasAudio": {
+          "const": false
+        },
+        "codecs": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mp4", "webm"],
+          "properties": {
+            "mp4": {
+              "$ref": "#/$defs/codecProbe"
+            },
+            "webm": {
+              "$ref": "#/$defs/codecProbe"
+            }
+          }
+        },
+        "alt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "longDescription": {
+          "type": "string",
+          "minLength": 1
+        },
+        "files": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": {
+            "$ref": "#/$defs/integrityFile"
+          }
+        },
+        "gitCommit": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-f0-9]{40}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lockfileSha256": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/sha256"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "databaseSchemaVersion": {
+          "type": ["integer", "null"],
+          "minimum": 1
+        },
+        "capturedAt": {
+          "oneOf": [
+            {
+              "type": "string",
+              "format": "date-time"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "verification": {
+          "$ref": "#/$defs/verification"
+        },
+        "notes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "approved"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "captureStatus": {
+                "const": "verified"
+              },
+              "durationMs": {
+                "type": "integer",
+                "minimum": 20000,
+                "maximum": 35000
+              },
+              "codecs": {
+                "properties": {
+                  "mp4": {
+                    "properties": {
+                      "codec": {
+                        "const": "h264"
+                      },
+                      "pixelFormat": {
+                        "const": "yuv420p"
+                      }
+                    }
+                  },
+                  "webm": {
+                    "properties": {
+                      "codec": {
+                        "const": "vp9"
+                      },
+                      "pixelFormat": {
+                        "const": "yuv420p"
+                      }
+                    }
+                  }
+                }
+              },
+              "files": {
+                "items": {
+                  "properties": {
+                    "state": {
+                      "const": "verified"
+                    }
+                  }
+                }
+              },
+              "gitCommit": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{40}$"
+              },
+              "lockfileSha256": {
+                "$ref": "#/$defs/sha256"
+              },
+              "databaseSchemaVersion": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "capturedAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "verification": {
+                "properties": {
+                  "probe": {
+                    "const": "passed"
+                  },
+                  "accessibilityReview": {
+                    "const": "passed"
+                  },
+                  "visualReview": {
+                    "const": "passed"
+                  },
+                  "approvalTimestamp": {
+                    "type": "string",
+                    "format": "date-time"
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

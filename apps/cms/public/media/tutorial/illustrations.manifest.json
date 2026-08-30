@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 2,
+  "status": "accepted-substitute",
+  "requestedGenerator": "Google Imagen",
+  "actualGenerator": "OpenAI built-in image_gen",
+  "requirementSatisfied": true,
+  "substitutionAccepted": true,
+  "generatedAt": "2026-08-29",
+  "acceptedAt": "2026-08-30T01:35:41.690Z",
+  "acceptanceReference": "AUT-533",
+  "acceptanceNote": "The requester explicitly accepted the OpenAI image_gen illustrations as substitutes for the originally requested Google Imagen output when authorizing AUT-533 and transfer into the governed repository.",
+  "referenceUrls": [
+    "https://ai.google.dev/gemini-api/docs/models/imagen",
+    "https://docs.cloud.google.com/vertex-ai/generative-ai/docs/release-notes"
+  ],
+  "assets": [
+    {
+      "id": "old-world-to-wall-of-maps-v1",
+      "publicPath": "/media/tutorial/old-world-to-wall-of-maps-v1.webp",
+      "evidenceClass": "editorial-illustration",
+      "status": "accepted-substitute",
+      "width": 1672,
+      "height": 941,
+      "bytes": 90552,
+      "sha256": "3bdd42cfbc692e0bf213d4cbdc07307e5c635a758f4dff10ba73f25e934509b7",
+      "alt": "A rigid branching route tree passes through a compiler threshold and becomes a wall of translucent selector maps, ending at a pinned immutable document.",
+      "longDescription": "Editorial concept art explaining the architectural transition. It is not a screenshot or benchmark result. Dark nested route branches at left converge at a narrow boundary, then fan into translucent coordinate planes with sparse colored selector sheets and one resolution pin above a document stack."
+    },
+    {
+      "id": "three-proof-shapes-v1",
+      "publicPath": "/media/tutorial/three-proof-shapes-v1.webp",
+      "evidenceClass": "editorial-illustration",
+      "status": "accepted-substitute",
+      "width": 1672,
+      "height": 941,
+      "bytes": 97834,
+      "sha256": "eed34e4bd138a8117baf327232879372ee1f5ef735fe628594439ae6ff3e35b5",
+      "alt": "Three bays contrast dense intersecting selector planes, a sparse field condensed into five document classes, and a structural document with one replaced hero and one tombstone.",
+      "longDescription": "Editorial triptych for the three scenarios. The dense bay emphasizes overlapping planes, the sparse bay emphasizes a vast field and five reusable outcomes, and the structural bay keeps most placement cards unchanged while one card changes form and another becomes translucent."
+    },
+    {
+      "id": "atomic-publication-rollback-v1",
+      "publicPath": "/media/tutorial/atomic-publication-rollback-v1.webp",
+      "evidenceClass": "editorial-illustration",
+      "status": "accepted-substitute",
+      "width": 1672,
+      "height": 941,
+      "bytes": 41096,
+      "sha256": "01d6a0f00c906ad8f7e0c01570e0226af559541b07d0a0e495813b719cc7d63b",
+      "alt": "Translucent authoring layers flatten into an immutable document while one pointer moves to a new publication and the prior document remains intact for rollback.",
+      "longDescription": "Editorial publication concept. Separate authoring planes pass through a narrow compiler boundary into two complete immutable document cards. A single green pointer moves from the retained prior card to the new card."
+    }
+  ]
+}

@@ -1,0 +1,491 @@
+{
+  "$schema": "./manifest.schema.json",
+  "schemaVersion": 2,
+  "packageStatus": "reviewed",
+  "integrationMode": "reviewed-preview",
+  "readyForApprovedIntegration": false,
+  "media": [
+    {
+      "schemaVersion": 1,
+      "id": "store-authoring-v1",
+      "kind": "ui-flow-video",
+      "scenarioId": "stores",
+      "title": "Store authoring: stable placement to publication",
+      "purpose": "Provide a visibly labeled reviewed preview demonstrating that the real Store authoring HUD persists a default placement, reorders it, creates an immutable content version, and publishes through SQLite-backed services.",
+      "evidenceClass": "real-ui-capture",
+      "status": "reviewed",
+      "captureStatus": "verified",
+      "sources": {
+        "mp4": "/media/tutorial/flows/store-authoring-v1.mp4",
+        "webm": "/media/tutorial/flows/store-authoring-v1.webm"
+      },
+      "poster": "/media/tutorial/flows/store-authoring-v1-poster.webp",
+      "descriptionsVtt": "/media/tutorial/flows/store-authoring-v1.vtt",
+      "transcript": [
+        "The Store scenario represents one million canonical pages covered by one template default and sparse selector sheets. The scale result is verified separately; this capture uses a disposable authoring database.",
+        "The authoring HUD crosses a validated server boundary into the same SQLite-backed services used by the domain proof.",
+        "A new stable placement key is added to the template default as an immutable block version.",
+        "Reordering writes an atomic order revision without changing the placement identity.",
+        "Editing creates another immutable version. The placement key remains stable while content provenance advances.",
+        "Publication compiles the current authoring revisions and atomically activates an immutable serving document.",
+        "The change survives in SQLite and serving reads the materialized pointer, not selector SQL."
+      ],
+      "route": "/templates/stores",
+      "additionalRoutes": [],
+      "captureState": {
+        "seed": "fresh foundation seed",
+        "scenarioScope": "Store template default plus sparse chain, category, brand, and store-type selectors; the capture database is not the one-million-row benchmark database.",
+        "expectedInitialPublication": "Assert an active foundation publication before recording; reset if publication would reuse an already matching authored input.",
+        "disposableDatabase": true
+      },
+      "durationMs": 31867,
+      "width": 1440,
+      "height": 900,
+      "fps": 30,
+      "hasAudio": false,
+      "codecs": {
+        "mp4": {
+          "codec": "h264",
+          "pixelFormat": "yuv420p"
+        },
+        "webm": {
+          "codec": "vp9",
+          "pixelFormat": "yuv420p"
+        }
+      },
+      "alt": "The Store authoring HUD after a persisted placement edit and atomic publication, with the stable placement key and returned publication state visible.",
+      "longDescription": "The silent flow begins on the aggregated Store projection, opens live block authoring, adds weekend-promotion to the template default, reorders it, saves a new immutable version, publishes, and holds on the returned persisted publication state. The one-million-page claim comes from separate benchmark evidence, not this disposable capture database.",
+      "files": [
+        {
+          "role": "mp4",
+          "path": "/media/tutorial/flows/store-authoring-v1.mp4",
+          "state": "verified",
+          "bytes": 2586395,
+          "sha256": "890e2658b87609e1d394394eaa4bd38a526fd64cea3ee3a6f3a8b15133c49eb7"
+        },
+        {
+          "role": "webm",
+          "path": "/media/tutorial/flows/store-authoring-v1.webm",
+          "state": "verified",
+          "bytes": 1686200,
+          "sha256": "b5fa941ac90b0903443f42d44fc5cab8b24d295e2f2fd030e72554265ba2511e"
+        },
+        {
+          "role": "poster",
+          "path": "/media/tutorial/flows/store-authoring-v1-poster.webp",
+          "state": "verified",
+          "bytes": 46026,
+          "sha256": "2888dc6b33efbd5ad46dcc359f216950281f817acfe457cdfe20985c61410de9"
+        },
+        {
+          "role": "descriptions-vtt",
+          "path": "/media/tutorial/flows/store-authoring-v1.vtt",
+          "state": "verified",
+          "bytes": 1336,
+          "sha256": "c5463c07182a73cc6fb352ae2425c06b3bb1d5e34fe3e47d4f88bc1fd8fd1bfc"
+        }
+      ],
+      "gitCommit": "19a4a17a5f0586ac9da8a31d567713e22f55149a",
+      "lockfileSha256": "1a6e0ed8bfdb74dfb8048560186c64bee2eaa5416a0f68442c0ddc609ad46670",
+      "databaseSchemaVersion": 6,
+      "capturedAt": "2026-08-29T23:15:59Z",
+      "verification": {
+        "probe": "passed",
+        "accessibilityReview": "passed",
+        "visualReview": "passed",
+        "approvalTimestamp": null
+      },
+      "notes": [
+        "Measured duration: 31867 ms; every WebVTT cue ends before the final frame.",
+        "Poster extracted at 29.2 seconds from a settled proof state.",
+        "Source provenance is anchored by AUT-533 to scratch commit 1c227cf28eabd3a1ddf86768d5767a0fecbbdfe1 and the recorded base commit; final integration approval remains pending explicit approval of these reviewed capture binaries against a governed release revision."
+      ]
+    },
+    {
+      "schemaVersion": 1,
+      "id": "eligible-vehicles-authoring-v1",
+      "kind": "ui-flow-video",
+      "scenarioId": "eligible-vehicles",
+      "title": "Eligible Vehicles: linked selector scope and copy on write",
+      "purpose": "Provide a visibly labeled reviewed preview demonstrating that the real Eligible Vehicles HUD previews approved selector SQL, creates a linked sparse variant, performs a copy-on-write hero edit, and publishes deterministically.",
+      "evidenceClass": "real-ui-capture",
+      "status": "reviewed",
+      "captureStatus": "verified",
+      "sources": {
+        "mp4": "/media/tutorial/flows/eligible-vehicles-authoring-v1.mp4",
+        "webm": "/media/tutorial/flows/eligible-vehicles-authoring-v1.webm"
+      },
+      "poster": "/media/tutorial/flows/eligible-vehicles-authoring-v1-poster.webp",
+      "descriptionsVtt": "/media/tutorial/flows/eligible-vehicles-authoring-v1.vtt",
+      "transcript": [
+        "Eligible Vehicles uses broader selector sheets. A page can match several layers, but distinct priorities make the result deterministic.",
+        "The persisted workspace resolves seven placements for the selected canonical page.",
+        "Selector SQL runs only during authoring preview or publication, against the approved surface.",
+        "A linked variant starts sparse: it inherits the default document and adds no copied page tree.",
+        "Editing inherited content is copy on write. Only the hero receives a local immutable version; the remaining placements stay inherited.",
+        "Publication validates priorities and conflicts before activating the materialized documents.",
+        "The result is a selector-scoped change with explicit provenance, not duplicated route content."
+      ],
+      "route": "/templates/eligible-vehicles",
+      "additionalRoutes": [],
+      "captureState": {
+        "seed": "fresh Eligible Vehicles scenario seed",
+        "scenarioScope": "Eligible Vehicles exact-page authoring with seven resolved placements and a new Texas delivery linked variant at priority 50.",
+        "expectedInitialPublication": "Assert the deterministic scenario publication and seven resolved placements before recording; fixture-only conflict cues must be labeled or excluded from live-success frames.",
+        "disposableDatabase": true
+      },
+      "durationMs": 33867,
+      "width": 1440,
+      "height": 900,
+      "fps": 30,
+      "hasAudio": false,
+      "codecs": {
+        "mp4": {
+          "codec": "h264",
+          "pixelFormat": "yuv420p"
+        },
+        "webm": {
+          "codec": "vp9",
+          "pixelFormat": "yuv420p"
+        }
+      },
+      "alt": "The Eligible Vehicles authoring HUD showing one local hero version inside a linked selector-scoped variant while neighboring placements remain inherited.",
+      "longDescription": "The silent flow begins on the dense Eligible Vehicles projection, opens live authoring, previews the state-and-slug selector against the approved read surface, creates a linked Texas delivery variant, edits primary-hero by copy on write, publishes, and holds on one local hero with inherited neighbors and explicit provenance.",
+      "files": [
+        {
+          "role": "mp4",
+          "path": "/media/tutorial/flows/eligible-vehicles-authoring-v1.mp4",
+          "state": "verified",
+          "bytes": 3961432,
+          "sha256": "8f0eee4dbd0169c56be5b459fccebb112c2de677b995ef2d45de870ce558ad48"
+        },
+        {
+          "role": "webm",
+          "path": "/media/tutorial/flows/eligible-vehicles-authoring-v1.webm",
+          "state": "verified",
+          "bytes": 2394845,
+          "sha256": "f79c127e5b56209b536cfb4aac120e734503dcd76888104908477c0f84542fa1"
+        },
+        {
+          "role": "poster",
+          "path": "/media/tutorial/flows/eligible-vehicles-authoring-v1-poster.webp",
+          "state": "verified",
+          "bytes": 75522,
+          "sha256": "9537a0b0d319594a38963c49cbe832d233f092d47482051564b4dddcbdbcd9d6"
+        },
+        {
+          "role": "descriptions-vtt",
+          "path": "/media/tutorial/flows/eligible-vehicles-authoring-v1.vtt",
+          "state": "verified",
+          "bytes": 1286,
+          "sha256": "47a69bfde2ecde70f438258a2714178b1fcaad1b19b3530ba4c921d02384fec6"
+        }
+      ],
+      "gitCommit": "19a4a17a5f0586ac9da8a31d567713e22f55149a",
+      "lockfileSha256": "1a6e0ed8bfdb74dfb8048560186c64bee2eaa5416a0f68442c0ddc609ad46670",
+      "databaseSchemaVersion": 6,
+      "capturedAt": "2026-08-29T23:15:59Z",
+      "verification": {
+        "probe": "passed",
+        "accessibilityReview": "passed",
+        "visualReview": "passed",
+        "approvalTimestamp": null
+      },
+      "notes": [
+        "Measured duration: 33867 ms; every WebVTT cue ends before the final frame.",
+        "Poster extracted at 31.5 seconds from a settled proof state.",
+        "Source provenance is anchored by AUT-533 to scratch commit 1c227cf28eabd3a1ddf86768d5767a0fecbbdfe1 and the recorded base commit; final integration approval remains pending explicit approval of these reviewed capture binaries against a governed release revision."
+      ]
+    },
+    {
+      "schemaVersion": 1,
+      "id": "structural-replacement-authoring-v1",
+      "kind": "ui-flow-video",
+      "scenarioId": "structural-proof",
+      "title": "Structural replacement: stable key, tombstone, and rollback",
+      "purpose": "Provide a visibly labeled reviewed preview demonstrating that the real Structural proof HUD preserves a placement key through a hero_alt edit, reverts and reapplies a tombstone, publishes atomically, and rolls back by pointer.",
+      "evidenceClass": "real-ui-capture",
+      "status": "reviewed",
+      "captureStatus": "verified",
+      "sources": {
+        "mp4": "/media/tutorial/flows/structural-replacement-authoring-v1.mp4",
+        "webm": "/media/tutorial/flows/structural-replacement-authoring-v1.webm"
+      },
+      "poster": "/media/tutorial/flows/structural-replacement-authoring-v1-poster.webp",
+      "descriptionsVtt": "/media/tutorial/flows/structural-replacement-authoring-v1.vtt",
+      "transcript": [
+        "Structural replacement preserves the primary-hero placement key while the effective block type changes from hero to hero_alt.",
+        "This linked variant changes one hero, hides one promotion, and inherits twenty-two of twenty-four defaults.",
+        "A structural edit creates a new immutable hero_alt version without changing the document position.",
+        "Revert removes the local operation and restores inheritance. Hiding again writes an explicit scoped tombstone.",
+        "Publication atomically activates the conflict-free document and retains the previous immutable publication as a rollback target.",
+        "Rollback changes only the serving pointer. It does not recompile or mutate either publication.",
+        "Serving is restored to an existing immutable snapshot while authoring history remains intact."
+      ],
+      "route": "/templates/structural-proof",
+      "additionalRoutes": ["/publications/structural-proof"],
+      "captureState": {
+        "seed": "fresh Structural proof scenario seed",
+        "scenarioScope": "Structural page structural-page:hero-alt with primary-hero resolved as hero_alt, announcement-promo tombstoned, and 22 of 24 defaults inherited.",
+        "expectedInitialPublication": "Assert an active structural publication and a retained predecessor before recording; rollback must remain guarded and must never be simulated.",
+        "disposableDatabase": true
+      },
+      "durationMs": 34900,
+      "width": 1440,
+      "height": 900,
+      "fps": 30,
+      "hasAudio": false,
+      "codecs": {
+        "mp4": {
+          "codec": "h264",
+          "pixelFormat": "yuv420p"
+        },
+        "webm": {
+          "codec": "vp9",
+          "pixelFormat": "yuv420p"
+        }
+      },
+      "alt": "The Structural proof publication HUD after a stable-key hero_alt edit and scoped tombstone, with the immutable serving pointer restored to a retained predecessor.",
+      "longDescription": "The silent flow begins with primary-hero retaining its placement key as hero_alt while 22 of 24 defaults remain inherited. It opens the linked variant, saves a new immutable hero_alt version, reverts and reapplies the announcement-promo tombstone, publishes a new snapshot, previews guarded rollback, confirms it, and holds on the restored immutable serving pointer.",
+      "files": [
+        {
+          "role": "mp4",
+          "path": "/media/tutorial/flows/structural-replacement-authoring-v1.mp4",
+          "state": "verified",
+          "bytes": 3277439,
+          "sha256": "3d6e3a1cd424e80c30c63ad4026880f8847f4b42a589db10638f7f2d40a64039"
+        },
+        {
+          "role": "webm",
+          "path": "/media/tutorial/flows/structural-replacement-authoring-v1.webm",
+          "state": "verified",
+          "bytes": 2449560,
+          "sha256": "6846539798f29e5674af1880a6e378fbca23977e91da737a4207908f8bf59675"
+        },
+        {
+          "role": "poster",
+          "path": "/media/tutorial/flows/structural-replacement-authoring-v1-poster.webp",
+          "state": "verified",
+          "bytes": 63118,
+          "sha256": "01ca5c32b0c975b026c860529e38445bf7766896e7d7c5c2096e1797706b7b8f"
+        },
+        {
+          "role": "descriptions-vtt",
+          "path": "/media/tutorial/flows/structural-replacement-authoring-v1.vtt",
+          "state": "verified",
+          "bytes": 1336,
+          "sha256": "6591d1f72d5ee9f8c171cc4a5aa43a79f7f558fa4b0107ba740fa1fbdbd19d23"
+        }
+      ],
+      "gitCommit": "19a4a17a5f0586ac9da8a31d567713e22f55149a",
+      "lockfileSha256": "1a6e0ed8bfdb74dfb8048560186c64bee2eaa5416a0f68442c0ddc609ad46670",
+      "databaseSchemaVersion": 6,
+      "capturedAt": "2026-08-29T23:15:59Z",
+      "verification": {
+        "probe": "passed",
+        "accessibilityReview": "passed",
+        "visualReview": "passed",
+        "approvalTimestamp": null
+      },
+      "notes": [
+        "Measured duration: 34900 ms; every WebVTT cue ends before the final frame.",
+        "Poster extracted at 32.0 seconds from a settled proof state.",
+        "Source provenance is anchored by AUT-533 to scratch commit 1c227cf28eabd3a1ddf86768d5767a0fecbbdfe1 and the recorded base commit; final integration approval remains pending explicit approval of these reviewed capture binaries against a governed release revision."
+      ]
+    },
+    {
+      "schemaVersion": 1,
+      "id": "wall-navigation-v1",
+      "kind": "ui-flow-video",
+      "scenarioId": null,
+      "title": "Wall navigation: map search to persisted workspace",
+      "purpose": "Demonstrate that the real production HUD narrows the Wall of Maps, opens the Store map and its persisted SQLite workbench, then returns through the same information architecture.",
+      "evidenceClass": "real-ui-capture",
+      "status": "reviewed",
+      "captureStatus": "verified",
+      "sources": {
+        "mp4": "/media/tutorial/flows/wall-navigation-v1.mp4",
+        "webm": "/media/tutorial/flows/wall-navigation-v1.webm"
+      },
+      "poster": "/media/tutorial/flows/wall-navigation-v1-poster.webp",
+      "descriptionsVtt": "/media/tutorial/flows/wall-navigation-v1.vtt",
+      "transcript": [
+        "The Wall of Maps opens with the required scenario maps, their selector-sheet summaries, and the immutable-manifest serving posture.",
+        "Keyboard search narrows the inventory to the one Store map and keeps the bounded result count visible.",
+        "Inspect map opens the real persisted Store route and its sparse selector-sheet projection.",
+        "Block authoring reveals the live SQLite workspace: four visible placements, no tombstones, and one publication.",
+        "Primary navigation returns to the Wall with the Store filter retained for orientation.",
+        "Clearing search restores the complete three-map inventory without changing the information architecture.",
+        "The tutorial and operational workspace remain adjacent routes inside the same HUD shell."
+      ],
+      "route": "/",
+      "additionalRoutes": ["/templates/stores"],
+      "captureState": {
+        "seed": "seeded scratch SQLite database used only for reviewed tutorial capture",
+        "scenarioScope": "Cross-template Wall of Maps inventory followed by the Store template route and its persisted authoring summary.",
+        "expectedInitialPublication": "Assert the Store workspace has four visible placements, no tombstones, and one publication before recording; the walkthrough performs no writes.",
+        "disposableDatabase": true
+      },
+      "durationMs": 32033,
+      "width": 1440,
+      "height": 900,
+      "fps": 30,
+      "hasAudio": false,
+      "codecs": {
+        "mp4": {
+          "codec": "h264",
+          "pixelFormat": "yuv420p"
+        },
+        "webm": {
+          "codec": "vp9",
+          "pixelFormat": "yuv420p"
+        }
+      },
+      "alt": "The Wall of Maps filtered to the Store template, followed by its persisted authoring workspace and a return to the complete map inventory.",
+      "longDescription": "The silent flow begins on the Wall of Maps, types Store into the map search, asserts one result, opens the real Store route, and selects Block authoring. The live SQLite workbench reports four visible placements, zero tombstones, and one publication. Primary navigation returns to the Wall, where the retained filter is cleared and the complete three-map inventory is restored.",
+      "files": [
+        {
+          "role": "mp4",
+          "path": "/media/tutorial/flows/wall-navigation-v1.mp4",
+          "state": "verified",
+          "bytes": 1761068,
+          "sha256": "9fe0bc20dac5ef7d446cf6edff50abe87e3a53917fc4b35e23b542604ceaf6dc"
+        },
+        {
+          "role": "webm",
+          "path": "/media/tutorial/flows/wall-navigation-v1.webm",
+          "state": "verified",
+          "bytes": 1641593,
+          "sha256": "44453f9bbc4268b77c8a6723819d2d00e1c3121789c5dd8941f4e88cde403cdf"
+        },
+        {
+          "role": "poster",
+          "path": "/media/tutorial/flows/wall-navigation-v1-poster.webp",
+          "state": "verified",
+          "bytes": 54322,
+          "sha256": "71258f8841f47c5b34f7abc90d29a8817b67a99e5c092f51f3a46e2d02ac0c5d"
+        },
+        {
+          "role": "descriptions-vtt",
+          "path": "/media/tutorial/flows/wall-navigation-v1.vtt",
+          "state": "verified",
+          "bytes": 1244,
+          "sha256": "c3b98536db13b7c22597e1fe7aaa5bcd313f9de36d778c9b360f06f1f2328efb"
+        }
+      ],
+      "gitCommit": "f26613e02fa8c33e285a718357870c1295361892",
+      "lockfileSha256": "1a6e0ed8bfdb74dfb8048560186c64bee2eaa5416a0f68442c0ddc609ad46670",
+      "databaseSchemaVersion": 6,
+      "capturedAt": "2026-08-29T23:57:06Z",
+      "verification": {
+        "probe": "passed",
+        "accessibilityReview": "passed",
+        "visualReview": "passed",
+        "approvalTimestamp": null
+      },
+      "notes": [
+        "Measured duration: 32033 ms; every WebVTT cue ends before the final frame.",
+        "Poster extracted at 30.0 seconds after the complete Wall inventory was restored.",
+        "The assertion-backed capture is read-only and records both the cross-template wall and the Store persisted-state boundary.",
+        "Source provenance is anchored by AUT-533 to scratch commit 1c227cf28eabd3a1ddf86768d5767a0fecbbdfe1 and the recorded base commit; final integration approval remains pending explicit approval of these reviewed capture binaries against a governed release revision."
+      ]
+    },
+    {
+      "schemaVersion": 1,
+      "id": "pin-inspection-v1",
+      "kind": "ui-flow-video",
+      "scenarioId": "stores",
+      "title": "Resolution pin: URL to layers, provenance, and serving seam",
+      "purpose": "Demonstrate that one real Store projection point exposes its canonical URL, four ordered selector sheets, winning placement provenance, inspectible selector SQL, and independent route/content authority.",
+      "evidenceClass": "real-ui-capture",
+      "status": "reviewed",
+      "captureStatus": "verified",
+      "sources": {
+        "mp4": "/media/tutorial/flows/pin-inspection-v1.mp4",
+        "webm": "/media/tutorial/flows/pin-inspection-v1.webm"
+      },
+      "poster": "/media/tutorial/flows/pin-inspection-v1-poster.webp",
+      "descriptionsVtt": "/media/tutorial/flows/pin-inspection-v1.vtt",
+      "transcript": [
+        "The Store projection exposes sparse selector sheets in explicit priority order.",
+        "The P30 McDonald's sheet and one concrete page point are selected; that page matches four sheets.",
+        "The resolution pin shows the canonical URL, tags, Camo route live, Auteur content published, and HTTP 200.",
+        "Matching sheets stay visible from the P0 template default through P10 chain, P20 fast food, and P30 McDonald's.",
+        "Expanding primary-hero shows the inherited version and the winning McDonald's replacement as complete provenance.",
+        "The exact approved selector SQL is inspectible, with an explicit warning that it runs only during preview or publication.",
+        "Returning to Trace restores the independent Camo Press and Auteur serving status for the selected point."
+      ],
+      "route": "/templates/stores",
+      "additionalRoutes": [],
+      "captureState": {
+        "seed": "seeded scratch Store proof database used only for reviewed tutorial capture",
+        "scenarioScope": "Store sample /en-US/store/1234 matching the P0 default plus P10 chain, P20 fast-food, and P30 McDonald's sheets.",
+        "expectedInitialPublication": "Assert Camo route live, Auteur content published, HTTP 200, and all four ordered matching sheets before recording; the walkthrough performs no writes.",
+        "disposableDatabase": true
+      },
+      "durationMs": 34866,
+      "width": 1440,
+      "height": 900,
+      "fps": 30,
+      "hasAudio": false,
+      "codecs": {
+        "mp4": {
+          "codec": "h264",
+          "pixelFormat": "yuv420p"
+        },
+        "webm": {
+          "codec": "vp9",
+          "pixelFormat": "yuv420p"
+        }
+      },
+      "alt": "The Store resolution pin for a McDonald's page, showing four ordered matching sheets, primary-hero provenance, exact selector SQL, and healthy Camo Press and Auteur status.",
+      "longDescription": "The silent flow selects the P30 McDonald's Store sheet and a deterministic point matching four sheets. Trace shows /en-US/store/1234, its tags, Camo route live, Auteur content published, and HTTP 200. The walkthrough expands primary-hero provenance, opens the exact selector SQL and its preview/publication-only boundary, then returns to the independent serving-status seam.",
+      "files": [
+        {
+          "role": "mp4",
+          "path": "/media/tutorial/flows/pin-inspection-v1.mp4",
+          "state": "verified",
+          "bytes": 1814951,
+          "sha256": "49911a8834c638cf4de1b0b4ef5ed13e59291acf9a9ead766de3a6af7efa8c07"
+        },
+        {
+          "role": "webm",
+          "path": "/media/tutorial/flows/pin-inspection-v1.webm",
+          "state": "verified",
+          "bytes": 1665629,
+          "sha256": "4ab2bdaa04382f0f4bd3924a6b4a29138ed5eb11f9386e14a87e108d394cf47d"
+        },
+        {
+          "role": "poster",
+          "path": "/media/tutorial/flows/pin-inspection-v1-poster.webp",
+          "state": "verified",
+          "bytes": 52420,
+          "sha256": "e5beab1cb05c406551e472e68e913fdbaa3c3e30f965e5c98b673b9af58b69fd"
+        },
+        {
+          "role": "descriptions-vtt",
+          "path": "/media/tutorial/flows/pin-inspection-v1.vtt",
+          "state": "verified",
+          "bytes": 1255,
+          "sha256": "d0ad39305969d2ce397bb6cc71d57fcfd18c16cd10982d424c697ae8c5e07ac9"
+        }
+      ],
+      "gitCommit": "f26613e02fa8c33e285a718357870c1295361892",
+      "lockfileSha256": "1a6e0ed8bfdb74dfb8048560186c64bee2eaa5416a0f68442c0ddc609ad46670",
+      "databaseSchemaVersion": 6,
+      "capturedAt": "2026-08-29T23:57:06Z",
+      "verification": {
+        "probe": "passed",
+        "accessibilityReview": "passed",
+        "visualReview": "passed",
+        "approvalTimestamp": null
+      },
+      "notes": [
+        "Measured duration: 34866 ms; every WebVTT cue ends before the final frame.",
+        "Poster extracted at 34.0 seconds with the final Camo Press and Auteur status visible.",
+        "The assertion-backed capture is read-only and verifies the public-path SQL boundary without relying on the illustration layer.",
+        "Source provenance is anchored by AUT-533 to scratch commit 1c227cf28eabd3a1ddf86768d5767a0fecbbdfe1 and the recorded base commit; final integration approval remains pending explicit approval of these reviewed capture binaries against a governed release revision."
+      ]
+    }
+  ]
+}

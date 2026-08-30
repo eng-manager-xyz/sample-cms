@@ -1,0 +1,36 @@
+WEBVTT
+Kind: captions
+Language: en
+
+NOTE
+Timed visual descriptions for the silent Eligible Vehicles UI-flow capture.
+Cue boundaries were checked against the final 33.867-second encode; measured
+duration and hash provenance are recorded in manifest.json.
+
+eligible-01
+00:00:00.000 --> 00:00:04.000
+Eligible Vehicles uses broader selector sheets. A page can match several layers, but distinct priorities make the result deterministic.
+
+eligible-02
+00:00:04.000 --> 00:00:07.000
+The persisted workspace resolves seven placements for the selected canonical page.
+
+eligible-03
+00:00:07.000 --> 00:00:12.000
+Selector SQL runs only during authoring preview or publication, against the approved surface.
+
+eligible-04
+00:00:12.000 --> 00:00:17.000
+A linked variant starts sparse: it inherits the default document and adds no copied page tree.
+
+eligible-05
+00:00:17.000 --> 00:00:24.000
+Editing inherited content is copy on write. Only the hero receives a local immutable version; the remaining placements stay inherited.
+
+eligible-06
+00:00:24.000 --> 00:00:30.000
+Publication validates priorities and conflicts before activating the materialized documents.
+
+eligible-07
+00:00:30.000 --> 00:00:33.800
+The result is a selector-scoped change with explicit provenance, not duplicated route content.

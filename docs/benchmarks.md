@@ -240,19 +240,21 @@ Run this only after stopping the development server and unrelated indexers:
 bun run scenarios:benchmark:1m
 ```
 
-The authoritative stress run completed successfully from clean commit
-`8e6f95d351ec803788221c8956daada2f570219c`. The machine-readable source is
-`docs/evidence/store-1m.json`; values below are copied from that envelope rather than inferred from
-the bounded run.
+The authoritative stress run completed successfully from clean scratch commit
+`37b789b26e0116ce1fa95321ad4b6b3d95cd3453`. That commit is an ancestor of the AUT-533 transfer
+source `1c227cf28eabd3a1ddf86768d5767a0fecbbdfe1`; this governed checkout transfers the artifacts, not
+the scratch Git history, so the evidence commit is intentionally anchored through AUT-533 rather
+than expected to resolve locally. The machine-readable source is `docs/evidence/store-1m.json`;
+values below are copied from that envelope rather than inferred from the bounded run.
 
 | Run provenance and host | Measured result |
 | --- | --- |
-| Git / pre-run tree | `8e6f95d351ec803788221c8956daada2f570219c` / clean |
-| Lock SHA-256 / package-manager pin | `e18bd62e511e9968b36d2c05bc8a67b9185307bac29735a0d6e5d51ce9445816` / `bun@1.3.14` |
+| Git / pre-run tree | scratch `37b789b26e0116ce1fa95321ad4b6b3d95cd3453` / clean |
+| Lock SHA-256 / package-manager pin | `1a6e0ed8bfdb74dfb8048560186c64bee2eaa5416a0f68442c0ddc609ad46670` / `bun@1.3.14` |
 | Runtime | actual Bun `1.3.11`; SQLite `3.43.2` |
 | Host | macOS Darwin `24.6.0`, arm64 Apple M4 Max, 16 logical CPUs, 51,539,607,552 bytes (48 GiB) physical memory |
-| Wall / CPU | 974,249.892 ms wall; 832.533 s user CPU; 116.036 s system CPU |
-| Maximum resident memory | 575,733,760 bytes (549.06 MiB) |
+| Wall / CPU | 995,049.950 ms wall; 845.820 s user CPU; 122.422 s system CPU |
+| Maximum resident memory | 591,757,312 bytes (564.34 MiB) |
 | Final database | 3,205,939,200 bytes (2.986 GiB), 782,700 × 4,096-byte pages, zero freelist pages |
 
 | Persisted cardinality | Exact result |
@@ -267,7 +269,7 @@ the bounded run.
 | Publications / page documents | 2 / 1,000,004 |
 | Manifests / manifest items | 5 / 20 |
 
-The initial seed took 77,991.270 ms. Replaying the same scale identity took 125.204 ms, inserted zero
+The initial seed took 69,115.674 ms. Replaying the same scale identity took 188.719 ms, inserted zero
 rows, reproduced the same SHA-256 identity, and left page and membership counts unchanged. Integrity
 was `ok` on schema v6 with zero foreign-key violations.
 
@@ -279,14 +281,14 @@ for the requested ordering. Each selector preview used the canonical-page index 
 
 | Selector | Exact matches | Preview time |
 | --- | ---: | ---: |
-| `store_type = 'chain_store'` | 500,001 | 788.889 ms |
-| `category = 'fast_food'` | 200,001 | 752.450 ms |
-| `brand = 'burger_king'` | 50,000 | 721.361 ms |
-| `brand = 'mcdonalds'` | 50,001 | 736.053 ms |
+| `store_type = 'chain_store'` | 500,001 | 798.851 ms |
+| `category = 'fast_food'` | 200,001 | 773.975 ms |
+| `brand = 'burger_king'` | 50,000 | 733.673 ms |
+| `brand = 'mcdonalds'` | 50,001 | 739.034 ms |
 
-The bounded 50-row publication preview over all 1,000,002 eligible pages took 52.088 ms. The full
-generic publication took 582,582.612 ms and persisted 1,000,002 documents at a measured local rate
-of 1,716.50 documents/second. The identical-input compile took 251,939.625 ms, returned the same
+The bounded 50-row publication preview over all 1,000,002 eligible pages took 53.156 ms. The full
+generic publication took 594,347.476 ms and persisted 1,000,002 documents at a measured local rate
+of 1,682.52 documents/second. The identical-input compile took 262,674.584 ms, returned the same
 publication ID and input hash, reproduced exactly 1,143,681,174 logical expanded payload bytes, and
 added no page-document rows.
 
@@ -303,10 +305,10 @@ added no page-document rows.
 | SQLite allocation before/after publication | 1,895,190,528 / 3,205,939,200 bytes |
 | Actual publication allocation delta | 1,310,748,672 bytes (1,310.75 bytes/document) |
 
-Across 250 full-scale samples, indexed canonical lookup measured 0.008416 ms p50 and 0.009958 ms
-p95. Manifest reconstruction measured 0.166292 ms p50 and 0.310167 ms p95, using exactly two SQL
+Across 250 full-scale samples, indexed canonical lookup measured 0.007667 ms p50 and 0.009417 ms
+p95. Manifest reconstruction measured 0.164250 ms p50 and 0.304500 ms p95, using exactly two SQL
 statements and zero selector statements per request. The separate expanded serving fixture used one
-SQL statement and zero selectors, measuring 0.013917 ms p50 and 0.028000 ms p95. These local
+SQL statement and zero selectors, measuring 0.014292 ms p50 and 0.019500 ms p95. These local
 hot-cache SQLite measurements compare shapes; they are not production SLOs. No resource limitation
 occurred.
 
@@ -376,7 +378,7 @@ ADR can weigh expanded one-query reads against shared structures honestly.
 ## Final five-phase result
 
 `bun run five-phase-pass` passed on 2026-08-29 from the clean final implementation tree after the
-persisted authoring HUD was completed. The committed bounded and million-row ledgers retain their
+persisted authoring HUD and AUT-533 tutorial transfer were completed. The committed bounded and million-row ledgers retain their
 own exact source commits and lockfile digests; the verifier rejects drift.
 
 | Phase | Result | Owning Linear work |
@@ -384,16 +386,16 @@ own exact source commits and lockfile digests; the verifier rejects drift.
 | 1 — shell and SQLite baseline | Frozen install unchanged; boundaries and 71-skill/115-file import digest passed; reset and deterministic schema-v6 seed passed. | AUT-515–AUT-519 |
 | 2 — relational foundation | Database suite and populated v1→v6 upgrade passed; health/integrity/foreign-key checks passed. | AUT-516–AUT-519 |
 | 3 — selector, resolution, publication | Selector corpus, domain resolution, service CRUD, atomic publication, rollback, and fixed selector-free serving passed. | AUT-520–AUT-525 |
-| 4 — HUD and scenarios | TanStack HUD tests, fresh bounded proof, evidence verification, and client/SSR/Nitro production build passed. | AUT-526–AUT-530 |
-| 5 — cross-workspace audit | Committed bounded and one-million ledgers verified; boundaries, Biome, TypeScript, all tests, build, and Fallow passed. | AUT-530–AUT-532 |
+| 4 — HUD and scenarios | TanStack HUD and tutorial tests, fresh bounded proof, evidence verification, and client/SSR/Nitro production build passed. | AUT-526–AUT-530, AUT-533 |
+| 5 — cross-workspace audit | Committed bounded and one-million ledgers verified; boundaries, Biome, TypeScript, all tests, build, and Fallow passed. | AUT-530–AUT-533 |
 
-The workspace total was 107 tests and 1,116 assertions: database 8/57, domain 62/750, service
-10/122, scenarios 6/97, and CMS UI/router/server 21/90. Fallow reported zero issues across unused files,
+The workspace total was 124 tests and 1,552 assertions: database 8/57, domain 62/750, service
+10/122, scenarios 6/97, and CMS UI/router/server/tutorial 38/526. Fallow reported zero issues across unused files,
 exports, dependencies, cycles, unresolved imports, boundary/policy violations, and stale
 suppressions.
 
 Production-browser smoke against the built server rendered `/`, all three template workbenches,
-and `/publications/stores` with live SQLite schema v6. The Store workbench persisted a fifth block,
+`/publications/stores`, and `/tutorial` with live SQLite schema v6. The Store workbench persisted a fifth block,
 published two pages, and retained both the block and second immutable publication after a full
 reload. Eligible Vehicles exposed seven editable placements. The structural variant exposed 23
 visible placements, one tombstone, one `hero_alt` winner, and 22 inherited placements. The
@@ -401,5 +403,13 @@ publication route read the same live pointer, document hash, and two-publication
 route/table smoke also advanced the bounded instance page and exercised the unsafe
 live-without-document HTTP 503 fixture with no selector SQL; the browser console was clean.
 
-Linear closure follows the clean gate. Each AUT-514–AUT-532 handoff comment names its acceptance
-evidence and points back to this report; the parent closes only after every child is Done.
+The tutorial browser audit found 65 unique rendered IDs and no duplicates. Its six current native
+player instances represent five distinct reviewed capture bundles and each expose MP4, WebM, and a
+description track. The Chapter 5 scenario selector swaps one player in place with pressed-state
+feedback and no backward player anchors. Media tests verify derivative hashes, byte counts, exact
+cue timing and transcript text, manifest/schema-state coherence, the accepted illustration
+substitution provenance record, and—on the recorded environment with `ffprobe`
+available—the real codecs, pixel formats, frame geometry/rate, audio absence, and durations.
+
+Linear closure follows the clean gate. Each AUT-514–AUT-533 handoff names its acceptance evidence
+and points back to this report; the parent remains closed only while every child is Done.

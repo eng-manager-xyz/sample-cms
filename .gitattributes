@@ -1,0 +1,4 @@
+*.vtt text eol=lf
+*.mp4 binary
+*.webm binary
+*.webp binary

@@ -1,0 +1,36 @@
+WEBVTT
+Kind: captions
+Language: en
+
+NOTE
+Timed visual descriptions for the silent Structural replacement UI-flow capture.
+Cue boundaries were checked against the final 34.900-second encode; measured
+duration and hash provenance are recorded in manifest.json.
+
+structural-01
+00:00:00.000 --> 00:00:05.000
+Structural replacement preserves the primary-hero placement key while the effective block type changes from hero to hero_alt.
+
+structural-02
+00:00:05.000 --> 00:00:08.000
+This linked variant changes one hero, hides one promotion, and inherits twenty-two of twenty-four defaults.
+
+structural-03
+00:00:08.000 --> 00:00:15.000
+A structural edit creates a new immutable hero_alt version without changing the document position.
+
+structural-04
+00:00:15.000 --> 00:00:20.000
+Revert removes the local operation and restores inheritance. Hiding again writes an explicit scoped tombstone.
+
+structural-05
+00:00:20.000 --> 00:00:26.000
+Publication atomically activates the conflict-free document and retains the previous immutable publication as a rollback target.
+
+structural-06
+00:00:26.000 --> 00:00:31.000
+Rollback changes only the serving pointer. It does not recompile or mutate either publication.
+
+structural-07
+00:00:31.000 --> 00:00:34.800
+Serving is restored to an existing immutable snapshot while authoring history remains intact.

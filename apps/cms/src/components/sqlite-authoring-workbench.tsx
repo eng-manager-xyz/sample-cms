@@ -316,6 +316,7 @@ export function SqliteAuthoringWorkbench({
               <label className="mt-3 grid gap-1 text-[9px] font-medium text-ink-muted">
                 Immutable version payload
                 <textarea
+                  aria-label="Immutable version payload"
                   value={contentJson}
                   onChange={(event) => setContentJson(event.currentTarget.value)}
                   rows={7}

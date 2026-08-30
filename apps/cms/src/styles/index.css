@@ -2,6 +2,24 @@
 
 @source "../**/*.{ts,tsx}";
 
+@font-face {
+  font-family: "Atkinson Hyperlegible Next";
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url("/fonts/atkinson-hyperlegible-next/AtkinsonHyperlegibleNext-wght.woff2")
+    format("woff2");
+}
+
+@font-face {
+  font-family: "Atkinson Hyperlegible Next";
+  font-style: italic;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url("/fonts/atkinson-hyperlegible-next/AtkinsonHyperlegibleNext-Italic-wght.woff2")
+    format("woff2");
+}
+
 @theme {
   --color-canvas: oklch(1 0 0);
   --color-surface: oklch(0.982 0.002 286);
@@ -27,7 +45,8 @@
   --color-danger-soft: oklch(0.968 0.025 25);
   --color-focus: oklch(0.59 0.2 292 / 55%);
   --font-sans:
-    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    "Atkinson Hyperlegible Next", Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
   --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
 }
 

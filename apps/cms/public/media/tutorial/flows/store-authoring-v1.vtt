@@ -1,0 +1,36 @@
+WEBVTT
+Kind: captions
+Language: en
+
+NOTE
+Timed visual descriptions for the silent Store UI-flow capture.
+Cue boundaries were checked against the final 31.867-second encode; measured
+duration and hash provenance are recorded in manifest.json.
+
+store-01
+00:00:00.000 --> 00:00:04.000
+The Store scenario represents one million canonical pages covered by one template default and sparse selector sheets. The scale result is verified separately; this capture uses a disposable authoring database.
+
+store-02
+00:00:04.000 --> 00:00:07.000
+The authoring HUD crosses a validated server boundary into the same SQLite-backed services used by the domain proof.
+
+store-03
+00:00:07.000 --> 00:00:13.000
+A new stable placement key is added to the template default as an immutable block version.
+
+store-04
+00:00:13.000 --> 00:00:17.000
+Reordering writes an atomic order revision without changing the placement identity.
+
+store-05
+00:00:17.000 --> 00:00:23.000
+Editing creates another immutable version. The placement key remains stable while content provenance advances.
+
+store-06
+00:00:23.000 --> 00:00:29.000
+Publication compiles the current authoring revisions and atomically activates an immutable serving document.
+
+store-07
+00:00:29.000 --> 00:00:31.800
+The change survives in SQLite and serving reads the materialized pointer, not selector SQL.

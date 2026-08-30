@@ -1,6 +1,7 @@
 import { Link } from '@tanstack/react-router';
 import type { LucideIcon } from 'lucide-react';
 import {
+  BookOpen,
   ChevronDown,
   Database,
   FileStack,
@@ -16,7 +17,7 @@ import { Separator } from '@/components/ui/separator';
 import type { ScenarioId } from '@/data/scenario-fixtures';
 import { cn } from '@/lib/cn';
 
-type ShellSection = 'maps' | 'template' | 'publications';
+type ShellSection = 'maps' | 'tutorial' | 'template' | 'publications';
 
 interface AppShellProps {
   children: ReactNode;
@@ -30,11 +31,12 @@ interface AppShellProps {
 interface NavigationItem {
   label: string;
   icon: LucideIcon;
-  section?: ShellSection;
+  section: ShellSection;
 }
 
 const baseNavigation: NavigationItem[] = [
   { label: 'Wall of Maps', icon: MapIcon, section: 'maps' },
+  { label: 'Tutorial', icon: BookOpen, section: 'tutorial' },
   { label: 'Template workspace', icon: FileStack, section: 'template' },
   { label: 'Publications', icon: Database, section: 'publications' },
 ];
@@ -54,7 +56,8 @@ function SidebarLink({
 }>) {
   const Icon = item.icon;
   const active = item.section === activeSection;
-  const unavailable = !templateId && item.section !== 'maps';
+  const unavailable =
+    !templateId && (item.section === 'template' || item.section === 'publications');
   const className = cn(
     'flex h-9 w-full items-center rounded-lg px-2 text-[12px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus',
     collapsed ? 'justify-center' : 'gap-2.5',
@@ -92,6 +95,19 @@ function SidebarLink({
     );
   }
 
+  if (item.section === 'tutorial') {
+    return (
+      <Link
+        to="/tutorial"
+        onClick={onNavigate}
+        title={collapsed ? item.label : undefined}
+        className={className}
+      >
+        {contents}
+      </Link>
+    );
+  }
+
   if (item.section === 'template' && templateId) {
     return (
       <Link
@@ -106,7 +122,7 @@ function SidebarLink({
     );
   }
 
-  if (templateId) {
+  if (item.section === 'publications' && templateId) {
     return (
       <Link
         to="/publications/$templateId"

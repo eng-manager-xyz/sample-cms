@@ -1,0 +1,36 @@
+WEBVTT
+Kind: captions
+Language: en
+
+NOTE
+Timed visual descriptions for the silent Wall navigation UI-flow capture.
+Cue boundaries were checked against the final 32.033-second encode; measured
+duration and hash provenance are recorded in manifest.json.
+
+wall-01
+00:00:00.000 --> 00:00:04.000
+The Wall of Maps opens with the required scenario maps, their selector-sheet summaries, and the immutable-manifest serving posture.
+
+wall-02
+00:00:04.000 --> 00:00:08.000
+Keyboard search narrows the inventory to the one Store map and keeps the bounded result count visible.
+
+wall-03
+00:00:08.000 --> 00:00:13.000
+Inspect map opens the real persisted Store route and its sparse selector-sheet projection.
+
+wall-04
+00:00:13.000 --> 00:00:20.000
+Block authoring reveals the live SQLite workspace: four visible placements, no tombstones, and one publication.
+
+wall-05
+00:00:20.000 --> 00:00:26.000
+Primary navigation returns to the Wall with the Store filter retained for orientation.
+
+wall-06
+00:00:26.000 --> 00:00:30.000
+Clearing search restores the complete three-map inventory without changing the information architecture.
+
+wall-07
+00:00:30.000 --> 00:00:32.000
+The tutorial and operational workspace remain adjacent routes inside the same HUD shell.
