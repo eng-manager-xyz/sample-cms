@@ -125,7 +125,7 @@ describe('AUT-540 SQLite content explorer', () => {
     expect(snapshot.pageNavigation.truncated).toBe(false);
   });
 
-  test('summarizes every non-archived template selector with exact impact and bounded samples', () => {
+  test('loads every selector identity but computes exact impact only for the selected selector', () => {
     const service = new CmsService(client);
     service.createVariant('tpl-store', {
       id: 'variant-store-live-draft',
@@ -148,13 +148,29 @@ describe('AUT-540 SQLite content explorer', () => {
     expect(snapshot.selectors.map((selector) => selector.id)).not.toContain(
       'variant-store-burger-king'
     );
-    const defaults = snapshot.selectors.find((selector) => selector.isDefault);
+    expect(snapshot.selectors.every((selector) => !selector.metricsLoaded)).toBe(true);
+    expect(snapshot.selectors.every((selector) => selector.exactMatchCount === null)).toBe(true);
+    expect(snapshot.selectors.every((selector) => selector.sampleCanonicalUrls.length === 0)).toBe(
+      true
+    );
+
+    const defaultSnapshot = readContentExplorer(client, {
+      template: 'stores',
+      q: '',
+      limit: 20,
+      selectorMetricsFor: 'tpl-store:default',
+    });
+    const defaults = defaultSnapshot.selectors.find((selector) => selector.isDefault);
+    expect(
+      defaultSnapshot.selectors.filter((selector) => selector.metricsLoaded).map(({ id }) => id)
+    ).toEqual(['tpl-store:default']);
     expect(defaults).toMatchObject({
       id: 'tpl-store:default',
       priority: 0,
       status: 'active',
       selector: 'TRUE',
-      exactMatchCount: snapshot.pageNavigation.totalCount,
+      metricsLoaded: true,
+      exactMatchCount: defaultSnapshot.pageNavigation.totalCount,
       affectedPlacementCount: 4,
       selectedPageMatches: true,
     });
@@ -162,24 +178,40 @@ describe('AUT-540 SQLite content explorer', () => {
       CONTENT_EXPLORER_SELECTOR_SAMPLE_LIMIT
     );
     expect(defaults?.sampleUrlsTruncated).toBe(
-      snapshot.pageNavigation.totalCount > CONTENT_EXPLORER_SELECTOR_SAMPLE_LIMIT
+      defaultSnapshot.pageNavigation.totalCount > CONTENT_EXPLORER_SELECTOR_SAMPLE_LIMIT
     );
+
+    const mcdonaldsSnapshot = readContentExplorer(client, {
+      template: 'stores',
+      q: '',
+      limit: 20,
+      selectorMetricsFor: 'variant-store-mcdonalds',
+    });
     expect(
-      snapshot.selectors.find((selector) => selector.id === 'variant-store-mcdonalds')
+      mcdonaldsSnapshot.selectors.find((selector) => selector.id === 'variant-store-mcdonalds')
     ).toMatchObject({
       selector: "brand = 'mcdonalds'",
+      metricsLoaded: true,
       exactMatchCount: 1,
       affectedPlacementCount: 1,
       selectedPageMatches: true,
       sampleCanonicalUrls: ['/en-US/store/1001'],
       sampleUrlsTruncated: false,
     });
+
+    const draftSnapshot = readContentExplorer(client, {
+      template: 'stores',
+      q: '',
+      limit: 20,
+      selectorMetricsFor: 'variant-store-live-draft',
+    });
     expect(
-      snapshot.selectors.find((selector) => selector.id === 'variant-store-live-draft')
+      draftSnapshot.selectors.find((selector) => selector.id === 'variant-store-live-draft')
     ).toMatchObject({
       status: 'draft',
       selector: "route_status = 'live'",
-      exactMatchCount: snapshot.templates.find((template) => template.slug === 'stores')
+      metricsLoaded: true,
+      exactMatchCount: draftSnapshot.templates.find((template) => template.slug === 'stores')
         ?.livePageCount,
       affectedPlacementCount: 0,
       selectedPageMatches: true,
@@ -247,6 +279,15 @@ describe('AUT-540 SQLite content explorer', () => {
       pageId: 'page-store-700100',
       canonicalUrl: '/en-US/store/700100',
       slotValues: { locale: 'en-US', store: 'store', store_id: '700100' },
+    });
+    expect(exactSelection.pages.some((page) => page.id === 'page-store-700100')).toBe(false);
+    expect(exactSelection.selectedPageDetail).toMatchObject({
+      id: 'page-store-700100',
+      canonicalUrl: '/en-US/store/700100',
+      routeStatus: 'live',
+      routeRevision: 'aut-547-navigation-test',
+      publicationState: 'not_published',
+      documentHash: null,
     });
     expect(exactSelection.pageNavigation.defaultPage).toMatchObject({
       pageId: 'page-store-1001',

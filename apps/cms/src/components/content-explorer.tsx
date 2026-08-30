@@ -1,27 +1,30 @@
 import { Link, useNavigate } from '@tanstack/react-router';
-import {
-  ChevronLeft,
-  ChevronRight,
-  FileText,
-  Folder,
-  FolderOpen,
-  GitBranch,
-  ListTree,
-  Search,
-  Table2,
-} from 'lucide-react';
+import { Database, FileText, Folder, FolderOpen, GitBranch, Layers3, Search } from 'lucide-react';
+import { type ReactNode, useId, useState } from 'react';
 import * as z from 'zod';
+
 import { TemplatePageNavigator } from '@/components/template-page-navigator';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import {
+  CompactTreeChildren,
+  CompactTreeDisclosure,
+  CompactTreeRow,
+  compactTreeRowClassName,
+} from '@/components/ui/compact-tree';
 import { Input } from '@/components/ui/input';
 import {
   type ContentExplorerPage,
   type ContentExplorerSearch,
   ContentExplorerSearchSchema,
   ContentExplorerSnapshotSchema,
+  type ContentPageNavigationOption,
+  type ContentSelectorSummary,
   type ContentTemplateSummary,
+  contentSelectorFocus,
+  type FixedTemplateSlug,
+  selectorIdFromExplorerFocus,
 } from '@/data/content-explorer';
 import { cn } from '@/lib/cn';
 
@@ -36,6 +39,18 @@ const timestampFormatter = new Intl.DateTimeFormat('en-US', {
   day: 'numeric',
   year: 'numeric',
 });
+
+const secondaryActionClassName =
+  'inline-flex h-8 items-center gap-1.5 rounded-md border border-line-strong bg-canvas px-3 text-xs font-medium text-ink outline-none transition-colors hover:bg-surface-muted focus-visible:ring-2 focus-visible:ring-focus';
+const primaryActionClassName =
+  'inline-flex h-8 items-center gap-1.5 rounded-md bg-ink px-3 text-xs font-medium text-canvas outline-none transition-colors hover:bg-ink/90 focus-visible:ring-2 focus-visible:ring-focus';
+
+type ExplorerSelection =
+  | { kind: 'template' }
+  | { kind: 'pages' }
+  | { kind: 'page'; page: ContentExplorerPage }
+  | { kind: 'selectors' }
+  | { kind: 'selector'; selector: ContentSelectorSummary };
 
 function formatTimestamp(value: string): string {
   const timestamp = new Date(value);
@@ -63,204 +78,347 @@ function selectedTemplate(
   return selected;
 }
 
-function pathSegments(segments: readonly string[]): readonly { segment: string; path: string }[] {
-  let path = '';
-  return segments.map((segment) => {
-    path = `${path}/${segment}`;
-    return { segment, path };
-  });
+export function resolveExplorerSelection(
+  search: ContentExplorerSearch,
+  snapshot: Pick<ContentExplorerProps['snapshot'], 'selectedPageDetail' | 'selectors'>
+): ExplorerSelection {
+  const focus = search.focus;
+  const focusedSelectorId = selectorIdFromExplorerFocus(focus);
+  if (focusedSelectorId) {
+    const selector = snapshot.selectors.find((candidate) => candidate.id === focusedSelectorId);
+    if (selector) return { kind: 'selector', selector };
+  }
+  if (focus === 'selectors' || (!focus && search.view === 'selectors')) {
+    return { kind: 'selectors' };
+  }
+  if (focus === 'pages' || (!focus && search.view === 'table')) return { kind: 'pages' };
+  if (focus === 'page' || (!focus && search.canonicalUrl)) {
+    const page = snapshot.selectedPageDetail;
+    if (page) return { kind: 'page', page };
+  }
+  return { kind: 'template' };
 }
 
-function TemplateSummary({
-  template,
-  active,
-  view,
+export function contentExplorerTreePath(
+  template: FixedTemplateSlug,
+  kind: 'template' | 'pages' | 'selectors' | 'page' | 'selector',
+  identity?: string
+): string {
+  const root = `/templates/${template}`;
+  if (kind === 'template') return root;
+  if (kind === 'pages') return `${root}/pages`;
+  if (kind === 'selectors') return `${root}/selectors`;
+  const normalizedIdentity = identity?.replace(/^\/+/, '') ?? '';
+  return `${root}/${kind === 'page' ? 'pages' : 'selectors'}/${normalizedIdentity}`;
+}
+
+export function pagesForExplorerTree(
+  pages: readonly ContentExplorerPage[],
+  selectedPage: ContentExplorerPage | null
+): readonly ContentExplorerPage[] {
+  if (!selectedPage || pages.some((page) => page.id === selectedPage.id)) return pages;
+  return [selectedPage, ...pages];
+}
+
+function TreeSelectButton({
+  selected,
+  label,
+  description,
+  meta,
+  icon: Icon,
+  onClick,
+  treePath,
+  className,
 }: Readonly<{
-  template: ContentTemplateSummary;
-  active: boolean;
-  view: ContentExplorerSearch['view'];
+  selected: boolean;
+  label: string;
+  description?: string;
+  meta?: string;
+  icon: typeof Folder;
+  onClick: () => void;
+  treePath: string;
+  className?: string;
 }>) {
   return (
-    <Link
-      to="/content"
-      search={{ view, template: template.slug, q: '', cursor: undefined }}
-      aria-current={active ? 'page' : undefined}
+    <button
+      type="button"
+      aria-current={selected ? 'true' : undefined}
+      onClick={onClick}
+      data-tree-path={treePath}
       className={cn(
-        'block min-w-0 rounded-lg border p-3 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus',
-        active
-          ? 'border-accent/35 bg-accent-soft/60'
-          : 'border-line bg-canvas hover:border-line-strong hover:bg-surface-muted'
+        compactTreeRowClassName,
+        'min-w-0 flex-1 gap-2 px-2 text-left focus-visible:ring-2 focus-visible:ring-focus',
+        selected
+          ? 'bg-accent-soft text-ink ring-1 ring-inset ring-accent/20'
+          : 'text-ink-muted hover:bg-canvas hover:text-ink',
+        className
       )}
     >
-      <div className="flex min-w-0 items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="truncate text-[13px] font-semibold text-ink">{template.name}</p>
-          <p className="mt-0.5 truncate font-mono text-[10px] text-ink-faint">
-            {template.urlPattern}
-          </p>
-        </div>
-        <Badge tone={template.publicationState === 'published' ? 'success' : 'warning'} dot>
-          {template.publicationState === 'published' ? 'Published' : 'Unpublished'}
-        </Badge>
-      </div>
-      <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-ink-muted">
-        <span>{template.pageCount.toLocaleString()} pages</span>
-        <span>{template.variantCount.toLocaleString()} variants</span>
-        <span>{template.livePageCount.toLocaleString()} live</span>
-        <span>{draftLabel(template.draftState)}</span>
-      </div>
-    </Link>
-  );
-}
-
-function PagePath({ page }: Readonly<{ page: ContentExplorerPage }>) {
-  return (
-    <span className="flex min-w-0 items-center gap-1.5">
-      {pathSegments(page.segments).map(({ segment, path }, index) => {
-        const leaf = index === page.segments.length - 1;
-        return (
-          <span key={`${page.id}:${path}`} className="contents">
-            {index > 0 ? (
-              <ChevronRight aria-hidden="true" className="size-3 shrink-0 text-ink-faint" />
-            ) : null}
-            <span className={cn('flex min-w-0 items-center gap-1', leaf && 'font-medium text-ink')}>
-              {leaf ? (
-                <FileText aria-hidden="true" className="size-3.5 shrink-0 text-accent-strong" />
-              ) : (
-                <Folder aria-hidden="true" className="size-3.5 shrink-0 text-ink-faint" />
-              )}
-              <span className="truncate">{segment}</span>
-            </span>
+      <Icon
+        aria-hidden="true"
+        strokeWidth={1.8}
+        className={cn('size-3.5 shrink-0', selected ? 'text-accent-strong' : 'text-ink-faint')}
+      />
+      <span className="min-w-0 flex-1">
+        <span className="block truncate">{label}</span>
+        {description ? (
+          <span className="block truncate font-mono text-[9px] font-normal text-ink-faint">
+            {description}
           </span>
-        );
-      })}
-    </span>
+        ) : null}
+      </span>
+      {meta ? (
+        <span className="shrink-0 text-[10px] font-normal tabular-nums text-ink-faint">{meta}</span>
+      ) : null}
+    </button>
   );
 }
 
-function PageLink({
-  page,
-  templateSlug,
-}: Readonly<{
-  page: ContentExplorerPage;
-  templateSlug: ContentExplorerSearch['template'];
-}>) {
+function TreeLeafRow({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <Link
-      to="/author/$templateId"
-      params={{ templateId: templateSlug }}
-      search={{ canonicalUrl: page.canonicalUrl }}
-      aria-label={`Open ${page.canonicalUrl} in the authoring studio`}
-      className="min-w-0 flex-1 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-focus"
-    >
-      <PagePath page={page} />
-    </Link>
+    <CompactTreeRow>
+      <span aria-hidden="true" className="size-8 shrink-0" />
+      {children}
+    </CompactTreeRow>
   );
 }
 
-function TreeView({
+function ExplorerTree({
   snapshot,
-  view,
+  search,
+  selection,
+  onSelectTemplate,
+  onSelectCollection,
+  onSelectPage,
+  onSelectSelector,
 }: Readonly<{
   snapshot: ContentExplorerProps['snapshot'];
-  view: ContentExplorerSearch['view'];
+  search: ContentExplorerSearch;
+  selection: ExplorerSelection;
+  onSelectTemplate: (template: FixedTemplateSlug) => void;
+  onSelectCollection: (template: FixedTemplateSlug, collection: 'pages' | 'selectors') => void;
+  onSelectPage: (page: ContentExplorerPage) => void;
+  onSelectSelector: (selector: ContentSelectorSummary) => void;
 }>) {
+  const idPrefix = useId();
+  const templatePath = contentExplorerTreePath(snapshot.selectedTemplate, 'template');
+  const pagesPath = contentExplorerTreePath(snapshot.selectedTemplate, 'pages');
+  const selectorsPath = contentExplorerTreePath(snapshot.selectedTemplate, 'selectors');
+  const [openPaths, setOpenPaths] = useState<Record<string, boolean>>({
+    [templatePath]: true,
+    [pagesPath]: true,
+    [selectorsPath]: true,
+  });
+  const pinnedPage =
+    selection.kind === 'page'
+      ? selection.page
+      : selection.kind === 'selector'
+        ? snapshot.selectedPageDetail
+        : null;
+  const treePages = pagesForExplorerTree(snapshot.pages, pinnedPage);
+
+  function expanded(path: string, activeTemplate: boolean): boolean {
+    return openPaths[path] ?? activeTemplate;
+  }
+
+  function toggle(path: string, activeTemplate: boolean) {
+    setOpenPaths((current) => ({ ...current, [path]: !expanded(path, activeTemplate) }));
+  }
+
+  function revealTemplate(template: FixedTemplateSlug, collection?: 'pages' | 'selectors') {
+    const nextTemplatePath = contentExplorerTreePath(template, 'template');
+    const nextCollectionPath = collection
+      ? contentExplorerTreePath(template, collection)
+      : undefined;
+    setOpenPaths((current) => ({
+      ...current,
+      ...(template === snapshot.selectedTemplate ? {} : { [templatePath]: false }),
+      [nextTemplatePath]: true,
+      ...(nextCollectionPath ? { [nextCollectionPath]: true } : {}),
+    }));
+  }
+
   return (
-    <nav
-      aria-label="Canonical URL tree — navigation only, with no content inheritance"
-      aria-describedby="content-tree-description"
-    >
-      <p id="content-tree-description" className="mb-3 text-xs leading-5 text-ink-muted">
-        Folder rows explain URL grammar only. They do not inherit content; every page retains one
-        canonical template and page identity.
-      </p>
-      <ul className="space-y-2">
+    <nav aria-label="Templates, pages, and selectors" className="min-h-0">
+      <ul className="space-y-1">
         {snapshot.templates.map((template) => {
-          const active = template.slug === snapshot.selectedTemplate;
+          const activeTemplate = template.slug === snapshot.selectedTemplate;
+          const currentTemplatePath = contentExplorerTreePath(template.slug, 'template');
+          const currentPagesPath = contentExplorerTreePath(template.slug, 'pages');
+          const currentSelectorsPath = contentExplorerTreePath(template.slug, 'selectors');
+          const templateOpen = expanded(currentTemplatePath, activeTemplate);
+          const pagesOpen = expanded(currentPagesPath, activeTemplate);
+          const selectorsOpen = expanded(currentSelectorsPath, activeTemplate);
+          const templateChildrenId = `${idPrefix}-${template.slug}-children`;
+          const pagesChildrenId = `${idPrefix}-${template.slug}-pages`;
+          const selectorsChildrenId = `${idPrefix}-${template.slug}-selectors`;
+          const templateSelected = activeTemplate && selection.kind === 'template';
+          const pagesSelected = activeTemplate && selection.kind === 'pages';
+          const selectorsSelected = activeTemplate && selection.kind === 'selectors';
+
           return (
             <li key={template.templateId}>
-              <details
-                open={active || undefined}
-                className="group rounded-lg border border-line bg-canvas open:border-line-strong"
-              >
-                <summary className="flex cursor-pointer list-none items-center gap-3 rounded-lg px-3 py-3 outline-none focus-visible:ring-2 focus-visible:ring-focus [&::-webkit-details-marker]:hidden">
-                  <FolderOpen aria-hidden="true" className="size-4 shrink-0 text-accent-strong" />
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[13px] font-semibold text-ink">
-                      {template.name}
-                    </span>
-                    <span className="block truncate font-mono text-[10px] text-ink-faint">
-                      {template.domain}
-                    </span>
-                  </span>
-                  <span className="text-[11px] tabular-nums text-ink-muted">
-                    {template.pageCount.toLocaleString()} pages
-                  </span>
-                  <ChevronRight
-                    aria-hidden="true"
-                    className="size-4 shrink-0 text-ink-faint transition-transform group-open:rotate-90"
-                  />
-                </summary>
+              <CompactTreeRow activeAncestor={activeTemplate && !templateSelected}>
+                <CompactTreeDisclosure
+                  expanded={templateOpen}
+                  label={template.name}
+                  controls={templateChildrenId}
+                  onClick={() => toggle(currentTemplatePath, activeTemplate)}
+                />
+                <TreeSelectButton
+                  selected={templateSelected}
+                  label={template.name}
+                  description={template.urlPattern}
+                  meta={template.publicationState === 'published' ? 'Published' : 'Unpublished'}
+                  icon={templateOpen ? FolderOpen : Folder}
+                  treePath={currentTemplatePath}
+                  onClick={() => {
+                    revealTemplate(template.slug);
+                    onSelectTemplate(template.slug);
+                  }}
+                />
+              </CompactTreeRow>
 
-                <div className="border-t border-line px-3 py-3">
-                  <ol
-                    aria-label={`${template.name} URL grammar`}
-                    className="flex flex-wrap gap-1.5"
-                  >
-                    {template.grammar.map((segment, index) => (
-                      <li key={segment.key} className="flex items-center gap-1.5">
-                        {index > 0 ? (
-                          <ChevronRight aria-hidden="true" className="size-3 text-ink-faint" />
-                        ) : null}
-                        <span
-                          className={cn(
-                            'rounded-md border px-2 py-1 font-mono text-[10px]',
-                            segment.kind === 'variable'
-                              ? 'border-accent/25 bg-accent-soft text-accent-strong'
-                              : 'border-line bg-surface-muted text-ink-muted'
-                          )}
-                          title={`${segment.label} · ${segment.kind}`}
-                        >
-                          {segment.value}
-                        </span>
-                      </li>
-                    ))}
-                  </ol>
-
-                  {active ? (
-                    snapshot.pages.length > 0 ? (
-                      <ul
-                        aria-label={`${template.name} canonical pages`}
-                        className="mt-3 space-y-1"
+              {templateOpen ? (
+                <CompactTreeChildren id={templateChildrenId} label={`${template.name} content`}>
+                  <li>
+                    <CompactTreeRow activeAncestor={activeTemplate && selection.kind === 'page'}>
+                      <CompactTreeDisclosure
+                        expanded={pagesOpen}
+                        label={`${template.name} pages`}
+                        controls={pagesChildrenId}
+                        onClick={() => toggle(currentPagesPath, activeTemplate)}
+                      />
+                      <TreeSelectButton
+                        selected={pagesSelected}
+                        label="Pages"
+                        meta={template.pageCount.toLocaleString()}
+                        icon={pagesOpen ? FolderOpen : Folder}
+                        treePath={currentPagesPath}
+                        onClick={() => {
+                          revealTemplate(template.slug, 'pages');
+                          onSelectCollection(template.slug, 'pages');
+                        }}
+                      />
+                    </CompactTreeRow>
+                    {pagesOpen ? (
+                      <CompactTreeChildren
+                        id={pagesChildrenId}
+                        label={`${template.name} canonical pages`}
                       >
-                        {snapshot.pages.map((page) => (
-                          <li
-                            key={page.id}
-                            className="flex items-center gap-3 rounded-md border border-transparent px-2 py-2 text-xs text-ink-muted hover:border-line hover:bg-surface-muted"
-                          >
-                            <PageLink page={page} templateSlug={template.slug} />
-                            <Badge tone={routeTone(page.routeStatus)} dot>
-                              {page.routeStatus.replace('_', ' ')}
-                            </Badge>
+                        {activeTemplate ? (
+                          treePages.length > 0 ? (
+                            treePages.map((page) => {
+                              const selected =
+                                selection.kind === 'page' && selection.page.id === page.id;
+                              return (
+                                <li key={page.id}>
+                                  <TreeLeafRow>
+                                    <TreeSelectButton
+                                      selected={selected}
+                                      label={page.canonicalUrl}
+                                      meta={page.routeStatus.replace('_', ' ')}
+                                      icon={FileText}
+                                      treePath={contentExplorerTreePath(
+                                        template.slug,
+                                        'page',
+                                        page.canonicalUrl
+                                      )}
+                                      className="font-mono font-normal"
+                                      onClick={() => onSelectPage(page)}
+                                    />
+                                  </TreeLeafRow>
+                                </li>
+                              );
+                            })
+                          ) : (
+                            <li className="px-2 py-2 text-[10px] leading-4 text-ink-faint">
+                              No pages match “{search.q}”.
+                            </li>
+                          )
+                        ) : (
+                          <li className="px-2 py-2 text-[10px] leading-4 text-ink-faint">
+                            Select this template to load its bounded page list.
                           </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p className="mt-3 rounded-md border border-dashed border-line p-4 text-xs text-ink-muted">
-                        No canonical URLs match this search.
-                      </p>
-                    )
-                  ) : (
-                    <Link
-                      to="/content"
-                      search={{ view, template: template.slug, q: '', cursor: undefined }}
-                      className="mt-3 inline-flex rounded-md text-xs font-medium text-accent-strong outline-none hover:underline focus-visible:ring-2 focus-visible:ring-focus"
+                        )}
+                      </CompactTreeChildren>
+                    ) : null}
+                  </li>
+
+                  <li>
+                    <CompactTreeRow
+                      activeAncestor={activeTemplate && selection.kind === 'selector'}
                     >
-                      Browse this template
-                    </Link>
-                  )}
-                </div>
-              </details>
+                      <CompactTreeDisclosure
+                        expanded={selectorsOpen}
+                        label={`${template.name} selectors`}
+                        controls={selectorsChildrenId}
+                        onClick={() => toggle(currentSelectorsPath, activeTemplate)}
+                      />
+                      <TreeSelectButton
+                        selected={selectorsSelected}
+                        label="Selectors"
+                        meta={
+                          activeTemplate
+                            ? snapshot.selectors.length.toLocaleString()
+                            : (
+                                template.activeVariantCount +
+                                template.draftVariantCount +
+                                1
+                              ).toLocaleString()
+                        }
+                        icon={selectorsOpen ? FolderOpen : Folder}
+                        treePath={currentSelectorsPath}
+                        onClick={() => {
+                          revealTemplate(template.slug, 'selectors');
+                          onSelectCollection(template.slug, 'selectors');
+                        }}
+                      />
+                    </CompactTreeRow>
+                    {selectorsOpen ? (
+                      <CompactTreeChildren
+                        id={selectorsChildrenId}
+                        label={`${template.name} template selectors`}
+                      >
+                        {activeTemplate ? (
+                          snapshot.selectors.map((selector) => {
+                            const selected =
+                              selection.kind === 'selector' &&
+                              selection.selector.id === selector.id;
+                            return (
+                              <li key={selector.id}>
+                                <TreeLeafRow>
+                                  <TreeSelectButton
+                                    selected={selected}
+                                    label={selector.name}
+                                    description={
+                                      selector.isDefault
+                                        ? 'Template default'
+                                        : `Priority ${selector.priority}`
+                                    }
+                                    meta={selector.status}
+                                    icon={selector.isDefault ? Layers3 : GitBranch}
+                                    treePath={contentExplorerTreePath(
+                                      template.slug,
+                                      'selector',
+                                      selector.id
+                                    )}
+                                    onClick={() => onSelectSelector(selector)}
+                                  />
+                                </TreeLeafRow>
+                              </li>
+                            );
+                          })
+                        ) : (
+                          <li className="px-2 py-2 text-[10px] leading-4 text-ink-faint">
+                            Select this template to load selector scopes.
+                          </li>
+                        )}
+                      </CompactTreeChildren>
+                    ) : null}
+                  </li>
+                </CompactTreeChildren>
+              ) : null}
             </li>
           );
         })}
@@ -269,192 +427,535 @@ function TreeView({
   );
 }
 
-function TableView({
+function MetadataGrid({
+  items,
+}: Readonly<{
+  items: readonly { label: string; value: string; mono?: boolean }[];
+}>) {
+  return (
+    <dl className="grid gap-px overflow-hidden rounded-lg border border-line bg-line sm:grid-cols-2 xl:grid-cols-4">
+      {items.map((item) => (
+        <div key={item.label} className="min-w-0 bg-canvas p-3">
+          <dt className="text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-faint">
+            {item.label}
+          </dt>
+          <dd
+            className={cn(
+              'mt-1 truncate text-xs font-medium text-ink',
+              item.mono && 'font-mono text-[11px] font-normal'
+            )}
+            title={item.value}
+          >
+            {item.value}
+          </dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+function InspectorHeader({
+  eyebrow,
+  title,
+  description,
+  icon: Icon,
+  badges,
+  actions,
+}: Readonly<{
+  eyebrow: string;
+  title: string;
+  description: string;
+  icon: typeof Folder;
+  badges?: ReactNode;
+  actions?: ReactNode;
+}>) {
+  return (
+    <header className="flex flex-col gap-4 border-b border-line pb-4 sm:flex-row sm:items-start sm:justify-between">
+      <div className="min-w-0">
+        <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-accent-strong">
+          <Icon aria-hidden="true" className="size-3.5" />
+          {eyebrow}
+        </div>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <h2
+            id="content-inspector-heading"
+            className="min-w-0 truncate text-xl font-semibold tracking-[-0.025em] text-ink"
+          >
+            {title}
+          </h2>
+          {badges}
+        </div>
+        <p className="mt-1 max-w-3xl text-xs leading-5 text-ink-muted">{description}</p>
+      </div>
+      {actions ? <div className="flex shrink-0 flex-wrap gap-2">{actions}</div> : null}
+    </header>
+  );
+}
+
+function TemplateInspector({
+  template,
+  previewCanonicalUrl,
+}: Readonly<{
+  template: ContentTemplateSummary;
+  previewCanonicalUrl: string;
+}>) {
+  return (
+    <div className="space-y-5">
+      <InspectorHeader
+        eyebrow="Template"
+        title={template.name}
+        description={
+          template.description || 'Template-owned pages, selectors, and publication state.'
+        }
+        icon={FolderOpen}
+        badges={
+          <>
+            <Badge tone={template.status === 'active' ? 'success' : 'neutral'} dot>
+              {template.status}
+            </Badge>
+            <Badge tone={template.draftState === 'changes' ? 'warning' : 'neutral'}>
+              {draftLabel(template.draftState)}
+            </Badge>
+          </>
+        }
+        actions={
+          <>
+            <Link
+              to="/publications/$templateId"
+              params={{ templateId: template.slug }}
+              className={secondaryActionClassName}
+            >
+              <Database aria-hidden="true" className="size-3.5" /> Publications
+            </Link>
+            <Link
+              to="/author/$templateId"
+              params={{ templateId: template.slug }}
+              search={previewCanonicalUrl ? { canonicalUrl: previewCanonicalUrl } : {}}
+              className={primaryActionClassName}
+            >
+              Open template workspace
+            </Link>
+          </>
+        }
+      />
+
+      <div>
+        <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-ink-faint">
+          Canonical route grammar
+        </p>
+        <p className="mt-1 font-mono text-xs text-ink-muted">
+          {template.domain}
+          {template.urlPattern}
+        </p>
+        <ol className="mt-3 flex flex-wrap gap-1.5" aria-label={`${template.name} URL grammar`}>
+          {template.grammar.map((segment) => (
+            <li
+              key={segment.key}
+              className={cn(
+                'rounded-md border px-2 py-1 font-mono text-[10px]',
+                segment.kind === 'variable'
+                  ? 'border-accent/25 bg-accent-soft text-accent-strong'
+                  : 'border-line bg-surface-muted text-ink-muted'
+              )}
+            >
+              {segment.value}
+            </li>
+          ))}
+        </ol>
+      </div>
+
+      <MetadataGrid
+        items={[
+          { label: 'Pages', value: template.pageCount.toLocaleString() },
+          { label: 'Live routes', value: template.livePageCount.toLocaleString() },
+          { label: 'Variants', value: template.variantCount.toLocaleString() },
+          { label: 'Published pages', value: template.publishedPageCount.toLocaleString() },
+          { label: 'Publication', value: template.publicationState },
+          { label: 'Active selectors', value: template.activeVariantCount.toLocaleString() },
+          { label: 'Draft selectors', value: template.draftVariantCount.toLocaleString() },
+          { label: 'Updated', value: formatTimestamp(template.updatedAt) },
+        ]}
+      />
+    </div>
+  );
+}
+
+function PagesInspector({
   snapshot,
   template,
+  previewCanonicalUrl,
+  onPageChange,
 }: Readonly<{
   snapshot: ContentExplorerProps['snapshot'];
   template: ContentTemplateSummary;
+  previewCanonicalUrl: string;
+  onPageChange: (page: ContentPageNavigationOption) => void;
 }>) {
   return (
-    <div className="overflow-x-auto rounded-lg border border-line">
-      <table className="w-full min-w-[860px] border-collapse text-left text-xs">
-        <caption className="sr-only">Persisted canonical pages for {template.name}</caption>
-        <thead className="bg-surface-muted text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-faint">
-          <tr>
-            <th scope="col" className="px-3 py-2.5">
-              Canonical URL
-            </th>
-            <th scope="col" className="px-3 py-2.5">
-              Route
-            </th>
-            <th scope="col" className="px-3 py-2.5">
-              Draft
-            </th>
-            <th scope="col" className="px-3 py-2.5">
-              Publication
-            </th>
-            <th scope="col" className="px-3 py-2.5">
-              Last modified
-            </th>
-            <th scope="col" className="px-3 py-2.5">
-              Action
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {snapshot.pages.map((page) => (
-            <tr key={page.id} className="border-t border-line bg-canvas hover:bg-surface-muted">
-              <th scope="row" className="max-w-[360px] px-3 py-3 font-mono font-medium text-ink">
-                <span className="block truncate" title={page.canonicalUrl}>
-                  {page.canonicalUrl}
-                </span>
-              </th>
-              <td className="px-3 py-3">
-                <Badge tone={routeTone(page.routeStatus)} dot>
-                  {page.routeStatus.replace('_', ' ')}
-                </Badge>
-              </td>
-              <td className="px-3 py-3 text-ink-muted">{draftLabel(template.draftState)}</td>
-              <td className="px-3 py-3">
-                <Badge tone={page.publicationState === 'published' ? 'success' : 'warning'}>
-                  {page.publicationState === 'published' ? 'Published' : 'Not published'}
-                </Badge>
-              </td>
-              <td className="px-3 py-3 text-ink-muted">{formatTimestamp(page.updatedAt)}</td>
-              <td className="px-3 py-3">
-                <Link
-                  to="/author/$templateId"
-                  params={{ templateId: template.slug }}
-                  search={{ canonicalUrl: page.canonicalUrl }}
-                  className="inline-flex h-8 items-center rounded-md border border-line-strong bg-canvas px-3 font-medium text-ink outline-none hover:bg-surface-muted focus-visible:ring-2 focus-visible:ring-focus"
-                >
-                  Open studio
-                </Link>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      {snapshot.pages.length === 0 ? (
-        <p className="border-t border-line bg-canvas px-4 py-10 text-center text-xs text-ink-muted">
-          No canonical URLs match this search.
+    <div className="space-y-5">
+      <InspectorHeader
+        eyebrow="Template collection"
+        title="Pages"
+        description={`Concrete canonical pages owned by ${template.name}. Folder hierarchy describes route shape, never content inheritance.`}
+        icon={FolderOpen}
+        badges={<Badge tone="info">{template.pageCount.toLocaleString()} total</Badge>}
+        actions={
+          previewCanonicalUrl ? (
+            <Link
+              to="/author/$templateId"
+              params={{ templateId: template.slug }}
+              search={{ canonicalUrl: previewCanonicalUrl }}
+              className={primaryActionClassName}
+            >
+              Open selected page
+            </Link>
+          ) : null
+        }
+      />
+      <TemplatePageNavigator
+        navigation={snapshot.pageNavigation}
+        canonicalUrl={previewCanonicalUrl}
+        onPageChange={onPageChange}
+      />
+      <MetadataGrid
+        items={[
+          { label: 'Matching search', value: snapshot.filteredCount.toLocaleString() },
+          { label: 'Loaded rows', value: snapshot.pages.length.toLocaleString() },
+          { label: 'Live routes', value: template.livePageCount.toLocaleString() },
+          { label: 'Not live', value: template.notLivePageCount.toLocaleString() },
+          { label: 'Archived', value: template.archivedPageCount.toLocaleString() },
+          { label: 'Published pages', value: template.publishedPageCount.toLocaleString() },
+          { label: 'Draft state', value: draftLabel(template.draftState) },
+          {
+            label: 'Path choices',
+            value: snapshot.pageNavigation.truncated
+              ? `${snapshot.pageNavigation.options.length.toLocaleString()} of ${snapshot.pageNavigation.totalCount.toLocaleString()}`
+              : snapshot.pageNavigation.totalCount.toLocaleString(),
+          },
+        ]}
+      />
+    </div>
+  );
+}
+
+function PageInspector({
+  snapshot,
+  template,
+  page,
+  onPageChange,
+}: Readonly<{
+  snapshot: ContentExplorerProps['snapshot'];
+  template: ContentTemplateSummary;
+  page: ContentExplorerPage;
+  onPageChange: (page: ContentPageNavigationOption) => void;
+}>) {
+  return (
+    <div className="space-y-5">
+      <InspectorHeader
+        eyebrow="Canonical page"
+        title={page.canonicalUrl}
+        description="One persisted route instance with template-wide selector context and an immutable publication result."
+        icon={FileText}
+        badges={
+          <>
+            <Badge tone={routeTone(page.routeStatus)} dot>
+              {page.routeStatus.replace('_', ' ')}
+            </Badge>
+            <Badge tone={page.publicationState === 'published' ? 'success' : 'warning'}>
+              {page.publicationState === 'published' ? 'Published' : 'Not published'}
+            </Badge>
+          </>
+        }
+        actions={
+          <Link
+            to="/author/$templateId"
+            params={{ templateId: template.slug }}
+            search={{ canonicalUrl: page.canonicalUrl }}
+            className={primaryActionClassName}
+          >
+            Open studio
+          </Link>
+        }
+      />
+      <TemplatePageNavigator
+        navigation={snapshot.pageNavigation}
+        canonicalUrl={page.canonicalUrl}
+        onPageChange={onPageChange}
+      />
+      <MetadataGrid
+        items={[
+          { label: 'Route', value: page.routeStatus.replace('_', ' ') },
+          { label: 'Draft', value: draftLabel(template.draftState) },
+          {
+            label: 'Publication',
+            value: page.publicationState === 'published' ? 'Published' : 'Not published',
+          },
+          { label: 'Last modified', value: formatTimestamp(page.updatedAt) },
+          { label: 'Route revision', value: page.routeRevision, mono: true },
+          { label: 'Template', value: template.name },
+          { label: 'Page ID', value: page.id, mono: true },
+          {
+            label: 'Document hash',
+            value: page.documentHash ?? 'No materialized document',
+            mono: true,
+          },
+        ]}
+      />
+    </div>
+  );
+}
+
+function SelectorsInspector({
+  snapshot,
+  template,
+  previewCanonicalUrl,
+  onPageChange,
+}: Readonly<{
+  snapshot: ContentExplorerProps['snapshot'];
+  template: ContentTemplateSummary;
+  previewCanonicalUrl: string;
+  onPageChange: (page: ContentPageNavigationOption) => void;
+}>) {
+  const activeCount = snapshot.selectors.filter((selector) => selector.status === 'active').length;
+  const draftCount = snapshot.selectors.length - activeCount;
+  return (
+    <div className="space-y-5">
+      <InspectorHeader
+        eyebrow="Template collection"
+        title="Selectors"
+        description={`Template-wide page sets for ${template.name}. Choose a scope in the tree to inspect its authored predicate and impact.`}
+        icon={FolderOpen}
+        badges={<Badge tone="info">{snapshot.selectors.length} scopes</Badge>}
+      />
+      <TemplatePageNavigator
+        navigation={snapshot.pageNavigation}
+        canonicalUrl={previewCanonicalUrl}
+        onPageChange={onPageChange}
+      />
+      <MetadataGrid
+        items={[
+          { label: 'Scopes', value: snapshot.selectors.length.toLocaleString() },
+          { label: 'Active', value: activeCount.toLocaleString() },
+          { label: 'Draft', value: draftCount.toLocaleString() },
+          { label: 'Preview page', value: previewCanonicalUrl || 'No concrete page', mono: true },
+        ]}
+      />
+      <div className="rounded-lg border border-dashed border-line bg-surface-muted/35 p-4 text-xs leading-5 text-ink-muted">
+        Select a scope from the tree. Its matching page count, affected placements, sample URLs,
+        priority, and authored selector will appear here.
+      </div>
+    </div>
+  );
+}
+
+function SelectorInspector({
+  snapshot,
+  template,
+  selector,
+  previewCanonicalUrl,
+  search,
+  onPageChange,
+}: Readonly<{
+  snapshot: ContentExplorerProps['snapshot'];
+  template: ContentTemplateSummary;
+  selector: ContentSelectorSummary;
+  previewCanonicalUrl: string;
+  search: ContentExplorerSearch;
+  onPageChange: (page: ContentPageNavigationOption) => void;
+}>) {
+  const firstMatch = selector.sampleCanonicalUrls[0];
+  const selectorCanonicalUrl = previewCanonicalUrl || firstMatch || '';
+  return (
+    <div className="space-y-5">
+      <InspectorHeader
+        eyebrow="Template selector"
+        title={selector.name}
+        description="A template-scoped page set with sparse block operations and explicit precedence."
+        icon={selector.isDefault ? Layers3 : GitBranch}
+        badges={
+          <>
+            <Badge tone={selector.isDefault ? 'neutral' : 'info'}>
+              {selector.isDefault ? 'Template default' : `P${selector.priority}`}
+            </Badge>
+            <Badge tone={selector.status === 'active' ? 'success' : 'warning'} dot>
+              {selector.status}
+            </Badge>
+            {selector.selectedPageMatches === null ? null : (
+              <Badge tone={selector.selectedPageMatches ? 'success' : 'neutral'}>
+                {selector.selectedPageMatches ? 'Matches preview' : 'Does not match preview'}
+              </Badge>
+            )}
+          </>
+        }
+        actions={
+          selectorCanonicalUrl ? (
+            <Link
+              to="/author/$templateId"
+              params={{ templateId: template.slug }}
+              search={{
+                canonicalUrl: selectorCanonicalUrl,
+                scopeId: selector.id,
+                panel: 'cascade',
+              }}
+              className={primaryActionClassName}
+            >
+              <GitBranch aria-hidden="true" className="size-3.5" /> View selector
+            </Link>
+          ) : null
+        }
+      />
+      <TemplatePageNavigator
+        navigation={snapshot.pageNavigation}
+        canonicalUrl={previewCanonicalUrl}
+        onPageChange={onPageChange}
+      />
+
+      <div>
+        <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-ink-faint">
+          Authored predicate
         </p>
+        <code className="mt-2 block overflow-x-auto rounded-lg bg-ink px-3 py-2.5 font-mono text-[11px] leading-5 text-canvas">
+          {selector.selector}
+        </code>
+      </div>
+
+      <MetadataGrid
+        items={[
+          {
+            label: 'Matching pages',
+            value: selector.exactMatchCount?.toLocaleString() ?? 'Calculating',
+          },
+          { label: 'Local placements', value: selector.affectedPlacementCount.toLocaleString() },
+          { label: 'Priority', value: selector.priority.toLocaleString() },
+          { label: 'Status', value: selector.status },
+        ]}
+      />
+
+      <div>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-ink-faint">
+            Sample matching pages
+          </p>
+          {selector.sampleUrlsTruncated ? (
+            <span className="text-[10px] text-ink-faint">
+              First {selector.sampleCanonicalUrls.length} shown
+            </span>
+          ) : null}
+        </div>
+        {!selector.metricsLoaded ? (
+          <p className="mt-2 rounded-lg border border-dashed border-line bg-surface-muted/35 p-3 text-xs text-ink-muted">
+            Calculating selector impact for this preview context.
+          </p>
+        ) : selector.sampleCanonicalUrls.length > 0 ? (
+          <ul className="mt-2 divide-y divide-line overflow-hidden rounded-lg border border-line">
+            {selector.sampleCanonicalUrls.map((canonicalUrl) => (
+              <li key={canonicalUrl}>
+                <Link
+                  to="/content"
+                  search={{
+                    ...search,
+                    view: 'tree',
+                    canonicalUrl,
+                    focus: contentSelectorFocus(selector.id),
+                    cursor: undefined,
+                  }}
+                  className="flex min-h-9 items-center gap-2 bg-canvas px-3 font-mono text-[10px] text-ink-muted outline-none transition-colors hover:bg-surface-muted hover:text-ink focus-visible:ring-2 focus-visible:ring-focus"
+                >
+                  <FileText aria-hidden="true" className="size-3.5 shrink-0 text-ink-faint" />
+                  <span className="truncate">{canonicalUrl}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-2 rounded-lg border border-dashed border-warning/35 bg-warning-soft p-3 text-xs text-warning-strong">
+            This selector currently matches no pages.
+          </p>
+        )}
+      </div>
+
+      {firstMatch && firstMatch !== previewCanonicalUrl ? (
+        <Link
+          to="/content"
+          search={{
+            ...search,
+            view: 'tree',
+            canonicalUrl: firstMatch,
+            focus: contentSelectorFocus(selector.id),
+            cursor: undefined,
+          }}
+          className={secondaryActionClassName}
+        >
+          Preview first match
+        </Link>
       ) : null}
     </div>
   );
 }
 
-function SelectorView({
+function ExplorerInspector({
   snapshot,
+  search,
+  selection,
   template,
-  canonicalUrl,
+  previewCanonicalUrl,
+  onPageChange,
+  onPreviewPageChange,
 }: Readonly<{
   snapshot: ContentExplorerProps['snapshot'];
+  search: ContentExplorerSearch;
+  selection: ExplorerSelection;
   template: ContentTemplateSummary;
-  canonicalUrl: string;
+  previewCanonicalUrl: string;
+  onPageChange: (page: ContentPageNavigationOption) => void;
+  onPreviewPageChange: (page: ContentPageNavigationOption) => void;
 }>) {
-  return (
-    <section aria-labelledby="template-selectors-heading" className="space-y-3">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h3 id="template-selectors-heading" className="text-sm font-semibold text-ink">
-            Template-wide selectors
-          </h3>
-          <p className="mt-1 max-w-2xl text-[11px] leading-5 text-ink-muted">
-            These predicates select pages across {template.name}. The preview page above is context,
-            not selector ownership.
-          </p>
-        </div>
-        <Badge tone="info">{snapshot.selectors.length} scopes</Badge>
-      </div>
-
-      <ol className="space-y-2">
-        {snapshot.selectors.map((selector) => {
-          const firstMatch = selector.sampleCanonicalUrls[0];
-          return (
-            <li key={selector.id} className="rounded-lg border border-line bg-canvas p-3 shadow-sm">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h4 className="text-xs font-semibold text-ink">{selector.name}</h4>
-                    <Badge tone={selector.isDefault ? 'neutral' : 'info'}>
-                      {selector.isDefault ? 'Template default' : `P${selector.priority}`}
-                    </Badge>
-                    <Badge tone={selector.status === 'active' ? 'success' : 'warning'} dot>
-                      {selector.status}
-                    </Badge>
-                    {selector.selectedPageMatches === null ? null : (
-                      <Badge tone={selector.selectedPageMatches ? 'success' : 'neutral'}>
-                        {selector.selectedPageMatches
-                          ? 'Matches preview'
-                          : 'Does not match preview'}
-                      </Badge>
-                    )}
-                  </div>
-                  <p className="mt-2 text-[10px] font-semibold uppercase tracking-[0.1em] text-ink-faint">
-                    Authored predicate
-                  </p>
-                  <code className="mt-1 block overflow-x-auto rounded-md bg-ink px-2.5 py-2 font-mono text-[10px] leading-5 text-canvas">
-                    {selector.selector}
-                  </code>
-                </div>
-                <dl className="grid min-w-48 grid-cols-2 gap-x-4 gap-y-2 text-[10px]">
-                  <div>
-                    <dt className="text-ink-faint">Matching pages</dt>
-                    <dd className="mt-0.5 text-sm font-semibold text-ink">
-                      {selector.exactMatchCount.toLocaleString()}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-ink-faint">Local placements</dt>
-                    <dd className="mt-0.5 text-sm font-semibold text-ink">
-                      {selector.affectedPlacementCount.toLocaleString()}
-                    </dd>
-                  </div>
-                </dl>
-              </div>
-
-              {selector.sampleCanonicalUrls.length > 0 ? (
-                <p className="mt-2 truncate font-mono text-[10px] text-ink-muted">
-                  Sample: {selector.sampleCanonicalUrls.join(' · ')}
-                  {selector.sampleUrlsTruncated ? ' · …' : ''}
-                </p>
-              ) : (
-                <p className="mt-2 text-[10px] text-warning-strong">
-                  This selector matches no pages.
-                </p>
-              )}
-
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                <Link
-                  to="/author/$templateId"
-                  params={{ templateId: template.slug }}
-                  search={{ canonicalUrl, scopeId: selector.id, panel: 'cascade' }}
-                  className="inline-flex h-8 items-center gap-1.5 rounded-md border border-line-strong bg-canvas px-3 text-xs font-medium text-ink outline-none hover:bg-surface-muted focus-visible:ring-2 focus-visible:ring-focus"
-                >
-                  <GitBranch aria-hidden="true" className="size-3.5" /> View selector
-                </Link>
-                {firstMatch && firstMatch !== canonicalUrl ? (
-                  <Link
-                    to="/author/$templateId"
-                    params={{ templateId: template.slug }}
-                    search={{ canonicalUrl: firstMatch, scopeId: selector.id, panel: 'cascade' }}
-                    className="inline-flex h-8 items-center rounded-md px-3 text-xs font-medium text-accent-strong outline-none hover:bg-accent-soft focus-visible:ring-2 focus-visible:ring-focus"
-                  >
-                    Preview first match
-                  </Link>
-                ) : null}
-              </div>
-            </li>
-          );
-        })}
-      </ol>
-    </section>
-  );
+  if (selection.kind === 'page') {
+    return (
+      <PageInspector
+        snapshot={snapshot}
+        template={template}
+        page={selection.page}
+        onPageChange={onPageChange}
+      />
+    );
+  }
+  if (selection.kind === 'selector') {
+    return (
+      <SelectorInspector
+        snapshot={snapshot}
+        template={template}
+        selector={selection.selector}
+        previewCanonicalUrl={previewCanonicalUrl}
+        search={search}
+        onPageChange={onPreviewPageChange}
+      />
+    );
+  }
+  if (selection.kind === 'pages') {
+    return (
+      <PagesInspector
+        snapshot={snapshot}
+        template={template}
+        previewCanonicalUrl={previewCanonicalUrl}
+        onPageChange={onPageChange}
+      />
+    );
+  }
+  if (selection.kind === 'selectors') {
+    return (
+      <SelectorsInspector
+        snapshot={snapshot}
+        template={template}
+        previewCanonicalUrl={previewCanonicalUrl}
+        onPageChange={onPreviewPageChange}
+      />
+    );
+  }
+  return <TemplateInspector template={template} previewCanonicalUrl={previewCanonicalUrl} />;
 }
 
-function Pagination({
+function TreePagination({
   search,
   previousCursor,
   nextCursor,
@@ -468,26 +969,24 @@ function Pagination({
   totalCount: number;
 }>) {
   return (
-    <nav aria-label="Canonical page pagination" className="flex items-center justify-between gap-3">
-      <p className="text-[11px] text-ink-muted" aria-live="polite">
-        Showing {visibleCount.toLocaleString()} of {totalCount.toLocaleString()} matching pages
+    <nav aria-label="Canonical page pagination" className="border-t border-line p-3">
+      <p className="text-[10px] text-ink-muted" aria-live="polite">
+        {visibleCount.toLocaleString()} loaded · {totalCount.toLocaleString()} matching
       </p>
-      <div className="flex items-center gap-2">
+      <div className="mt-2 grid grid-cols-2 gap-2">
         {previousCursor ? (
           <Link
             to="/content"
             search={{ ...search, cursor: previousCursor }}
-            className="inline-flex h-8 items-center gap-1 rounded-md border border-line-strong bg-canvas px-3 text-xs font-medium text-ink outline-none hover:bg-surface-muted focus-visible:ring-2 focus-visible:ring-focus"
+            className={cn(secondaryActionClassName, 'justify-center px-2')}
           >
-            <ChevronLeft aria-hidden="true" className="size-3.5" />
             Previous
           </Link>
         ) : (
           <span
             aria-disabled="true"
-            className="inline-flex h-8 items-center gap-1 rounded-md border border-line bg-surface-muted px-3 text-xs font-medium text-ink-faint"
+            className="inline-flex h-8 items-center justify-center rounded-md border border-line bg-surface-muted px-2 text-xs font-medium text-ink-faint"
           >
-            <ChevronLeft aria-hidden="true" className="size-3.5" />
             Previous
           </span>
         )}
@@ -495,18 +994,16 @@ function Pagination({
           <Link
             to="/content"
             search={{ ...search, cursor: nextCursor }}
-            className="inline-flex h-8 items-center gap-1 rounded-md border border-line-strong bg-canvas px-3 text-xs font-medium text-ink outline-none hover:bg-surface-muted focus-visible:ring-2 focus-visible:ring-focus"
+            className={cn(secondaryActionClassName, 'justify-center px-2')}
           >
             Next
-            <ChevronRight aria-hidden="true" className="size-3.5" />
           </Link>
         ) : (
           <span
             aria-disabled="true"
-            className="inline-flex h-8 items-center gap-1 rounded-md border border-line bg-surface-muted px-3 text-xs font-medium text-ink-faint"
+            className="inline-flex h-8 items-center justify-center rounded-md border border-line bg-surface-muted px-2 text-xs font-medium text-ink-faint"
           >
             Next
-            <ChevronRight aria-hidden="true" className="size-3.5" />
           </span>
         )}
       </div>
@@ -517,201 +1014,195 @@ function Pagination({
 export function ContentExplorer({ snapshot, search }: Readonly<ContentExplorerProps>) {
   const navigate = useNavigate({ from: '/content' });
   const template = selectedTemplate(snapshot.templates, snapshot.selectedTemplate);
+  const selection = resolveExplorerSelection(search, snapshot);
   const previewCanonicalUrl =
     snapshot.pageNavigation.selectedPage?.canonicalUrl ??
     snapshot.pageNavigation.defaultPage?.canonicalUrl ??
     snapshot.pageNavigation.options[0]?.canonicalUrl ??
     '';
 
+  function navigateToSearch(nextSearch: ContentExplorerSearch, replace = false) {
+    void navigate({ replace, search: ContentExplorerSearchSchema.parse(nextSearch) });
+  }
+
+  function selectTemplate(templateSlug: FixedTemplateSlug) {
+    navigateToSearch({
+      view: 'tree',
+      template: templateSlug,
+      q: '',
+      focus: 'template',
+      canonicalUrl: undefined,
+      cursor: undefined,
+    });
+  }
+
+  function selectCollection(templateSlug: FixedTemplateSlug, collection: 'pages' | 'selectors') {
+    navigateToSearch({
+      view: 'tree',
+      template: templateSlug,
+      q: templateSlug === search.template ? search.q : '',
+      focus: collection,
+      canonicalUrl: templateSlug === search.template ? previewCanonicalUrl || undefined : undefined,
+      cursor: undefined,
+    });
+  }
+
+  function selectPage(page: ContentExplorerPage | ContentPageNavigationOption) {
+    navigateToSearch(
+      {
+        ...search,
+        view: 'tree',
+        canonicalUrl: page.canonicalUrl,
+        focus: 'page',
+        cursor: undefined,
+      },
+      true
+    );
+  }
+
+  function selectSelector(selector: ContentSelectorSummary) {
+    navigateToSearch(
+      {
+        ...search,
+        view: 'tree',
+        canonicalUrl: previewCanonicalUrl || undefined,
+        focus: contentSelectorFocus(selector.id),
+        cursor: undefined,
+      },
+      true
+    );
+  }
+
+  function selectPreviewPage(page: ContentPageNavigationOption) {
+    const focus =
+      selection.kind === 'selector'
+        ? contentSelectorFocus(selection.selector.id)
+        : selection.kind === 'selectors'
+          ? 'selectors'
+          : search.focus;
+    navigateToSearch(
+      {
+        ...search,
+        view: 'tree',
+        canonicalUrl: page.canonicalUrl,
+        focus,
+        cursor: undefined,
+      },
+      true
+    );
+  }
+
   return (
     <section className="mx-auto w-full max-w-[1480px] space-y-4 p-4 sm:p-5 lg:p-6">
-      <header className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-faint">
-            SQLite content
-          </p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-[-0.035em] text-ink">
-            Content explorer
-          </h1>
-          <p className="mt-1 max-w-2xl text-xs leading-5 text-ink-muted">
-            Browse the three provisioned templates and open a concrete canonical page in the
-            authoring studio.
-          </p>
-        </div>
-
-        <search className="w-full max-w-xl">
-          <form
-            className="flex items-center gap-2"
-            onSubmit={(event) => {
-              event.preventDefault();
-              const formData = new FormData(event.currentTarget);
-              const nextSearch = ContentExplorerSearchSchema.parse({
-                ...search,
-                q: formData.get('q'),
-                cursor: undefined,
-              });
-              void navigate({ search: nextSearch });
-            }}
-          >
-            <label htmlFor="content-search" className="sr-only">
-              Search canonical URLs in {template.name}
-            </label>
-            <div className="relative min-w-0 flex-1">
-              <Search
-                aria-hidden="true"
-                className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-ink-faint"
-              />
-              <Input
-                key={`${snapshot.selectedTemplate}:${search.q}`}
-                id="content-search"
-                name="q"
-                type="search"
-                maxLength={120}
-                defaultValue={search.q}
-                placeholder={`Search ${template.name} URLs`}
-                className="pl-9"
-              />
-            </div>
-            <Button type="submit" variant="outline" size="sm">
-              Search
-            </Button>
-          </form>
-        </search>
+      <header>
+        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-faint">
+          SQLite content
+        </p>
+        <h1 className="mt-1 text-2xl font-semibold tracking-[-0.035em] text-ink">
+          Content explorer
+        </h1>
+        <p className="mt-1 max-w-3xl text-xs leading-5 text-ink-muted">
+          Browse templates as folders, then inspect a concrete page or a template-wide selector in
+          one workspace.
+        </p>
       </header>
 
-      <div className="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
-        <aside aria-label="Fixed templates" className="min-w-0 space-y-2">
-          <div className="flex items-center justify-between px-1">
-            <h2 className="text-[11px] font-semibold uppercase tracking-[0.1em] text-ink-faint">
-              Templates
-            </h2>
-            <span className="text-[10px] text-ink-faint">Fixed · 3</span>
-          </div>
-          {snapshot.templates.map((candidate) => (
-            <TemplateSummary
-              key={candidate.templateId}
-              template={candidate}
-              active={candidate.slug === snapshot.selectedTemplate}
-              view={search.view}
-            />
-          ))}
-        </aside>
-
-        <Card className="min-w-0 p-4 sm:p-5">
-          <div className="mb-4 flex flex-col justify-between gap-3 border-b border-line pb-4 sm:flex-row sm:items-center">
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <h2 className="truncate text-base font-semibold text-ink">{template.name}</h2>
-                <Badge tone={template.status === 'active' ? 'success' : 'neutral'} dot>
-                  {template.status}
-                </Badge>
-                <Badge tone={template.draftState === 'changes' ? 'warning' : 'neutral'}>
-                  {draftLabel(template.draftState)}
+      <Card className="min-h-[calc(100vh-10.5rem)] overflow-hidden p-0">
+        <div className="grid min-h-[calc(100vh-10.5rem)] xl:grid-cols-[360px_minmax(0,1fr)]">
+          <aside
+            aria-label="Content explorer tree"
+            className="flex h-[60vh] min-h-[420px] max-h-[560px] min-w-0 flex-col border-b border-line bg-surface-muted/35 xl:h-auto xl:max-h-[calc(100vh-10.5rem)] xl:border-b-0 xl:border-r"
+          >
+            <div className="border-b border-line p-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-xs font-semibold text-ink">Workspace content</h2>
+                  <p className="mt-0.5 text-[10px] text-ink-faint">3 templates · SQLite live</p>
+                </div>
+                <Badge tone="success" dot>
+                  Live
                 </Badge>
               </div>
-              <p className="mt-1 truncate font-mono text-[11px] text-ink-muted">
-                {template.domain}
-                {template.urlPattern}
-              </p>
+              <search className="mt-3 block">
+                <form
+                  className="flex items-center gap-2"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    const formData = new FormData(event.currentTarget);
+                    navigateToSearch({
+                      ...search,
+                      view: 'tree',
+                      q: String(formData.get('q') ?? ''),
+                      focus: 'pages',
+                      cursor: undefined,
+                    });
+                  }}
+                >
+                  <label htmlFor="content-search" className="sr-only">
+                    Search canonical URLs in {template.name}
+                  </label>
+                  <div className="relative min-w-0 flex-1">
+                    <Search
+                      aria-hidden="true"
+                      className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-ink-faint"
+                    />
+                    <Input
+                      key={`${snapshot.selectedTemplate}:${search.q}`}
+                      id="content-search"
+                      name="q"
+                      type="search"
+                      maxLength={120}
+                      defaultValue={search.q}
+                      placeholder={`Search ${template.name} pages`}
+                      className="h-8 pl-8 text-xs"
+                    />
+                  </div>
+                  <Button type="submit" variant="outline" size="sm" className="h-8 px-2.5">
+                    Search
+                  </Button>
+                </form>
+              </search>
             </div>
 
-            <nav aria-label="Explorer view" className="flex rounded-lg bg-surface-muted p-1">
-              <Link
-                to="/content"
-                search={{ ...search, view: 'tree', cursor: undefined }}
-                aria-current={search.view === 'tree' ? 'page' : undefined}
-                className={cn(
-                  'inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-xs font-medium outline-none focus-visible:ring-2 focus-visible:ring-focus',
-                  search.view === 'tree'
-                    ? 'bg-canvas text-ink shadow-sm'
-                    : 'text-ink-muted hover:text-ink'
-                )}
-              >
-                <ListTree aria-hidden="true" className="size-3.5" />
-                Tree
-              </Link>
-              <Link
-                to="/content"
-                search={{ ...search, view: 'table', cursor: undefined }}
-                aria-current={search.view === 'table' ? 'page' : undefined}
-                className={cn(
-                  'inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-xs font-medium outline-none focus-visible:ring-2 focus-visible:ring-focus',
-                  search.view === 'table'
-                    ? 'bg-canvas text-ink shadow-sm'
-                    : 'text-ink-muted hover:text-ink'
-                )}
-              >
-                <Table2 aria-hidden="true" className="size-3.5" />
-                Table
-              </Link>
-              <Link
-                to="/content"
-                search={{ ...search, view: 'selectors', cursor: undefined }}
-                aria-current={search.view === 'selectors' ? 'page' : undefined}
-                className={cn(
-                  'inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-xs font-medium outline-none focus-visible:ring-2 focus-visible:ring-focus',
-                  search.view === 'selectors'
-                    ? 'bg-canvas text-ink shadow-sm'
-                    : 'text-ink-muted hover:text-ink'
-                )}
-              >
-                <GitBranch aria-hidden="true" className="size-3.5" />
-                Selectors
-              </Link>
-            </nav>
-          </div>
-
-          <div className="mb-4 space-y-2 border-b border-line pb-4">
-            <TemplatePageNavigator
-              key={snapshot.selectedTemplate}
-              navigation={snapshot.pageNavigation}
-              canonicalUrl={previewCanonicalUrl}
-              onPageChange={(page) => {
-                void navigate({
-                  replace: true,
-                  search: { ...search, canonicalUrl: page.canonicalUrl, cursor: undefined },
-                });
-              }}
-            />
-            {previewCanonicalUrl ? (
-              <div className="flex justify-end">
-                <Link
-                  to="/author/$templateId"
-                  params={{ templateId: template.slug }}
-                  search={{ canonicalUrl: previewCanonicalUrl }}
-                  className="inline-flex h-8 items-center rounded-md border border-line-strong bg-canvas px-3 text-xs font-medium text-ink outline-none hover:bg-surface-muted focus-visible:ring-2 focus-visible:ring-focus"
-                >
-                  Preview in studio
-                </Link>
-              </div>
-            ) : null}
-          </div>
-
-          {search.view === 'tree' ? (
-            <TreeView snapshot={snapshot} view={search.view} />
-          ) : search.view === 'selectors' ? (
-            <SelectorView
-              snapshot={snapshot}
-              template={template}
-              canonicalUrl={previewCanonicalUrl}
-            />
-          ) : (
-            <TableView snapshot={snapshot} template={template} />
-          )}
-
-          {search.view === 'selectors' ? null : (
-            <div className="mt-4 border-t border-line pt-4">
-              <Pagination
+            <div className="min-h-0 flex-1 overflow-y-auto p-2.5">
+              <ExplorerTree
+                snapshot={snapshot}
                 search={search}
-                previousCursor={snapshot.previousCursor}
-                nextCursor={snapshot.nextCursor}
-                visibleCount={snapshot.pages.length}
-                totalCount={snapshot.filteredCount}
+                selection={selection}
+                onSelectTemplate={selectTemplate}
+                onSelectCollection={selectCollection}
+                onSelectPage={selectPage}
+                onSelectSelector={selectSelector}
               />
             </div>
-          )}
-        </Card>
-      </div>
+
+            <TreePagination
+              search={search}
+              previousCursor={snapshot.previousCursor}
+              nextCursor={snapshot.nextCursor}
+              visibleCount={snapshot.pages.length}
+              totalCount={snapshot.filteredCount}
+            />
+          </aside>
+
+          <section
+            aria-labelledby="content-inspector-heading"
+            aria-live="polite"
+            aria-atomic="false"
+            className="min-w-0 bg-canvas p-4 sm:p-5 lg:p-6"
+          >
+            <ExplorerInspector
+              snapshot={snapshot}
+              search={search}
+              selection={selection}
+              template={template}
+              previewCanonicalUrl={previewCanonicalUrl}
+              onPageChange={selectPage}
+              onPreviewPageChange={selectPreviewPage}
+            />
+          </section>
+        </div>
+      </Card>
     </section>
   );
 }

@@ -3,7 +3,6 @@ import type { LucideIcon } from 'lucide-react';
 import {
   BookOpen,
   ChevronDown,
-  ChevronRight,
   Database,
   FileStack,
   FolderTree,
@@ -15,6 +14,12 @@ import {
 import type { ReactNode } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import {
+  CompactTreeChildren,
+  CompactTreeDisclosure,
+  CompactTreeRow,
+  compactTreeRowClassName,
+} from '@/components/ui/compact-tree';
 import { Separator } from '@/components/ui/separator';
 import type { ScenarioId } from '@/data/scenario-fixtures';
 import { cn } from '@/lib/cn';
@@ -85,7 +90,7 @@ export function isNavigationItemUnavailable(
 }
 
 export function getContentExplorerNavigationSearch(templateId?: ScenarioId) {
-  return { view: 'tree' as const, template: templateId ?? 'stores', q: '' };
+  return { template: templateId ?? 'stores', view: 'tree' as const, q: '' };
 }
 
 const expandedBranches = {
@@ -94,9 +99,6 @@ const expandedBranches = {
 } satisfies Record<(typeof sidebarNavigation)[number]['section'], boolean>;
 
 type NavigationBranchSection = keyof typeof expandedBranches;
-
-const navigationRowClassName =
-  'flex h-8 min-w-0 items-center rounded-md text-[12px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus';
 
 const collapsedNavigation = flattenSidebarNavigation();
 
@@ -128,7 +130,8 @@ function SidebarLink({
   const active = item.section === activeSection;
   const unavailable = isNavigationItemUnavailable(item, templateId);
   const className = cn(
-    navigationRowClassName,
+    compactTreeRowClassName,
+    'focus-visible:ring-2 focus-visible:ring-focus',
     'w-full',
     collapsed ? 'justify-center px-2' : nested ? 'gap-2 px-2' : 'gap-2 px-1.5',
     active
@@ -252,32 +255,18 @@ function NavigationTree({
 
         return (
           <li key={branch.section}>
-            <div
-              className={cn(
-                'group/branch flex min-w-0 items-center rounded-md',
-                branchActive && !branchSelfActive && 'bg-surface-muted/70'
-              )}
-              data-active-branch={branchActive || undefined}
-            >
-              <button
-                type="button"
-                aria-label={`${branchOpen ? 'Collapse' : 'Expand'} ${branch.label}`}
-                aria-expanded={branchOpen}
-                aria-controls={branchId}
+            <CompactTreeRow activeAncestor={branchActive && !branchSelfActive}>
+              <CompactTreeDisclosure
+                expanded={branchOpen}
+                label={branch.label}
+                controls={branchId}
                 onClick={() =>
                   setOpenBranches((current) => ({
                     ...current,
                     [branchSection]: !current[branchSection],
                   }))
                 }
-                className="grid size-8 shrink-0 place-items-center rounded-md text-ink-faint outline-none transition-colors hover:bg-canvas hover:text-ink focus-visible:ring-2 focus-visible:ring-focus"
-              >
-                <ChevronRight
-                  aria-hidden="true"
-                  strokeWidth={1.8}
-                  className={cn('size-3.5 transition-transform', branchOpen && 'rotate-90')}
-                />
-              </button>
+              />
               <SidebarLink
                 item={branch}
                 collapsed={false}
@@ -291,14 +280,10 @@ function NavigationTree({
                   className="mr-2 size-1.5 shrink-0 rounded-full bg-accent"
                 />
               ) : null}
-            </div>
+            </CompactTreeRow>
 
             {branchOpen ? (
-              <ul
-                id={branchId}
-                aria-label={`${branch.label} destinations`}
-                className="relative ml-4 mt-1 space-y-0.5 border-l border-line pl-3"
-              >
+              <CompactTreeChildren id={branchId} label={`${branch.label} destinations`}>
                 {branch.children.map((item) => (
                   <li key={item.section}>
                     <SidebarLink
@@ -311,7 +296,7 @@ function NavigationTree({
                     />
                   </li>
                 ))}
-              </ul>
+              </CompactTreeChildren>
             ) : null}
           </li>
         );

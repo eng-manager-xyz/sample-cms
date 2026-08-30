@@ -8,6 +8,8 @@ export const CONTENT_EXPLORER_SELECTOR_SAMPLE_LIMIT = 10;
 export const FixedTemplateSlugSchema = z.enum(['stores', 'eligible-vehicles', 'structural-proof']);
 export type FixedTemplateSlug = z.infer<typeof FixedTemplateSlugSchema>;
 
+const SELECTOR_FOCUS_PATTERN = /^selector:(?:[A-Za-z0-9:._~-]|%[0-9A-Fa-f]{2})+$/;
+
 export const CanonicalUrlSchema = z
   .string()
   .trim()
@@ -15,10 +17,37 @@ export const CanonicalUrlSchema = z
   .max(2_048)
   .regex(CANONICAL_URL_PATTERN, 'Use an absolute canonical path without a query or hash.');
 
+const ContentExplorerFocusSchema = z
+  .union([
+    z.enum(['template', 'pages', 'page', 'selectors']),
+    z.string().max(8_192).regex(SELECTOR_FOCUS_PATTERN),
+  ])
+  .optional();
+export type ContentExplorerFocus = z.infer<typeof ContentExplorerFocusSchema>;
+
+export function contentSelectorFocus(selectorId: string): ContentExplorerFocus {
+  const encodedSelectorId = encodeURIComponent(selectorId).replace(
+    /[!'()*]/g,
+    (character) => `%${character.charCodeAt(0).toString(16).toUpperCase()}`
+  );
+  return ContentExplorerFocusSchema.parse(`selector:${encodedSelectorId}`);
+}
+
+export function selectorIdFromExplorerFocus(focus: ContentExplorerFocus): string | undefined {
+  if (!focus?.startsWith('selector:')) return undefined;
+  try {
+    const selectorId = decodeURIComponent(focus.slice('selector:'.length));
+    return selectorId.length > 0 && selectorId.length <= 2_048 ? selectorId : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export const ContentExplorerSearchSchema = z.object({
   view: z.enum(['tree', 'table', 'selectors']).optional().default('tree'),
   template: FixedTemplateSlugSchema.optional().default('stores'),
   canonicalUrl: CanonicalUrlSchema.optional(),
+  focus: ContentExplorerFocusSchema,
   q: z.string().trim().max(120).optional().default(''),
   cursor: z.string().max(1_024).optional(),
 });
@@ -31,6 +60,7 @@ export const ContentExplorerInputSchema = z.object({
   limit: z.int().min(1).max(50).default(20),
   selectedCanonicalUrl: CanonicalUrlSchema.optional(),
   includeSelectors: z.boolean().optional(),
+  selectorMetricsFor: z.string().min(1).max(2_048).optional(),
 });
 export type ContentExplorerInput = z.infer<typeof ContentExplorerInputSchema>;
 
@@ -122,14 +152,15 @@ export const ContentPageNavigationSchema = z.object({
 export type ContentPageNavigation = z.infer<typeof ContentPageNavigationSchema>;
 
 export const ContentSelectorSummarySchema = z.object({
-  id: z.string().min(1),
+  id: z.string().min(1).max(2_048),
   activeRevisionId: z.string().min(1),
   name: z.string().min(1),
   isDefault: z.boolean(),
   priority: z.int().min(0),
   status: z.enum(['draft', 'active']),
   selector: z.string().trim().min(1).max(4_096),
-  exactMatchCount: z.int().min(0),
+  metricsLoaded: z.boolean(),
+  exactMatchCount: z.int().min(0).nullable(),
   affectedPlacementCount: z.int().min(0),
   selectedPageMatches: z.boolean().nullable(),
   sampleCanonicalUrls: z.array(CanonicalUrlSchema).max(CONTENT_EXPLORER_SELECTOR_SAMPLE_LIMIT),
@@ -142,6 +173,7 @@ export const ContentExplorerSnapshotSchema = z.object({
   selectedTemplate: FixedTemplateSlugSchema,
   query: z.string().max(120),
   pageNavigation: ContentPageNavigationSchema,
+  selectedPageDetail: ContentExplorerPageSchema.nullable(),
   selectors: z.array(ContentSelectorSummarySchema),
   pages: z.array(ContentExplorerPageSchema).max(50),
   filteredCount: z.int().min(0),

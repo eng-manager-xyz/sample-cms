@@ -8,7 +8,9 @@ import {
   ContentPageNavigationSchema,
   ContentSelectorSummarySchema,
   canonicalUrlSegments,
+  contentSelectorFocus,
   FixedTemplateSlugSchema,
+  selectorIdFromExplorerFocus,
   TemplateWorkspaceSearchSchema,
 } from './content-explorer';
 
@@ -24,6 +26,15 @@ describe('AUT-540 content explorer schemas', () => {
       ContentExplorerSearchSchema.parse({ canonicalUrl: '/fr-CA/store/1014' }).canonicalUrl
     ).toBe('/fr-CA/store/1014');
     expect(ContentExplorerSearchSchema.safeParse({ view: 'grid' }).success).toBe(false);
+    expect(ContentExplorerSearchSchema.parse({ focus: 'selector:tpl-store:default' }).focus).toBe(
+      'selector:tpl-store:default'
+    );
+    expect(ContentExplorerSearchSchema.safeParse({ focus: 'selector:../../page' }).success).toBe(
+      false
+    );
+    const encodedFocus = contentSelectorFocus("seasonal/Québec stores!*'");
+    expect(encodedFocus).toBe('selector:seasonal%2FQu%C3%A9bec%20stores%21%2A%27');
+    expect(selectorIdFromExplorerFocus(encodedFocus)).toBe("seasonal/Québec stores!*'");
   });
 
   test('allowlists exactly the three provisioned templates', () => {
@@ -107,6 +118,7 @@ describe('AUT-547 bounded template navigation and selector summaries', () => {
       priority: 10,
       status: 'active' as const,
       selector: "store_type = 'chain_store'",
+      metricsLoaded: true,
       exactMatchCount: CONTENT_EXPLORER_SELECTOR_SAMPLE_LIMIT + 1,
       affectedPlacementCount: 1,
       selectedPageMatches: true,

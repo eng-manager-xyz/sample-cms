@@ -1,18 +1,18 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { AppShell } from '@/components/app-shell';
 import { ContentExplorer } from '@/components/content-explorer';
-import { ContentExplorerSearchSchema } from '@/data/content-explorer';
+import { ContentExplorerSearchSchema, selectorIdFromExplorerFocus } from '@/data/content-explorer';
 import { loadCmsHealth } from '@/server-functions/cms.functions';
 import { loadContentExplorer } from '@/server-functions/content.functions';
 
 export const Route = createFileRoute('/content')({
   validateSearch: (search) => ContentExplorerSearchSchema.parse(search),
   loaderDeps: ({ search }) => ({
-    view: search.view,
     template: search.template,
     canonicalUrl: search.canonicalUrl,
     q: search.q,
     cursor: search.cursor,
+    selectorMetricsFor: selectorIdFromExplorerFocus(search.focus),
   }),
   loader: async ({ deps }) => {
     const [health, snapshot] = await Promise.all([
@@ -24,7 +24,8 @@ export const Route = createFileRoute('/content')({
           cursor: deps.cursor,
           limit: 20,
           selectedCanonicalUrl: deps.canonicalUrl,
-          includeSelectors: deps.view === 'selectors',
+          includeSelectors: true,
+          selectorMetricsFor: deps.selectorMetricsFor,
         },
       }),
     ]);
