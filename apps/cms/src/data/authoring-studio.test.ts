@@ -20,15 +20,18 @@ describe('AUT-541 schema-driven block form model', () => {
       AuthoringStudioSearchSchema.parse({
         canonicalUrl: '/en-US/store/1001',
         scopeId: 'variant-store-mcdonalds',
+        panel: 'cascade',
       })
     ).toEqual({
       canonicalUrl: '/en-US/store/1001',
       scopeId: 'variant-store-mcdonalds',
+      panel: 'cascade',
     });
     expect(
       AuthoringStudioSearchSchema.safeParse({ canonicalUrl: '/en-US/store/1001?draft=true' })
         .success
     ).toBe(false);
+    expect(AuthoringStudioSearchSchema.safeParse({ panel: 'sql' }).success).toBe(false);
   });
 
   test('uses registered JSON schema properties as the primary field contract', () => {

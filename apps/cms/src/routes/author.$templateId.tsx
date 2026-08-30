@@ -13,6 +13,7 @@ import {
   loadCmsWebsiteOrigin,
   loadCmsWorkspace,
 } from '@/server-functions/cms.functions';
+import { loadContentExplorer } from '@/server-functions/content.functions';
 
 export const Route = createFileRoute('/author/$templateId')({
   params: {
@@ -26,7 +27,7 @@ export const Route = createFileRoute('/author/$templateId')({
   loader: async ({ deps, params }) => {
     const scenarioId = ScenarioIdSchema.safeParse(params.templateId);
     if (!scenarioId.success) throw notFound();
-    const [health, websiteOrigin, workspace] = await Promise.all([
+    const [health, websiteOrigin, workspace, explorer] = await Promise.all([
       loadCmsHealth(),
       loadCmsWebsiteOrigin(),
       loadCmsWorkspace({
@@ -36,14 +37,30 @@ export const Route = createFileRoute('/author/$templateId')({
           ...(deps.scopeId ? { scopeId: deps.scopeId } : {}),
         },
       }),
+      loadContentExplorer({
+        data: {
+          template: scenarioId.data,
+          q: '',
+          limit: 1,
+          selectedCanonicalUrl: deps.canonicalUrl,
+          includeSelectors: false,
+        },
+      }),
     ]);
-    return { health, scenarioId: scenarioId.data, websiteOrigin, workspace };
+    return {
+      health,
+      scenarioId: scenarioId.data,
+      websiteOrigin,
+      workspace,
+      pageNavigation: explorer.pageNavigation,
+    };
   },
   component: AuthoringRoute,
 });
 
 function AuthoringRoute() {
-  const { health, scenarioId, websiteOrigin, workspace } = Route.useLoaderData();
+  const { health, pageNavigation, scenarioId, websiteOrigin, workspace } = Route.useLoaderData();
+  const search = Route.useSearch();
   const scenario = getScenarioFixture(scenarioId);
   return (
     <AppShell
@@ -57,6 +74,8 @@ function AuthoringRoute() {
         key={`${workspace.pageId}:${workspace.scopeId}`}
         scenario={scenario}
         initialWorkspace={workspace}
+        initialInspectorTab={search.panel ?? 'fields'}
+        pageNavigation={pageNavigation}
         websiteOrigin={websiteOrigin}
       />
     </AppShell>

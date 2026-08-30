@@ -205,8 +205,9 @@ function TemplateCard({ scenario }: Readonly<{ scenario: ScenarioFixture }>) {
           Published {scenario.lastPublished}
         </span>
         <Link
-          to="/templates/$templateId"
+          to="/author/$templateId"
           params={{ templateId: scenario.id }}
+          search={{ canonicalUrl: scenario.pin.canonicalUrl }}
           aria-describedby={descriptionId}
           className={buttonClassName({ size: 'sm' })}
         >

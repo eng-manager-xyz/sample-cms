@@ -1,13 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import { CheckCircle2, Eye, Rocket, Save } from 'lucide-react';
+import { CheckCircle2, Eye, GitBranch, Layers3, Rocket, Save } from 'lucide-react';
 import { useReducer, useRef, useState } from 'react';
 
 import {
   AuthoringCanvasPane,
   AuthoringInspectorPane,
   type AuthoringInspectorTab,
-  AuthoringStructurePane,
 } from '@/components/authoring/authoring-studio-panes';
 import {
   type PublicationWorkflowOperation,
@@ -15,8 +14,10 @@ import {
 } from '@/components/authoring/publication-workflow-panel';
 import {
   AUTHORING_BLOCK_FORM_ID,
+  type BlockFormInsertion,
   type BlockFormSaveInput,
 } from '@/components/authoring/schema-block-form';
+import { TemplatePageNavigator } from '@/components/template-page-navigator';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
@@ -31,6 +32,7 @@ import {
   isAuthoringLifecyclePending,
 } from '@/data/authoring-lifecycle';
 import { type WebsiteOriginState, websitePreviewHref } from '@/data/authoring-studio';
+import type { ContentPageNavigation } from '@/data/content-explorer';
 import type { ScenarioFixture } from '@/data/scenario-fixtures';
 import type { SelectorWorkspacePreviewInput } from '@/data/selector-workspace';
 import type {
@@ -71,10 +73,14 @@ function workspaceKey(
 export function AuthoringStudio({
   scenario,
   initialWorkspace,
+  initialInspectorTab,
+  pageNavigation,
   websiteOrigin,
 }: Readonly<{
   scenario: ScenarioFixture;
   initialWorkspace: CmsWorkspaceSnapshot;
+  initialInspectorTab: AuthoringInspectorTab;
+  pageNavigation: ContentPageNavigation;
   websiteOrigin: WebsiteOriginState;
 }>) {
   const navigate = useNavigate();
@@ -88,14 +94,16 @@ export function AuthoringStudio({
     initialData: initialWorkspace,
   });
   const workspace = workspaceQuery.data;
+  const defaultVariant = workspace.variants.find((variant) => variant.isDefault);
   const [selectedPlacementKey, setSelectedPlacementKey] = useState(
     workspace.placements[0]?.placementKey ?? ''
   );
   const selectedPlacement =
     workspace.placements.find((placement) => placement.placementKey === selectedPlacementKey) ??
     workspace.placements[0];
-  const [addingBlock, setAddingBlock] = useState(false);
-  const [inspectorTab, setInspectorTab] = useState<AuthoringInspectorTab>('fields');
+  const [addInsertion, setAddInsertion] = useState<BlockFormInsertion | null>(null);
+  const addingBlock = addInsertion !== null;
+  const inspectorTab = initialInspectorTab;
   const [lifecycle, dispatchLifecycle] = useReducer(
     authoringLifecycleReducer,
     workspace.canonicalUrl,
@@ -121,7 +129,7 @@ export function AuthoringStudio({
     void navigate({
       to: '/author/$templateId',
       params: { templateId: scenario.id },
-      search: { canonicalUrl, scopeId: nextWorkspace.scopeId },
+      search: { canonicalUrl, scopeId: nextWorkspace.scopeId, panel: inspectorTab },
     });
   };
 
@@ -393,19 +401,44 @@ export function AuthoringStudio({
     void navigate({
       to: '/author/$templateId',
       params: { templateId: scenario.id },
-      search: { canonicalUrl, scopeId: nextScopeId },
+      search: { canonicalUrl, scopeId: nextScopeId, panel: inspectorTab },
+    });
+  };
+
+  const changeInspectorTab = (tab: AuthoringInspectorTab): void => {
+    void navigate({
+      to: '/author/$templateId',
+      params: { templateId: scenario.id },
+      search: { canonicalUrl, scopeId: workspace.scopeId, panel: tab },
+      replace: true,
+    });
+  };
+
+  const viewSelector = (): void => {
+    changeInspectorTab('cascade');
+  };
+
+  const choosePage = (nextCanonicalUrl: string): void => {
+    void navigate({
+      to: '/author/$templateId',
+      params: { templateId: scenario.id },
+      search: {
+        canonicalUrl: nextCanonicalUrl,
+        scopeId: workspace.scopeId,
+        panel: inspectorTab,
+      },
     });
   };
 
   const selectPlacement = (placementKey: string): void => {
-    setAddingBlock(false);
+    setAddInsertion(null);
     setSelectedPlacementKey(placementKey);
-    setInspectorTab('fields');
+    changeInspectorTab('fields');
   };
 
-  const startAdd = (): void => {
-    setAddingBlock(true);
-    setInspectorTab('fields');
+  const startAdd = (insertion: BlockFormInsertion): void => {
+    setAddInsertion(insertion);
+    changeInspectorTab('fields');
     dispatchLifecycle({
       type: 'local-change',
       description: 'Unsaved new block. Complete its fields and save the SQLite draft.',
@@ -432,9 +465,9 @@ export function AuthoringStudio({
             contentJson: input.contentJson,
           }
     );
-    setAddingBlock(false);
+    setAddInsertion(null);
     setSelectedPlacementKey(input.placementKey);
-    setInspectorTab('fields');
+    changeInspectorTab('fields');
   };
 
   const runPlacementCommand = (command: CmsCommand): void => {
@@ -492,23 +525,50 @@ export function AuthoringStudio({
               {lifecycle.announcement}
             </p>
           </div>
-          <label className="sr-only" htmlFor="authoring-scope">
-            Authoring scope
-          </label>
-          <Select
-            id="authoring-scope"
-            className="h-9 min-w-44"
-            value={workspace.scopeId}
-            disabled={pending || hasUnsavedForm}
-            onChange={(event) => chooseScope(event.currentTarget.value)}
+          <Button
+            variant="outline"
+            disabled={pending || hasUnsavedForm || defaultVariant?.id === workspace.scopeId}
+            onClick={() => {
+              if (defaultVariant) chooseScope(defaultVariant.id);
+            }}
+            title="Select the template default while keeping this preview page"
           >
-            {workspace.variants.map((variant) => (
-              <option key={variant.id} value={variant.id}>
-                P{variant.priority} · {variant.name}
-                {variant.isDefault ? ' · default' : variant.matchesSamplePage ? '' : ' · no match'}
-              </option>
-            ))}
-          </Select>
+            <Layers3 aria-hidden="true" className="size-4" /> Default
+          </Button>
+          <div className="min-w-44">
+            <label
+              className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.1em] text-ink-faint"
+              htmlFor="authoring-scope"
+            >
+              Template variation
+            </label>
+            <Select
+              id="authoring-scope"
+              className="h-9 w-full"
+              value={workspace.scopeId}
+              disabled={pending || hasUnsavedForm}
+              onChange={(event) => chooseScope(event.currentTarget.value)}
+            >
+              {workspace.variants.map((variant) => (
+                <option key={variant.id} value={variant.id}>
+                  P{variant.priority} · {variant.name}
+                  {variant.isDefault
+                    ? ' · template default'
+                    : variant.matchesSamplePage
+                      ? ' · matches preview'
+                      : ' · does not match preview'}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <Button
+            variant="outline"
+            disabled={pending || hasUnsavedForm}
+            onClick={viewSelector}
+            title="Open the template-scoped authored predicate and generated SQLite preview"
+          >
+            <GitBranch aria-hidden="true" className="size-4" /> View selector
+          </Button>
           <Button
             variant="outline"
             form={AUTHORING_BLOCK_FORM_ID}
@@ -566,10 +626,20 @@ export function AuthoringStudio({
         </div>
       </header>
 
-      <div className="grid min-h-[calc(100vh-11rem)] gap-3 bg-surface-muted/50 p-3 xl:grid-cols-[260px_minmax(420px,1fr)_390px]">
-        <AuthoringStructurePane
+      <div className="border-b border-line bg-canvas p-3">
+        <TemplatePageNavigator
+          navigation={pageNavigation}
+          canonicalUrl={workspace.canonicalUrl}
+          disabled={pending || hasUnsavedForm}
+          onPageChange={(page) => choosePage(page.canonicalUrl)}
+        />
+      </div>
+
+      <div className="grid min-h-[calc(100vh-11rem)] gap-3 bg-surface-muted/50 p-3 xl:grid-cols-[minmax(520px,1fr)_390px]">
+        <AuthoringCanvasPane
           scenarioId={scenario.id}
           workspace={workspace}
+          websiteOrigin={websiteOrigin}
           selectedPlacementKey={selectedPlacement?.placementKey}
           addingBlock={addingBlock}
           actionsDisabled={structureActionsDisabled}
@@ -577,19 +647,12 @@ export function AuthoringStudio({
           onSelectPlacement={selectPlacement}
           runPlacementCommand={runPlacementCommand}
         />
-        <AuthoringCanvasPane
-          workspace={workspace}
-          websiteOrigin={websiteOrigin}
-          selectedPlacementKey={selectedPlacement?.placementKey}
-          addingBlock={addingBlock}
-          selectionDisabled={structureActionsDisabled}
-          onSelectPlacement={selectPlacement}
-        />
         <AuthoringInspectorPane
           scenarioId={scenario.id}
           workspace={workspace}
           selectedPlacement={selectedPlacement}
           addingBlock={addingBlock}
+          {...(addInsertion ? { addInsertion } : {})}
           inspectorTab={inspectorTab}
           inspectorNavigationDisabled={hasUnsavedForm}
           pending={pending}
@@ -597,10 +660,10 @@ export function AuthoringStudio({
           serverError={serverError}
           onTabChange={(tab) => {
             if (hasUnsavedForm && tab !== 'fields') return;
-            setInspectorTab(tab);
+            changeInspectorTab(tab);
           }}
           onDiscardChanges={() => {
-            setAddingBlock(false);
+            setAddInsertion(null);
             setServerError(null);
             dispatchLifecycle({ type: 'discard-local-changes' });
           }}

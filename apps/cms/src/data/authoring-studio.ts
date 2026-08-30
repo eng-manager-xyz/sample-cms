@@ -20,6 +20,7 @@ const RegisteredObjectSchema = z.looseObject({
 export const AuthoringStudioSearchSchema = z.object({
   canonicalUrl: CanonicalUrlSchema.optional(),
   scopeId: z.string().trim().min(1).max(160).optional(),
+  panel: z.enum(['fields', 'cascade', 'history']).optional(),
 });
 
 const FormFieldKindSchema = z.enum(['string', 'number', 'integer', 'boolean', 'object', 'array']);

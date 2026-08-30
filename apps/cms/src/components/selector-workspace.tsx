@@ -648,12 +648,8 @@ function SelectorWorkspaceScope({
   previewSelector,
 }: SelectorWorkspaceProps) {
   const selectedVariant = workspace.variants.find((variant) => variant.id === workspace.scopeId);
-  const [editorMode, setEditorMode] = useState<EditorMode>(
-    selectedVariant?.isDefault ? 'guided' : 'advanced'
-  );
-  const [advancedSelector, setAdvancedSelector] = useState(
-    selectedVariant?.isDefault ? "route_status = 'live'" : (selectedVariant?.selector ?? '')
-  );
+  const [editorMode, setEditorMode] = useState<EditorMode>('advanced');
+  const [advancedSelector, setAdvancedSelector] = useState(selectedVariant?.selector ?? 'TRUE');
   const [builder, setBuilder] = useState<SelectorBuilder>({
     combinator: 'AND',
     clauses: [initialClause(workspace.selectorFields)],
@@ -829,7 +825,7 @@ function SelectorWorkspaceScope({
           <div className="flex flex-wrap items-center gap-2">
             <Button disabled={pending || previewing} onClick={previewCurrentSelector}>
               <Play aria-hidden="true" className="size-3.5" />
-              {previewing ? 'Running…' : 'Preview exact impact'}
+              {previewing ? 'Running…' : 'View generated SQL & impact'}
             </Button>
             {!selectedVariant.isDefault ? (
               <Button

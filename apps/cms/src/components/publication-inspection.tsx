@@ -266,8 +266,9 @@ export function PublicationInspection({
             destination="publications"
           />
           <Link
-            to="/templates/$templateId"
+            to="/author/$templateId"
             params={{ templateId: scenario.id }}
+            search={{ canonicalUrl: workspace.canonicalUrl }}
             className={buttonClassName({ variant: 'outline', size: 'sm' })}
           >
             <ArrowLeft aria-hidden="true" className="size-3.5" />

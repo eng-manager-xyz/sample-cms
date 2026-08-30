@@ -255,7 +255,7 @@ function selectorsByVariant(client: CmsDatabaseClient, templateId: string): Map<
   return new Map(
     client.sqlite
       .query<VariantSelectorRow, [string]>(
-        `SELECT variants.id, revisions.selector_sql AS selector
+        `SELECT variants.id, revisions.selector_input AS selector
          FROM variants
          JOIN variant_revisions AS revisions ON revisions.id = variants.active_revision_id
          WHERE variants.template_id = ?`

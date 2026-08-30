@@ -3,6 +3,10 @@ import { type CmsDatabaseClient, seedFoundationDatabase } from '@repo/cms-db';
 import { createTestDatabase } from '@repo/cms-db/testing';
 import { ensureCompactPublishedScenarios } from '@repo/cms-scenarios/compact-seed';
 import { CmsService } from '@repo/cms-service';
+import {
+  CONTENT_EXPLORER_PAGE_OPTION_LIMIT,
+  CONTENT_EXPLORER_SELECTOR_SAMPLE_LIMIT,
+} from '@/data/content-explorer';
 import { readContentExplorer } from './content-explorer.server';
 import { readCmsWorkspace } from './sqlite-authoring.server';
 
@@ -40,25 +44,287 @@ describe('AUT-540 SQLite content explorer', () => {
     expect(snapshot.templates.some((template) => template.templateId === 'rogue-template')).toBe(
       false
     );
-    expect(snapshot.templates[0]).toMatchObject({
+    const storeTemplate = snapshot.templates[0];
+    expect(storeTemplate).toMatchObject({
       templateId: 'tpl-store',
-      pageCount: 2,
-      livePageCount: 2,
+      pageCount: 14,
+      livePageCount: 14,
       variantCount: 4,
       publicationState: 'published',
-      currentPublicationId: 'publication-store-1',
+      currentPublicationId: 'publication-store-2',
+      publishedPageCount: 14,
     });
+    expect(
+      snapshot.templates.map(({ pageCount, publishedPageCount }) => ({
+        pageCount,
+        publishedPageCount,
+      }))
+    ).toEqual([
+      { pageCount: 14, publishedPageCount: 14 },
+      { pageCount: 14, publishedPageCount: 14 },
+      { pageCount: 14, publishedPageCount: 14 },
+    ]);
     expect(snapshot.templates.every((template) => template.slots.length > 0)).toBe(true);
   });
 
+  test('projects ordered path slots and the deterministic proof page as navigation context', () => {
+    const snapshot = readContentExplorer(client, {
+      template: 'stores',
+      q: '',
+      limit: 20,
+    });
+
+    expect(snapshot.pageNavigation.segments).toEqual([
+      {
+        slotId: 'slot-store-locale',
+        key: 'locale',
+        label: 'Locale',
+        kind: 'variable',
+        pathPosition: 0,
+        staticValue: null,
+        defaultValue: 'en-US',
+        selectedValue: 'en-US',
+      },
+      {
+        slotId: 'slot-store-static',
+        key: 'store',
+        label: 'Store path',
+        kind: 'static',
+        pathPosition: 1,
+        staticValue: 'store',
+        defaultValue: 'store',
+        selectedValue: 'store',
+      },
+      {
+        slotId: 'slot-store-id',
+        key: 'store_id',
+        label: 'Store ID',
+        kind: 'variable',
+        pathPosition: 2,
+        staticValue: null,
+        defaultValue: '1001',
+        selectedValue: '1001',
+      },
+    ]);
+    expect(snapshot.pageNavigation.defaultPage).toEqual({
+      pageId: 'page-store-1001',
+      canonicalUrl: '/en-US/store/1001',
+      routeStatus: 'live',
+      slotValues: { locale: 'en-US', store: 'store', store_id: '1001' },
+    });
+    expect(snapshot.pageNavigation.selectedPage).toEqual(snapshot.pageNavigation.defaultPage);
+    expect(snapshot.pageNavigation.options).toContainEqual({
+      pageId: 'page-store-1002',
+      canonicalUrl: '/en-US/store/1002',
+      routeStatus: 'live',
+      slotValues: { locale: 'en-US', store: 'store', store_id: '1002' },
+    });
+    const storeTemplate = snapshot.templates.find((template) => template.slug === 'stores');
+    if (!storeTemplate) throw new Error('Store template summary was not loaded.');
+    expect(snapshot.pageNavigation.totalCount).toBe(storeTemplate.pageCount);
+    expect(snapshot.pageNavigation.truncated).toBe(false);
+  });
+
+  test('summarizes every non-archived template selector with exact impact and bounded samples', () => {
+    const service = new CmsService(client);
+    service.createVariant('tpl-store', {
+      id: 'variant-store-live-draft',
+      revisionId: 'revision-store-live-draft-1',
+      key: 'live-draft',
+      name: 'Live draft',
+      priority: 40,
+      status: 'draft',
+      selector: "route_status = 'live'",
+      createdBy: 'test',
+      mode: 'linked',
+    });
+    service.setVariantStatus('tpl-store', 'variant-store-burger-king', 'archived');
+
+    const snapshot = readContentExplorer(client, {
+      template: 'stores',
+      q: '',
+      limit: 20,
+    });
+    expect(snapshot.selectors.map((selector) => selector.id)).not.toContain(
+      'variant-store-burger-king'
+    );
+    const defaults = snapshot.selectors.find((selector) => selector.isDefault);
+    expect(defaults).toMatchObject({
+      id: 'tpl-store:default',
+      priority: 0,
+      status: 'active',
+      selector: 'TRUE',
+      exactMatchCount: snapshot.pageNavigation.totalCount,
+      affectedPlacementCount: 4,
+      selectedPageMatches: true,
+    });
+    expect(defaults?.sampleCanonicalUrls.length).toBeLessThanOrEqual(
+      CONTENT_EXPLORER_SELECTOR_SAMPLE_LIMIT
+    );
+    expect(defaults?.sampleUrlsTruncated).toBe(
+      snapshot.pageNavigation.totalCount > CONTENT_EXPLORER_SELECTOR_SAMPLE_LIMIT
+    );
+    expect(
+      snapshot.selectors.find((selector) => selector.id === 'variant-store-mcdonalds')
+    ).toMatchObject({
+      selector: "brand = 'mcdonalds'",
+      exactMatchCount: 1,
+      affectedPlacementCount: 1,
+      selectedPageMatches: true,
+      sampleCanonicalUrls: ['/en-US/store/1001'],
+      sampleUrlsTruncated: false,
+    });
+    expect(
+      snapshot.selectors.find((selector) => selector.id === 'variant-store-live-draft')
+    ).toMatchObject({
+      status: 'draft',
+      selector: "route_status = 'live'",
+      exactMatchCount: snapshot.templates.find((template) => template.slug === 'stores')
+        ?.livePageCount,
+      affectedPlacementCount: 0,
+      selectedPageMatches: true,
+    });
+  });
+
+  test('bounds concrete page choices at one hundred while retaining exact total and route state', () => {
+    const service = new CmsService(client);
+    const initial = readContentExplorer(client, {
+      template: 'stores',
+      q: '',
+      limit: 20,
+    });
+    const additionalCount = CONTENT_EXPLORER_PAGE_OPTION_LIMIT + 1;
+    for (let index = 0; index < additionalCount; index += 1) {
+      const storeId = 700_000 + index;
+      service.createPage('tpl-store', {
+        id: `page-store-${storeId}`,
+        canonicalUrl: `/en-US/store/${storeId}`,
+        routeExternalId: `router-store-${storeId}`,
+        routeStatus: index === 0 ? 'archived' : index === 1 ? 'not_live' : 'live',
+        routeRevision: 'aut-547-navigation-test',
+        context: { store: { id: storeId, name: `Store ${storeId}` } },
+        slotValues: {
+          locale: 'en-US',
+          store: 'store',
+          store_id: storeId,
+          store_name: `Store ${storeId}`,
+        },
+      });
+    }
+
+    const snapshot = readContentExplorer(client, {
+      template: 'stores',
+      q: '',
+      limit: 20,
+    });
+    expect(snapshot.pageNavigation.options).toHaveLength(CONTENT_EXPLORER_PAGE_OPTION_LIMIT);
+    expect(snapshot.pageNavigation.totalCount).toBe(
+      initial.pageNavigation.totalCount + additionalCount
+    );
+    expect(snapshot.pageNavigation.truncated).toBe(true);
+    expect(snapshot.pageNavigation.defaultPage?.canonicalUrl).toBe('/en-US/store/1001');
+    expect(snapshot.pageNavigation.options).toContainEqual({
+      pageId: 'page-store-700000',
+      canonicalUrl: '/en-US/store/700000',
+      routeStatus: 'archived',
+      slotValues: { locale: 'en-US', store: 'store', store_id: '700000' },
+    });
+    expect(
+      snapshot.pageNavigation.options.every(
+        (option) => Object.keys(option.slotValues).join(',') === 'locale,store,store_id'
+      )
+    ).toBe(true);
+
+    const exactSelection = readContentExplorer(client, {
+      template: 'stores',
+      q: '',
+      limit: 20,
+      selectedCanonicalUrl: '/en-US/store/700100',
+      includeSelectors: false,
+    });
+    expect(exactSelection.pageNavigation.options).toHaveLength(CONTENT_EXPLORER_PAGE_OPTION_LIMIT);
+    expect(exactSelection.pageNavigation.selectedPage).toMatchObject({
+      pageId: 'page-store-700100',
+      canonicalUrl: '/en-US/store/700100',
+      slotValues: { locale: 'en-US', store: 'store', store_id: '700100' },
+    });
+    expect(exactSelection.pageNavigation.defaultPage).toMatchObject({
+      pageId: 'page-store-1001',
+      canonicalUrl: '/en-US/store/1001',
+      slotValues: { locale: 'en-US', store: 'store', store_id: '1001' },
+    });
+    expect(exactSelection.pageNavigation.segments.at(-1)).toMatchObject({
+      defaultValue: '1001',
+      selectedValue: '700100',
+    });
+    const exactDefaultPage = exactSelection.pageNavigation.defaultPage;
+    if (!exactDefaultPage) throw new Error('Expected the Store default preview page.');
+    expect(exactSelection.pageNavigation.options).toContainEqual(exactDefaultPage);
+    expect(exactSelection.selectors).toEqual([]);
+  });
+
+  test('retains both default and exact selected pages at the bounded navigation edge', () => {
+    const service = new CmsService(client);
+    for (let index = 0; index < 96; index += 1) {
+      const suffix = String(index).padStart(3, '0');
+      service.createPage('tpl-store', {
+        id: `page-store-before-default-${suffix}`,
+        canonicalUrl: `/aa-${suffix}/store/${800_000 + index}`,
+        routeExternalId: `router-store-before-default-${suffix}`,
+        routeStatus: 'live',
+        routeRevision: 'aut-547-required-page-boundary',
+        context: { store: { id: 800_000 + index, name: `Boundary ${suffix}` } },
+        slotValues: {
+          locale: `aa-${suffix}`,
+          store: 'store',
+          store_id: 800_000 + index,
+          store_name: `Boundary ${suffix}`,
+        },
+      });
+    }
+    service.createPage('tpl-store', {
+      id: 'page-store-after-boundary',
+      canonicalUrl: '/zz-ZZ/store/999999',
+      routeExternalId: 'router-store-after-boundary',
+      routeStatus: 'live',
+      routeRevision: 'aut-547-required-page-boundary',
+      context: { store: { id: 999_999, name: 'After boundary' } },
+      slotValues: {
+        locale: 'zz-ZZ',
+        store: 'store',
+        store_id: 999_999,
+        store_name: 'After boundary',
+      },
+    });
+
+    const snapshot = readContentExplorer(client, {
+      template: 'stores',
+      q: '',
+      limit: 1,
+      selectedCanonicalUrl: '/zz-ZZ/store/999999',
+      includeSelectors: false,
+    });
+    expect(snapshot.pageNavigation.options).toHaveLength(CONTENT_EXPLORER_PAGE_OPTION_LIMIT);
+    expect(snapshot.pageNavigation.defaultPage?.canonicalUrl).toBe('/en-US/store/1001');
+    expect(snapshot.pageNavigation.selectedPage?.canonicalUrl).toBe('/zz-ZZ/store/999999');
+    expect(snapshot.pageNavigation.options.map((option) => option.canonicalUrl)).toEqual(
+      expect.arrayContaining(['/en-US/store/1001', '/zz-ZZ/store/999999'])
+    );
+  });
+
   test('uses bounded bidirectional cursors without duplicate pages', () => {
+    const allPages = readContentExplorer(client, {
+      template: 'stores',
+      q: '',
+      limit: 50,
+    }).pages;
     const first = readContentExplorer(client, {
       template: 'stores',
       q: '',
       limit: 1,
     });
     expect(first.pages).toHaveLength(1);
-    expect(first.pages[0]?.canonicalUrl).toBe('/en-US/store/1001');
+    expect(first.pages[0]?.id).toBe(allPages[0]?.id);
     expect(first.previousCursor).toBeNull();
     expect(first.nextCursor).not.toBeNull();
 
@@ -69,10 +335,10 @@ describe('AUT-540 SQLite content explorer', () => {
       cursor: first.nextCursor ?? undefined,
     });
     expect(second.pages).toHaveLength(1);
-    expect(second.pages[0]?.canonicalUrl).toBe('/en-US/store/1002');
+    expect(second.pages[0]?.id).toBe(allPages[1]?.id);
     expect(second.pages[0]?.id).not.toBe(first.pages[0]?.id);
     expect(second.previousCursor).not.toBeNull();
-    expect(second.nextCursor).toBeNull();
+    expect(Boolean(second.nextCursor)).toBe(allPages.length > 2);
 
     const previous = readContentExplorer(client, {
       template: 'stores',
@@ -94,7 +360,8 @@ describe('AUT-540 SQLite content explorer', () => {
 
     expect(result.filteredCount).toBe(1);
     expect(result.pages.map((page) => page.canonicalUrl)).toEqual(['/en-US/store/1002']);
-    expect(result.templates[0]?.pageCount).toBe(2);
+    expect(result.templates[0]?.pageCount).toBe(14);
+    expect(result.pageNavigation.totalCount).toBe(14);
   });
 
   test('rejects malformed cursors instead of falling back to an unbounded read', () => {

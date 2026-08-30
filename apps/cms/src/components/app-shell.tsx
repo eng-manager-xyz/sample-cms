@@ -127,7 +127,7 @@ function SidebarLink({
   if (item.section === 'template' && templateId) {
     return (
       <Link
-        to="/templates/$templateId"
+        to="/author/$templateId"
         params={{ templateId }}
         onClick={onNavigate}
         title={collapsed ? item.label : undefined}
