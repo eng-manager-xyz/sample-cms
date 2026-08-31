@@ -6,7 +6,7 @@ import {
   ScenarioIdSchema,
   TemplateParamsSchema,
 } from '@/data/scenario-fixtures';
-import { loadCmsHealth, loadCmsWorkspace } from '@/server-functions/cms.functions';
+import { loadCmsWorkspace } from '@/server-functions/cms.functions';
 
 export const Route = createFileRoute('/publications/$templateId')({
   params: {
@@ -16,19 +16,17 @@ export const Route = createFileRoute('/publications/$templateId')({
     const scenarioId = ScenarioIdSchema.safeParse(params.templateId);
     if (!scenarioId.success) throw notFound();
     const workspace = await loadCmsWorkspace({ data: { scenarioId: scenarioId.data } });
-    return { health: await loadCmsHealth(), scenarioId: scenarioId.data, workspace };
+    return { scenarioId: scenarioId.data, workspace };
   },
   component: PublicationRoute,
 });
 
 function PublicationRoute() {
-  const { health, scenarioId, workspace } = Route.useLoaderData();
+  const { scenarioId, workspace } = Route.useLoaderData();
   const scenario = getScenarioFixture(scenarioId);
 
   return (
     <AppShell
-      databaseHealthy={health.healthy}
-      schemaVersion={health.schemaVersion}
       section="publications"
       breadcrumb={`${scenario.name} / Publications`}
       templateId={scenario.id}

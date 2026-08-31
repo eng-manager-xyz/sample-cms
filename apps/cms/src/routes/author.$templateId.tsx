@@ -8,11 +8,7 @@ import {
   ScenarioIdSchema,
   TemplateParamsSchema,
 } from '@/data/scenario-fixtures';
-import {
-  loadCmsHealth,
-  loadCmsWebsiteOrigin,
-  loadCmsWorkspace,
-} from '@/server-functions/cms.functions';
+import { loadCmsWebsiteOrigin, loadCmsWorkspace } from '@/server-functions/cms.functions';
 import { loadContentExplorer } from '@/server-functions/content.functions';
 
 export const Route = createFileRoute('/author/$templateId')({
@@ -27,8 +23,7 @@ export const Route = createFileRoute('/author/$templateId')({
   loader: async ({ deps, params }) => {
     const scenarioId = ScenarioIdSchema.safeParse(params.templateId);
     if (!scenarioId.success) throw notFound();
-    const [health, websiteOrigin, workspace, explorer] = await Promise.all([
-      loadCmsHealth(),
+    const [websiteOrigin, workspace, explorer] = await Promise.all([
       loadCmsWebsiteOrigin(),
       loadCmsWorkspace({
         data: {
@@ -48,7 +43,6 @@ export const Route = createFileRoute('/author/$templateId')({
       }),
     ]);
     return {
-      health,
       scenarioId: scenarioId.data,
       websiteOrigin,
       workspace,
@@ -59,7 +53,7 @@ export const Route = createFileRoute('/author/$templateId')({
 });
 
 function AuthoringRoute() {
-  const { health, pageNavigation, scenarioId, websiteOrigin, workspace } = Route.useLoaderData();
+  const { pageNavigation, scenarioId, websiteOrigin, workspace } = Route.useLoaderData();
   const search = Route.useSearch();
   const scenario = getScenarioFixture(scenarioId);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -71,8 +65,6 @@ function AuthoringRoute() {
       initialInspectorTab={search.panel ?? 'fields'}
       pageNavigation={pageNavigation}
       websiteOrigin={websiteOrigin}
-      databaseHealthy={health.healthy}
-      schemaVersion={health.schemaVersion}
       sidebarCollapsed={sidebarCollapsed}
       onSidebarCollapsedChange={setSidebarCollapsed}
     />

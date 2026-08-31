@@ -28,11 +28,10 @@ type ShellSection = 'maps' | 'content' | 'tutorial' | 'template' | 'publications
 
 interface AppShellProps {
   children: ReactNode;
-  databaseHealthy?: boolean;
-  schemaVersion?: number;
   section?: ShellSection;
   breadcrumb?: string;
   headerContent?: ReactNode;
+  headerActions?: ReactNode;
   sidebarCollapsed?: boolean;
   onSidebarCollapsedChange?: (collapsed: boolean) => void;
   templateId?: ScenarioId;
@@ -413,11 +412,10 @@ function SidebarContents({
 
 export function AppShell({
   children,
-  databaseHealthy = false,
-  schemaVersion,
   section = 'maps',
   breadcrumb = 'Wall of Maps',
   headerContent,
+  headerActions,
   sidebarCollapsed,
   onSidebarCollapsedChange,
   templateId,
@@ -528,8 +526,8 @@ export function AppShell({
       ) : null}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-[52px] shrink-0 items-center justify-between border-b border-line bg-canvas/92 px-3 backdrop-blur-md sm:px-4 lg:px-5">
-          <div className="flex h-full min-w-0 flex-1 items-center gap-2">
+        <header className="sticky top-0 z-30 flex min-h-[52px] shrink-0 flex-wrap items-center gap-x-2 overflow-x-clip border-b border-line bg-canvas/92 px-3 backdrop-blur-md sm:h-[52px] sm:flex-nowrap sm:px-4 lg:px-5">
+          <div className="flex h-[52px] min-w-0 flex-1 items-center gap-2">
             <Button
               ref={mobileOpenButtonRef}
               variant="ghost"
@@ -556,27 +554,11 @@ export function AppShell({
             )}
           </div>
 
-          <div className="flex items-center gap-1.5">
-            <div
-              className="ml-1 flex items-center gap-1.5 rounded-full border border-line bg-canvas py-1 pl-1 pr-2 text-[11px] font-medium text-ink-muted"
-              title={
-                databaseHealthy
-                  ? `SQLite schema v${schemaVersion ?? 'unknown'}`
-                  : 'SQLite unavailable'
-              }
-            >
-              <span
-                aria-hidden="true"
-                className={cn(
-                  'size-2 rounded-full',
-                  databaseHealthy
-                    ? 'bg-success shadow-[0_0_0_3px_var(--color-success-soft)]'
-                    : 'bg-danger shadow-[0_0_0_3px_var(--color-danger-soft)]'
-                )}
-              />
-              {databaseHealthy ? 'SQLite live' : 'SQLite offline'}
+          {headerActions ? (
+            <div className="flex h-11 w-full shrink-0 items-center justify-end border-t border-line bg-canvas/92 sm:ml-auto sm:h-full sm:w-auto sm:border-l sm:border-t-0 sm:pl-2">
+              {headerActions}
             </div>
-          </div>
+          ) : null}
         </header>
 
         <main className="min-w-0 flex-1">{children}</main>

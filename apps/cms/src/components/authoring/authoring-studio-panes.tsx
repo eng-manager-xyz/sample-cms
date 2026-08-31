@@ -294,7 +294,7 @@ export function AuthoringInspectorPane({
   inspectField: (source: string) => Promise<CmsWorkspaceFieldInspection>;
 }>) {
   return (
-    <aside className="min-h-0 rounded-xl border border-line bg-canvas xl:sticky xl:top-32 xl:max-h-[calc(100vh-9rem)] xl:overflow-y-auto">
+    <aside className="min-h-0 rounded-xl border border-line bg-canvas xl:sticky xl:top-16 xl:max-h-[calc(100vh-5rem)] xl:overflow-y-auto">
       <div className="sticky top-0 z-10 flex border-b border-line bg-canvas p-1.5">
         {(
           [

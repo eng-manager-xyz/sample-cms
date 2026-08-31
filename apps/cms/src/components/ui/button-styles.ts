@@ -1,7 +1,7 @@
 import { cn } from '@/lib/cn';
 
 export type ButtonVariant = 'default' | 'outline' | 'ghost';
-export type ButtonSize = 'default' | 'sm' | 'icon';
+export type ButtonSize = 'default' | 'sm' | 'icon' | 'icon-sm';
 
 const variantClasses: Record<ButtonVariant, string> = {
   default:
@@ -15,6 +15,7 @@ const sizeClasses: Record<ButtonSize, string> = {
   default: 'h-9 gap-2 rounded-lg px-3.5 text-[13px]',
   sm: 'h-8 gap-1.5 rounded-md px-2.5 text-xs',
   icon: 'size-8 rounded-md',
+  'icon-sm': 'size-7 rounded-md',
 };
 
 export function buttonClassName({
