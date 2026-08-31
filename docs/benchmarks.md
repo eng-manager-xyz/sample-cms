@@ -453,28 +453,32 @@ or errors.
 
 ## Final five-phase result
 
-`bun run five-phase-pass` passed on 2026-08-30 from consolidated `main` after the AUT-544 authoring
-history and AUT-545 current-architecture tutorial history were joined at merge commit
-`3201dd1c`, and the final architecture document and ERD were committed at `68a6f2d`. The tree
-contains the fixed-template explorer, production-shaped authoring studio, CEL compilation, cascade
-inspection, atomic publication lifecycle, current executable tutorial, standalone website, and
-isolated preview/admin seams. The committed bounded and million-row ledgers retain their exact
+`bun run five-phase-pass` passed on 2026-08-31 from the clean AUT-554 delivery tree after the shared
+website/authoring renderer and current-lockfile bounded and million-row evidence were committed. The
+tree contains the fixed-template explorer, preview-matched authoring canvas, CEL compilation,
+cascade inspection, atomic publication lifecycle, current executable tutorial, standalone website,
+and isolated preview/admin seams. The committed bounded and million-row ledgers retain their exact
 source commit and lockfile digest; the verifier rejects drift.
 
 | Phase | Result | Owning Linear work |
 | --- | --- | --- |
-| 1 — shell and SQLite baseline | Frozen install unchanged; boundaries and 71-skill/115-file import digest passed; reset and deterministic schema-v6 seed passed. | AUT-515–AUT-519 |
-| 2 — relational foundation | Database suite and populated v1→v6 upgrade passed; health/integrity/foreign-key checks passed. | AUT-516–AUT-519 |
+| 1 — shell and SQLite baseline | Frozen install unchanged; boundaries and 71-skill/115-file import digest passed; reset and deterministic schema-v7 seed passed. | AUT-515–AUT-519 |
+| 2 — relational foundation | Database suite and populated v1→v7 upgrade passed; health/integrity/foreign-key checks passed. | AUT-516–AUT-519 |
 | 3 — selector, resolution, publication | Selector corpus, bounded CEL compilation, domain resolution, service CRUD, authoring preflight, atomic publication, exact rollback, and fixed selector/CEL-free serving passed. | AUT-520–AUT-525, AUT-539, AUT-542–AUT-543 |
-| 4 — HUD, website, and scenarios | TanStack HUD/tutorial, fixed-template explorer, three-pane authoring studio, standalone-website tests, fresh bounded proof, evidence verification, and both client/SSR/Nitro production builds passed. Public, preview, and admin route boundaries were exercised independently. | AUT-526–AUT-530, AUT-533–AUT-535, AUT-540–AUT-544 |
-| 5 — cross-workspace audit | Committed bounded and one-million ledgers verified; authoring/browser evidence, current-architecture tutorial contract, required artifacts, boundaries, Biome, TypeScript, all tests, build, and Fallow passed with zero findings. | AUT-530–AUT-533, AUT-536–AUT-545 |
+| 4 — HUD, website, and scenarios | TanStack HUD/tutorial, fixed-template explorer, preview-matched authoring canvas, shared renderer tests, fresh bounded proof, evidence verification, and both client/SSR/Nitro production builds passed. Public, preview, and admin route boundaries were exercised independently. | AUT-526–AUT-530, AUT-533–AUT-535, AUT-540–AUT-554 |
+| 5 — cross-workspace audit | Committed bounded and one-million ledgers verified; authoring/browser evidence, current-architecture tutorial contract, required artifacts, boundaries, Biome, TypeScript, all tests, build, and Fallow passed with zero findings. | AUT-530–AUT-554 |
 
-The consolidated workspace total was 313 tests and 2,655 assertions: CEL engine 15/50, database
-9/60, domain 72/778, service 18/197, scenarios 12/172, CMS UI/router/server/tutorial/authoring
-144/1,041, and standalone website 43/357. Fallow reported zero issues across unused files, exports, types,
-dependencies, cycles, unresolved imports, boundary/policy violations, and stale suppressions.
+Every workspace test target passed, including 174 CMS UI/router/server/tutorial/authoring tests.
+Fallow reported zero issues across unused files, exports, types, dependencies, cycles, unresolved
+imports, boundary/policy violations, and stale suppressions.
 
-Production-browser smoke against the built server rendered `/`, all three template workbenches,
+AUT-554 real-browser validation compared the shared website surface inside the authoring canvas at
+wide and narrow widths, exercised hover and keyboard-focus overlays, and confirmed coarse-pointer
+controls remain visible. The narrow canvas collapsed the hero to one column and hid secondary
+navigation consistently with preview; authoring kept readable headings and landmarks without
+activating embedded page links.
+
+The prior AUT-544 production-browser smoke against the built server rendered `/`, all three template workbenches,
 `/publications/stores`, and `/tutorial` with live SQLite schema v6. The Store workbench persisted a fifth block,
 published two pages, and retained both the block and second immutable publication after a full
 reload. Eligible Vehicles exposed seven editable placements. The structural variant exposed 23
