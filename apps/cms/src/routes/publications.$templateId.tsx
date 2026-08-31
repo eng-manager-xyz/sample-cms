@@ -7,12 +7,9 @@ import {
   PublicationInspection,
 } from '@/components/publication-inspection';
 import { CanonicalUrlSchema } from '@/data/content-explorer';
-import {
-  getScenarioFixture,
-  ScenarioIdSchema,
-  TemplateParamsSchema,
-} from '@/data/scenario-fixtures';
+import { TemplateKeySchema, TemplateParamsSchema } from '@/data/scenario-fixtures';
 import { loadCmsPublicationHistory, loadCmsWorkspace } from '@/server-functions/cms.functions';
+import { loadContentExplorer } from '@/server-functions/content.functions';
 
 const PublicationHistorySearchSchema = z.object({
   canonicalUrl: CanonicalUrlSchema.optional(),
@@ -25,25 +22,36 @@ export const Route = createFileRoute('/publications/$templateId')({
   validateSearch: (search) => PublicationHistorySearchSchema.parse(search),
   loaderDeps: ({ search }) => ({ canonicalUrl: search.canonicalUrl }),
   loader: async ({ deps, params }) => {
-    const scenarioId = ScenarioIdSchema.safeParse(params.templateId);
+    const scenarioId = TemplateKeySchema.safeParse(params.templateId);
     if (!scenarioId.success) throw notFound();
-    const workspace = await loadCmsWorkspace({
-      data: {
-        scenarioId: scenarioId.data,
-        ...(deps.canonicalUrl ? { canonicalUrl: deps.canonicalUrl } : {}),
-      },
-    });
-    const history = await loadCmsPublicationHistory({
-      data: { scenarioId: scenarioId.data, limit: 50 },
-    });
-    return { scenarioId: scenarioId.data, workspace, history };
+    const [workspace, history, explorer] = await Promise.all([
+      loadCmsWorkspace({
+        data: {
+          scenarioId: scenarioId.data,
+          ...(deps.canonicalUrl ? { canonicalUrl: deps.canonicalUrl } : {}),
+        },
+      }),
+      loadCmsPublicationHistory({ data: { scenarioId: scenarioId.data, limit: 50 } }),
+      loadContentExplorer({
+        data: {
+          template: scenarioId.data,
+          q: '',
+          limit: 1,
+          selectedCanonicalUrl: deps.canonicalUrl,
+        },
+      }),
+    ]);
+    return { scenarioId: scenarioId.data, workspace, history, templates: explorer.templates };
   },
   component: PublicationRoute,
 });
 
 function PublicationRoute() {
-  const { history, scenarioId, workspace } = Route.useLoaderData();
-  const scenario = getScenarioFixture(scenarioId);
+  const { history, scenarioId, templates, workspace } = Route.useLoaderData();
+  const loadedTemplate = templates.find((template) => template.slug === scenarioId);
+  if (!loadedTemplate) throw new Error(`Template "${scenarioId}" was not loaded.`);
+  const scenario = { id: loadedTemplate.slug, name: loadedTemplate.name };
+  const templateOptions = templates.map((template) => ({ id: template.slug, name: template.name }));
 
   return (
     <AppShell
@@ -52,6 +60,7 @@ function PublicationRoute() {
       headerContent={
         <PublicationContextNavigation
           scenario={scenario}
+          scenarios={templateOptions}
           canonicalUrl={workspace.canonicalUrl}
           releaseCount={history.total}
         />

@@ -1,9 +1,19 @@
-import { Link, useNavigate } from '@tanstack/react-router';
-import { Database, FileText, Folder, FolderOpen, GitBranch, Layers3, Search } from 'lucide-react';
+import { Link, useNavigate, useRouter } from '@tanstack/react-router';
+import {
+  Database,
+  FileText,
+  Folder,
+  FolderOpen,
+  GitBranch,
+  Layers3,
+  Plus,
+  Search,
+} from 'lucide-react';
 import { type ReactNode, useId, useState } from 'react';
 import * as z from 'zod';
-
+import { TemplateCreationWizard } from '@/components/template-creation-wizard';
 import { TemplatePageNavigator } from '@/components/template-page-navigator';
+import { TemplatePageTagGrid } from '@/components/template-page-tag-grid';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -74,7 +84,7 @@ function selectedTemplate(
   selectedSlug: ContentExplorerSearch['template']
 ): ContentTemplateSummary {
   const selected = templates.find((template) => template.slug === selectedSlug);
-  if (!selected) throw new Error(`Selected fixed template "${selectedSlug}" was not loaded.`);
+  if (!selected) throw new Error(`Selected template "${selectedSlug}" was not loaded.`);
   return selected;
 }
 
@@ -586,11 +596,15 @@ function PagesInspector({
   template,
   previewCanonicalUrl,
   onPageChange,
+  onGridPageChange,
+  onTagsChanged,
 }: Readonly<{
   snapshot: ContentExplorerProps['snapshot'];
   template: ContentTemplateSummary;
   previewCanonicalUrl: string;
-  onPageChange: (page: ContentPageNavigationOption) => void;
+  onPageChange: (page: ContentPageNavigationOption | ContentExplorerPage) => void;
+  onGridPageChange: (page: ContentExplorerPage) => void;
+  onTagsChanged: () => void | Promise<void>;
 }>) {
   return (
     <div className="space-y-5">
@@ -635,6 +649,25 @@ function PagesInspector({
           },
         ]}
       />
+      <div>
+        <div className="mb-2 flex flex-wrap items-end justify-between gap-2">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-ink-faint">
+              Route and tag grid
+            </p>
+            <p className="mt-1 text-xs text-ink-muted">
+              Select bounded rows, then add or remove values from the required tags dimension.
+            </p>
+          </div>
+          <Badge tone="neutral">{snapshot.pages.length} loaded</Badge>
+        </div>
+        <TemplatePageTagGrid
+          template={template}
+          pages={snapshot.pages}
+          onOpenPage={onGridPageChange}
+          onChanged={onTagsChanged}
+        />
+      </div>
     </div>
   );
 }
@@ -902,14 +935,16 @@ function ExplorerInspector({
   previewCanonicalUrl,
   onPageChange,
   onPreviewPageChange,
+  onTagsChanged,
 }: Readonly<{
   snapshot: ContentExplorerProps['snapshot'];
   search: ContentExplorerSearch;
   selection: ExplorerSelection;
   template: ContentTemplateSummary;
   previewCanonicalUrl: string;
-  onPageChange: (page: ContentPageNavigationOption) => void;
+  onPageChange: (page: ContentPageNavigationOption | ContentExplorerPage) => void;
   onPreviewPageChange: (page: ContentPageNavigationOption) => void;
+  onTagsChanged: () => void | Promise<void>;
 }>) {
   if (selection.kind === 'page') {
     return (
@@ -940,6 +975,8 @@ function ExplorerInspector({
         template={template}
         previewCanonicalUrl={previewCanonicalUrl}
         onPageChange={onPageChange}
+        onGridPageChange={onPageChange}
+        onTagsChanged={onTagsChanged}
       />
     );
   }
@@ -1014,6 +1051,7 @@ function TreePagination({
 
 export function ContentExplorer({ snapshot, search }: Readonly<ContentExplorerProps>) {
   const navigate = useNavigate({ from: '/content' });
+  const router = useRouter();
   const template = selectedTemplate(snapshot.templates, snapshot.selectedTemplate);
   const selection = resolveExplorerSelection(search, snapshot);
   const previewCanonicalUrl =
@@ -1030,6 +1068,8 @@ export function ContentExplorer({ snapshot, search }: Readonly<ContentExplorerPr
     navigateToSearch({
       view: 'tree',
       template: templateSlug,
+      mode: 'browse',
+      createStep: 'identity',
       q: '',
       focus: 'template',
       canonicalUrl: undefined,
@@ -1041,6 +1081,8 @@ export function ContentExplorer({ snapshot, search }: Readonly<ContentExplorerPr
     navigateToSearch({
       view: 'tree',
       template: templateSlug,
+      mode: 'browse',
+      createStep: 'identity',
       q: templateSlug === search.template ? search.q : '',
       focus: collection,
       canonicalUrl: templateSlug === search.template ? previewCanonicalUrl || undefined : undefined,
@@ -1093,19 +1135,56 @@ export function ContentExplorer({ snapshot, search }: Readonly<ContentExplorerPr
     );
   }
 
+  if (search.mode === 'create') {
+    return (
+      <TemplateCreationWizard
+        step={search.createStep ?? 'identity'}
+        onStepChange={(createStep) =>
+          navigateToSearch({ ...search, mode: 'create', createStep }, true)
+        }
+        onCancel={() =>
+          navigateToSearch(
+            { ...search, mode: 'browse', createStep: 'identity', cursor: undefined },
+            true
+          )
+        }
+        onCreated={(result) => {
+          void navigate({
+            to: '/author/$templateId',
+            params: { templateId: result.templateKey },
+            search: result.firstCanonicalUrl ? { canonicalUrl: result.firstCanonicalUrl } : {},
+          });
+        }}
+      />
+    );
+  }
+
   return (
     <section className="mx-auto w-full max-w-[1480px] space-y-4 p-4 sm:p-5 lg:p-6">
-      <header>
-        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-faint">
-          SQLite content
-        </p>
-        <h1 className="mt-1 text-2xl font-semibold tracking-[-0.035em] text-ink">
-          Content explorer
-        </h1>
-        <p className="mt-1 max-w-3xl text-xs leading-5 text-ink-muted">
-          Browse templates as folders, then inspect a concrete page or a template-wide selector in
-          one workspace.
-        </p>
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-faint">
+            SQLite content
+          </p>
+          <h1 className="mt-1 text-2xl font-semibold tracking-[-0.035em] text-ink">
+            Content explorer
+          </h1>
+          <p className="mt-1 max-w-3xl text-xs leading-5 text-ink-muted">
+            Browse templates as folders, then inspect a concrete page or a template-wide selector in
+            one workspace.
+          </p>
+        </div>
+        <Button
+          type="button"
+          onClick={() =>
+            navigateToSearch(
+              { ...search, mode: 'create', createStep: 'identity', cursor: undefined },
+              true
+            )
+          }
+        >
+          <Plus aria-hidden="true" className="size-3.5" /> Create template
+        </Button>
       </header>
 
       <Card className="min-h-[calc(100vh-10.5rem)] overflow-hidden p-0">
@@ -1118,7 +1197,12 @@ export function ContentExplorer({ snapshot, search }: Readonly<ContentExplorerPr
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <h2 className="text-xs font-semibold text-ink">Workspace content</h2>
-                  <p className="mt-0.5 text-[10px] text-ink-faint">3 templates · SQLite live</p>
+                  <p className="mt-0.5 text-[10px] text-ink-faint">
+                    {snapshot.templatesTruncated
+                      ? `${snapshot.templates.length.toLocaleString()} of ${snapshot.templateCount.toLocaleString()} templates`
+                      : `${snapshot.templateCount.toLocaleString()} templates`}{' '}
+                    · SQLite live
+                  </p>
                 </div>
                 <Badge tone="success" dot>
                   Live
@@ -1200,6 +1284,7 @@ export function ContentExplorer({ snapshot, search }: Readonly<ContentExplorerPr
               previewCanonicalUrl={previewCanonicalUrl}
               onPageChange={selectPage}
               onPreviewPageChange={selectPreviewPage}
+              onTagsChanged={() => router.invalidate()}
             />
           </section>
         </div>

@@ -1,4 +1,4 @@
-import { GitBranch, X } from 'lucide-react';
+import { GitBranch, Plus, X } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
@@ -10,6 +10,7 @@ export function AuthoringScopeControl({
   disabled,
   onSelectScope,
   onViewSelector,
+  onCreateSelector,
   onClearSelector,
 }: Readonly<{
   variants: readonly CmsWorkspaceVariant[];
@@ -17,6 +18,7 @@ export function AuthoringScopeControl({
   disabled: boolean;
   onSelectScope: (scopeId: string) => void;
   onViewSelector: () => void;
+  onCreateSelector: () => void;
   onClearSelector: () => void;
 }>) {
   const selectedVariant = variants.find((variant) => variant.id === selectedScopeId);
@@ -62,6 +64,15 @@ export function AuthoringScopeControl({
           </option>
         ))}
       </Select>
+      <Button
+        size="icon-sm"
+        disabled={disabled}
+        aria-label="Create selector variation"
+        onClick={onCreateSelector}
+        title="Create a template-wide selector variation"
+      >
+        <Plus aria-hidden="true" className="size-3.5" />
+      </Button>
       {hasSelectedSelector ? (
         <>
           <Button

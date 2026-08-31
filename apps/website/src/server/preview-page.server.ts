@@ -1,11 +1,7 @@
 import type { CmsDatabaseClient } from '@repo/cms-db';
 import { CmsService, CmsServiceError } from '@repo/cms-service';
-import {
-  createPreviewPageViewModel,
-  type PreviewPageLoadResult,
-  previewHostMatchesTemplate,
-} from '@/data/preview-page';
-import { resolvePublicTemplate } from '@/data/public-path';
+import { createPreviewPageViewModel, type PreviewPageLoadResult } from '@/data/preview-page';
+import { resolveCanonicalTemplatePage } from './canonical-template.server';
 
 export function readPreviewPage(
   client: CmsDatabaseClient,
@@ -17,19 +13,16 @@ export function readPreviewPage(
     readonly allowLocalhost?: boolean;
   }
 ): PreviewPageLoadResult {
-  const template = resolvePublicTemplate(input.canonicalUrl);
-  if (!template) return { status: 404, reason: 'unsupported_pattern' };
-  if (
-    !previewHostMatchesTemplate({
-      host: input.host,
-      template,
-      nodeEnv: input.nodeEnv,
-      previewEnabled: input.previewEnabled,
-      allowLocalhost: input.allowLocalhost,
-    })
-  ) {
+  const isLocalDevelopment = input.nodeEnv === 'development' || input.nodeEnv === 'test';
+  if (!isLocalDevelopment && !input.previewEnabled) {
     return { status: 404, reason: 'missing' };
   }
+  const template = resolveCanonicalTemplatePage(client, {
+    host: input.host,
+    canonicalUrl: input.canonicalUrl,
+    allowLocalhost: isLocalDevelopment || input.allowLocalhost === true,
+  });
+  if (!template) return { status: 404, reason: 'missing' };
 
   try {
     const draft = new CmsService(client).resolveDraftByCanonicalUrl(

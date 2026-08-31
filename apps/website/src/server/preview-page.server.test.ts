@@ -77,7 +77,7 @@ describe('SQLite preview boundary', () => {
   test('maps unsupported and absent canonical pages to explicit 404 results', () => {
     expect(readStorePreview('/en-US/not-a-cms-pattern')).toEqual({
       status: 404,
-      reason: 'unsupported_pattern',
+      reason: 'missing',
     });
     expect(readStorePreview('/en-US/store/9999')).toEqual({
       status: 404,

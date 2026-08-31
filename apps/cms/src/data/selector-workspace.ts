@@ -1,7 +1,7 @@
 import * as z from 'zod';
 
 import { CanonicalUrlSchema } from './content-explorer';
-import { ScenarioIdSchema } from './scenario-fixtures';
+import { TemplateKeySchema } from './scenario-fixtures';
 
 const SelectorScalarSchema = z.union([z.string(), z.number(), z.boolean(), z.null()]);
 export type SelectorScalar = z.infer<typeof SelectorScalarSchema>;
@@ -30,7 +30,7 @@ const SelectorBuilderSchema = z.object({
 export type SelectorBuilder = z.infer<typeof SelectorBuilderSchema>;
 
 export const SelectorWorkspacePreviewInputSchema = z.object({
-  scenarioId: ScenarioIdSchema,
+  scenarioId: TemplateKeySchema,
   selector: z.string().trim().min(1).max(2_000),
   priority: z.int().min(1).max(10_000).default(1),
   scopeId: z.string().min(1).max(160).optional(),
@@ -85,9 +85,10 @@ const PlacementTraceStepSchema = z.object({
 });
 export type PlacementTraceStep = z.infer<typeof PlacementTraceStepSchema>;
 
-const SelectorWorkspacePreviewSchema = z.object({
+export const SelectorWorkspacePreviewSchema = z.object({
   approvedFields: z.array(SelectorFieldSchema),
   normalizedSelector: z.string().min(1),
+  matchSetFingerprint: z.string().regex(/^[a-f0-9]{64}$/),
   execution: z.object({
     sql: z.string().min(1),
     parameters: z.array(SelectorScalarSchema),

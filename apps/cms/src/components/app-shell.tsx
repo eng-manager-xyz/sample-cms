@@ -20,7 +20,7 @@ import {
   compactTreeRowClassName,
 } from '@/components/ui/compact-tree';
 import { Separator } from '@/components/ui/separator';
-import type { ScenarioId } from '@/data/scenario-fixtures';
+import type { TemplateKey } from '@/data/scenario-fixtures';
 import { cn } from '@/lib/cn';
 
 type ShellSection = 'maps' | 'content' | 'tutorial' | 'template';
@@ -33,7 +33,7 @@ interface AppShellProps {
   headerActions?: ReactNode;
   sidebarCollapsed?: boolean;
   onSidebarCollapsedChange?: (collapsed: boolean) => void;
-  templateId?: ScenarioId;
+  templateId?: TemplateKey;
 }
 
 interface NavigationItem {
@@ -79,13 +79,19 @@ export function isNavigationBranchActive(
 
 export function isNavigationItemUnavailable(
   item: NavigationItem,
-  templateId?: ScenarioId
+  templateId?: TemplateKey
 ): boolean {
   return !templateId && item.section === 'template';
 }
 
-export function getContentExplorerNavigationSearch(templateId?: ScenarioId) {
-  return { template: templateId ?? 'stores', view: 'tree' as const, q: '' };
+export function getContentExplorerNavigationSearch(templateId?: TemplateKey) {
+  return {
+    template: templateId ?? 'stores',
+    view: 'tree' as const,
+    mode: 'browse' as const,
+    createStep: 'identity' as const,
+    q: '',
+  };
 }
 
 const expandedBranches = {
@@ -118,7 +124,7 @@ function SidebarLink({
   item: NavigationItem;
   collapsed: boolean;
   activeSection: ShellSection;
-  templateId?: ScenarioId;
+  templateId?: TemplateKey;
   onNavigate?: () => void;
   nested?: boolean;
 }>) {
@@ -218,7 +224,7 @@ function NavigationTree({
   idPrefix,
 }: Readonly<{
   activeSection: ShellSection;
-  templateId?: ScenarioId;
+  templateId?: TemplateKey;
   onNavigate?: () => void;
   idPrefix: string;
 }>) {
@@ -296,7 +302,7 @@ function SidebarContents({
   collapsed: boolean;
   onCollapse?: () => void;
   activeSection: ShellSection;
-  templateId?: ScenarioId;
+  templateId?: TemplateKey;
   onNavigate?: () => void;
   idPrefix: string;
 }>) {

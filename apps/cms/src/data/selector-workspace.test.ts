@@ -108,6 +108,7 @@ describe('AUT-542 guided selector builder', () => {
       selector: "brand = 'mcdonalds'",
       priority: 40,
       mode: 'duplicate',
+      expectedMatchSetFingerprint: '0'.repeat(64),
     };
     expect(CmsCommandSchema.safeParse(duplicate).success).toBe(false);
     expect(
@@ -116,6 +117,39 @@ describe('AUT-542 guided selector builder', () => {
         duplicateSourceScopeId: 'variant-store-mcdonalds',
       }).success
     ).toBe(true);
+  });
+
+  test('accepts an explicit stable selector key and impact-preview guard', () => {
+    const reviewedCommand = {
+      kind: 'createVariant',
+      scenarioId: 'new-store-template',
+      name: 'California premium',
+      key: 'california-premium',
+      selector: "locale = 'en-US' AND slug = 'premium'",
+      priority: 50,
+      mode: 'linked',
+      expectedNormalizedSelector: "locale = 'en-US' AND slug = 'premium'",
+      expectedMatchCount: 12,
+    } as const;
+    expect(CmsCommandSchema.safeParse(reviewedCommand).success).toBe(false);
+    expect(
+      CmsCommandSchema.safeParse({
+        ...reviewedCommand,
+        expectedMatchSetFingerprint: '1'.repeat(64),
+      }).success
+    ).toBe(true);
+    expect(
+      CmsCommandSchema.safeParse({
+        kind: 'createVariant',
+        scenarioId: 'new-store-template',
+        name: 'Bad key',
+        key: 'Bad Key',
+        selector: 'TRUE',
+        priority: 50,
+        mode: 'linked',
+        expectedMatchSetFingerprint: '2'.repeat(64),
+      }).success
+    ).toBe(false);
   });
 
   test('requires the exact canonical page on every placement mutation command', () => {

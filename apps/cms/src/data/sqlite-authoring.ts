@@ -1,7 +1,7 @@
 import * as z from 'zod';
 
 import { CanonicalUrlSchema } from './content-explorer';
-import { type ScenarioId, ScenarioIdSchema } from './scenario-fixtures';
+import { type TemplateKey, TemplateKeySchema } from './scenario-fixtures';
 import {
   type PlacementTraceStep,
   type SelectorConflict,
@@ -13,19 +13,19 @@ import {
 const AuthoringScopeSchema = z.string().min(1).max(160);
 
 export const CmsWorkspaceInputSchema = z.object({
-  scenarioId: ScenarioIdSchema,
+  scenarioId: TemplateKeySchema,
   scopeId: AuthoringScopeSchema.optional(),
   canonicalUrl: CanonicalUrlSchema.optional(),
 });
 
 export const CmsBlockFieldInspectionInputSchema = z.object({
-  scenarioId: ScenarioIdSchema,
+  scenarioId: TemplateKeySchema,
   canonicalUrl: CanonicalUrlSchema,
   source: z.string().max(10_000),
 });
 
 const PublicationWorkspaceContextShape = {
-  scenarioId: ScenarioIdSchema,
+  scenarioId: TemplateKeySchema,
   scopeId: AuthoringScopeSchema.optional(),
   canonicalUrl: CanonicalUrlSchema.optional(),
 };
@@ -43,7 +43,7 @@ const PublicationMetadataSchema = z.object({
 });
 
 export const CmsPublicationHistoryInputSchema = z.object({
-  scenarioId: ScenarioIdSchema,
+  scenarioId: TemplateKeySchema,
   limit: z.int().min(1).max(50).optional(),
 });
 
@@ -65,7 +65,7 @@ const CmsPublicationHistoryRowSchema = z.object({
 });
 
 export const CmsPublicationHistorySchema = z.object({
-  scenarioId: ScenarioIdSchema,
+  scenarioId: TemplateKeySchema,
   templateId: z.string().min(1),
   currentPublicationId: z.string().min(1).nullable(),
   rollbackTargetPublicationId: z.string().min(1).nullable(),
@@ -172,53 +172,63 @@ const PlacementKeySchema = z
   .min(1)
   .max(80)
   .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Use a lowercase kebab-case placement key.');
+const SelectorKeySchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(80)
+  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Use a lowercase kebab-case selector key.');
 
 export const CmsCommandSchema = z
   .discriminatedUnion('kind', [
     z.object({
       kind: z.literal('createVariant'),
-      scenarioId: ScenarioIdSchema,
+      scenarioId: TemplateKeySchema,
       name: z.string().trim().min(1).max(100),
+      key: SelectorKeySchema.optional(),
       selector: z.string().trim().min(1).max(2_000),
       priority: z.int().min(1).max(10_000),
       mode: z.enum(['linked', 'empty', 'duplicate']),
       duplicateSourceScopeId: AuthoringScopeSchema.optional(),
+      expectedNormalizedSelector: z.string().trim().min(1).max(2_000).optional(),
+      expectedMatchCount: z.int().min(0).optional(),
+      expectedMatchSetFingerprint: z.string().regex(/^[a-f0-9]{64}$/),
     }),
     z.object({
       kind: z.literal('reviseSelector'),
-      scenarioId: ScenarioIdSchema,
+      scenarioId: TemplateKeySchema,
       scopeId: AuthoringScopeSchema,
       selector: z.string().trim().min(1).max(2_000),
     }),
     z.object({
       kind: z.literal('setVariantPriority'),
-      scenarioId: ScenarioIdSchema,
+      scenarioId: TemplateKeySchema,
       scopeId: AuthoringScopeSchema,
       priority: z.int().min(1).max(10_000),
     }),
     z.object({
       kind: z.literal('addPlacement'),
-      scenarioId: ScenarioIdSchema,
+      scenarioId: TemplateKeySchema,
       scopeId: AuthoringScopeSchema,
       canonicalUrl: CanonicalUrlSchema,
       placementKey: PlacementKeySchema,
-      blockTypeKey: z.enum(['navigation', 'hero', 'hero_alt', 'promo', 'footer']),
+      blockTypeKey: z.enum(['avatar', 'navigation', 'hero', 'hero_alt', 'promo', 'footer']),
       contentJson: JsonObjectTextSchema,
       position: z.enum(['start', 'end', 'before', 'after']).optional(),
       referencePlacementKey: PlacementKeySchema.optional(),
     }),
     z.object({
       kind: z.literal('editPlacement'),
-      scenarioId: ScenarioIdSchema,
+      scenarioId: TemplateKeySchema,
       scopeId: AuthoringScopeSchema,
       canonicalUrl: CanonicalUrlSchema,
       placementKey: PlacementKeySchema,
-      blockTypeKey: z.enum(['navigation', 'hero', 'hero_alt', 'promo', 'footer']),
+      blockTypeKey: z.enum(['avatar', 'navigation', 'hero', 'hero_alt', 'promo', 'footer']),
       contentJson: JsonObjectTextSchema,
     }),
     z.object({
       kind: z.literal('movePlacement'),
-      scenarioId: ScenarioIdSchema,
+      scenarioId: TemplateKeySchema,
       scopeId: AuthoringScopeSchema,
       canonicalUrl: CanonicalUrlSchema,
       placementKey: PlacementKeySchema,
@@ -226,31 +236,31 @@ export const CmsCommandSchema = z
     }),
     z.object({
       kind: z.literal('revertOrder'),
-      scenarioId: ScenarioIdSchema,
+      scenarioId: TemplateKeySchema,
       scopeId: AuthoringScopeSchema,
       canonicalUrl: CanonicalUrlSchema,
     }),
     z.object({
       kind: z.literal('deletePlacement'),
-      scenarioId: ScenarioIdSchema,
+      scenarioId: TemplateKeySchema,
       scopeId: AuthoringScopeSchema,
       canonicalUrl: CanonicalUrlSchema,
       placementKey: PlacementKeySchema,
     }),
     z.object({
       kind: z.literal('revertPlacement'),
-      scenarioId: ScenarioIdSchema,
+      scenarioId: TemplateKeySchema,
       scopeId: AuthoringScopeSchema,
       canonicalUrl: CanonicalUrlSchema,
       placementKey: PlacementKeySchema,
     }),
     z.object({
       kind: z.literal('publish'),
-      scenarioId: ScenarioIdSchema,
+      scenarioId: TemplateKeySchema,
     }),
     z.object({
       kind: z.literal('rollback'),
-      scenarioId: ScenarioIdSchema,
+      scenarioId: TemplateKeySchema,
     }),
   ])
   .superRefine((command, context) => {
@@ -362,7 +372,7 @@ export interface CmsWorkspaceBlockType {
 }
 
 export interface CmsWorkspaceSnapshot {
-  readonly scenarioId: ScenarioId;
+  readonly scenarioId: TemplateKey;
   readonly templateId: string;
   readonly templateName: string;
   readonly pageId: string;

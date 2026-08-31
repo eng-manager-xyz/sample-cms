@@ -2,7 +2,7 @@ import type { Database } from 'bun:sqlite';
 
 import type { CmsDatabaseClient } from './client';
 
-export const CURRENT_SCHEMA_VERSION = 7;
+export const CURRENT_SCHEMA_VERSION = 8;
 
 interface MigrationDefinition {
   version: number;
@@ -49,6 +49,11 @@ const migrationDefinitions: readonly MigrationDefinition[] = [
     version: 7,
     name: '0006_router_service_terminology',
     assetPath: '../drizzle/0006_natural_jubilee.sql',
+  },
+  {
+    version: 8,
+    name: '0007_template_provisioning',
+    assetPath: '../drizzle/0007_template-provisioning.sql',
   },
 ];
 

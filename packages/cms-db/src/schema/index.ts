@@ -52,6 +52,7 @@ export const templateSlots = sqliteTable(
     key: text('key').notNull(),
     label: text('label').notNull(),
     kind: text('kind', { enum: ['static', 'variable', 'derived'] }).notNull(),
+    variableKind: text('variable_kind', { enum: ['locale', 'slug'] }),
     pathPosition: integer('path_position'),
     staticValue: text('static_value'),
     valueType: text('value_type', { enum: ['string', 'integer', 'boolean'] })
@@ -78,6 +79,12 @@ export const templateSlots = sqliteTable(
         (${table.kind} = 'static' and ${table.pathPosition} is not null and ${table.staticValue} is not null)
         or (${table.kind} = 'variable' and ${table.pathPosition} is not null and ${table.staticValue} is null)
         or (${table.kind} = 'derived' and ${table.pathPosition} is null and ${table.staticValue} is null)
+      )`
+    ),
+    check(
+      'template_slots_variable_kind_shape',
+      sql`${table.variableKind} is null or (
+        ${table.kind} = 'variable' and ${table.variableKind} in ('locale', 'slug')
       )`
     ),
   ]

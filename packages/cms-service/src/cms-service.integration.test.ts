@@ -135,6 +135,15 @@ describe('AUT-517 template, ordered-slot, and page foundation', () => {
   });
 
   test('normalizes canonical domains and freezes route grammar once pages exist', () => {
+    expect(() =>
+      service.createTemplate({
+        id: 'tpl-domain-with-port',
+        key: 'domain-with-port',
+        name: 'Domain with port',
+        domain: 'catalog.example.test:443',
+        urlPattern: '/{locale}/shops/{item_id}',
+      })
+    ).toThrow('bare host names');
     service.createTemplate({
       id: 'tpl-domain-normalized',
       key: 'domain-normalized',

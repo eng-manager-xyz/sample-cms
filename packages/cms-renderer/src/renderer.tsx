@@ -23,6 +23,8 @@ export interface CmsRenderedBlockProps {
 
 type CmsRenderedBlockComponent = ComponentType<CmsRenderedBlockProps>;
 
+const CONTENT_WORD_SEPARATOR = /\s+/u;
+
 function contentText(
   content: Readonly<Record<string, unknown>>,
   key: string,
@@ -59,6 +61,30 @@ function AuteurMark() {
       <span />
       <span />
     </span>
+  );
+}
+
+function avatarInitials(name: string): string {
+  const words = name.trim().split(CONTENT_WORD_SEPARATOR);
+  const firstInitial = Array.from(words.at(0) ?? '')[0] ?? 'A';
+  const lastInitial = words.length > 1 ? (Array.from(words.at(-1) ?? '')[0] ?? '') : '';
+  return `${firstInitial}${lastInitial}`.toUpperCase();
+}
+
+function AvatarBlock({ placement }: CmsRenderedBlockProps) {
+  const name = contentText(placement.content, 'name', 'Auteur contributor');
+  const role = contentText(placement.content, 'role', 'Local content guide');
+  return (
+    <section className="site-avatar" data-placement={placement.placementKey}>
+      <div className="site-avatar__monogram" aria-hidden="true">
+        <span>{avatarInitials(name)}</span>
+      </div>
+      <div className="site-avatar__copy">
+        <p className="site-eyebrow">Featured contributor</p>
+        <h2>{name}</h2>
+        <p>{role}</p>
+      </div>
+    </section>
   );
 }
 
@@ -221,6 +247,7 @@ export function CmsUnknownBlock({ placement }: CmsRenderedBlockProps) {
 
 const cmsRenderedBlockRegistry = {
   navigation: NavigationBlock,
+  avatar: AvatarBlock,
   hero: HeroBlock,
   hero_alt: HeroAltBlock,
   promo: PromoBlock,

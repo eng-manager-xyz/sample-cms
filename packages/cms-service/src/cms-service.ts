@@ -33,6 +33,12 @@ import {
 
 import { assertBlockContent } from './schema-validation';
 import { adaptStoredSelector, compileApprovedSelector } from './selector-sql';
+import {
+  canonicalUrlForProvisionedValues,
+  iterateTemplateRouteValueBatches,
+  normalizeTemplateDomain,
+  previewTemplateProvisioning,
+} from './template-provisioning';
 import type {
   ApprovedReadSurface,
   ApprovedSelectorField,
@@ -57,6 +63,8 @@ import type {
   PageInput,
   PageRecord,
   PageTagRecord,
+  ProvisionTemplateInput,
+  ProvisionTemplateResult,
   PublicationMetadata,
   PublicationPreflightInput,
   PublicationPreflightIssue,
@@ -72,11 +80,14 @@ import type {
   RouteStatus,
   SelectorPlanStep,
   SelectorPreview,
+  ServeCanonicalResult,
   ServeReadEvidence,
   ServeResult,
   TagInput,
   TagRecord,
   TemplateInput,
+  TemplateProvisioningIssue,
+  TemplateProvisioningPreview,
   TemplateRecord,
   TemplateSlotInput,
   TemplateSlotRecord,
@@ -96,11 +107,18 @@ export type CmsServiceErrorCode =
 
 export class CmsServiceError extends Error {
   readonly code: CmsServiceErrorCode;
+  readonly issues: readonly TemplateProvisioningIssue[];
 
-  constructor(code: CmsServiceErrorCode, message: string) {
-    super(message);
+  constructor(
+    code: CmsServiceErrorCode,
+    message: string,
+    issues: readonly TemplateProvisioningIssue[] = [],
+    options?: ErrorOptions
+  ) {
+    super(message, options);
     this.name = 'CmsServiceError';
     this.code = code;
+    this.issues = issues;
   }
 }
 
@@ -123,6 +141,7 @@ interface SlotRow {
   key: string;
   label: string;
   kind: TemplateSlotInput['kind'];
+  variableKind: 'locale' | 'slug' | null;
   pathPosition: number | null;
   staticValue: string | null;
   valueType: 'string' | 'integer' | 'boolean';
@@ -293,7 +312,8 @@ const templateSelect = `
 
 const slotSelect = `
   SELECT id, template_id AS templateId, key, label, kind, path_position AS pathPosition,
-         static_value AS staticValue, value_type AS valueType, is_required AS isRequired,
+         variable_kind AS variableKind, static_value AS staticValue,
+         value_type AS valueType, is_required AS isRequired,
          created_at AS createdAt
   FROM template_slots
 `;
@@ -305,6 +325,28 @@ const pageSelect = `
          slot_value_hash AS slotValueHash, context_json AS contextJson,
          created_at AS createdAt, updated_at AS updatedAt
   FROM page_instances
+`;
+
+const PROVISIONING_WRITE_BATCH_SIZE = 500;
+
+const provisionPageInsertSql = `
+  INSERT INTO page_instances (
+    id, template_id, canonical_url, route_external_id, route_status, route_revision,
+    last_ingestion_id, slot_value_hash, context_json, created_at, updated_at
+  ) VALUES (?, ?, ?, ?, 'live', ?, ?, ?, ?, ?, ?)
+`;
+
+const provisionSlotValueInsertSql = `
+  INSERT INTO page_slot_values (
+    page_instance_id, template_id, slot_id, value, normalized_value, created_at
+  ) VALUES (?, ?, ?, ?, ?, ?)
+`;
+
+const provisionAuditInsertSql = `
+  INSERT INTO route_audit_log (
+    id, ingestion_id, page_instance_id, route_external_id, canonical_url,
+    action, previous_status, next_status, detail_json, created_at
+  ) VALUES (?, ?, ?, ?, ?, 'insert', NULL, 'live', ?, ?)
 `;
 
 const tagSelect = `
@@ -336,6 +378,27 @@ const serveSql = `
    AND documents.page_instance_id = pages.id
    AND documents.publication_id = current.publication_id
   WHERE pages.template_id = ? AND pages.canonical_url = ?
+`;
+
+const canonicalServeSql = `
+  SELECT templates.id AS templateId, templates.key AS templateKey,
+         templates.name AS templateName, templates.domain AS templateDomain,
+         pages.route_status AS currentRouteStatus,
+         current.publication_id AS publicationId,
+         documents.page_instance_id AS pageInstanceId,
+         documents.manifest_id AS manifestId,
+         documents.document_hash AS documentHash,
+         documents.rendered_document_json AS renderedDocumentJson,
+         documents.resolved_data_json AS resolvedDataJson
+  FROM templates
+  JOIN page_instances AS pages ON pages.template_id = templates.id
+  LEFT JOIN current_publications AS current
+    ON current.template_id = pages.template_id
+  LEFT JOIN published_page_documents AS documents
+    ON documents.template_id = pages.template_id
+   AND documents.page_instance_id = pages.id
+   AND documents.publication_id = current.publication_id
+  WHERE templates.domain = ? AND pages.canonical_url = ?
 `;
 
 const publishedManifestSql = `
@@ -466,13 +529,8 @@ const parsePublishedDocumentJson = (value: string): PublishedDocument => {
 const stringifyJson = (value: JsonValue): string => JSON.stringify(value);
 
 const normalizeDomain = (domain: string): string => {
-  const normalized = domain.normalize('NFKC').trim().toLowerCase();
-  if (
-    normalized.length === 0 ||
-    normalized.includes('://') ||
-    normalized.includes('/') ||
-    /\s/.test(normalized)
-  ) {
+  const normalized = normalizeTemplateDomain(domain);
+  if (normalized === null) {
     throw new CmsServiceError('INVALID_INPUT', 'Template domains must be bare host names.');
   }
   return normalized;
@@ -492,6 +550,49 @@ const normalizeSourceObservedAt = (observedAt: string | undefined): string => {
     );
   }
   return new Date(milliseconds).toISOString();
+};
+
+const provisioningConstraintIssues = (
+  error: unknown,
+  fallbackPath: string,
+  canonicalUrl: string | null
+): readonly TemplateProvisioningIssue[] => {
+  const detail = error instanceof Error ? error.message : String(error);
+  const issue = (path: string, message: string): readonly TemplateProvisioningIssue[] => [
+    { path, code: 'collision', message },
+  ];
+  if (detail.includes('templates.id')) {
+    return issue('template.id', 'Template ID is already in use.');
+  }
+  if (detail.includes('templates.key')) {
+    return issue('template.key', 'Template key is already in use.');
+  }
+  if (detail.includes('templates.domain, templates.url_pattern')) {
+    return issue(
+      'template.domain',
+      'Template domain and derived URL grammar already identify another template.'
+    );
+  }
+  if (detail.includes('template_slots.id')) {
+    return issue(`${fallbackPath}.id`, 'Slot ID is already in use.');
+  }
+  if (detail.includes('template_slots.template_id, template_slots.key')) {
+    return issue(`${fallbackPath}.key`, 'Slot key is duplicated in this template.');
+  }
+  if (detail.includes('template_slots.template_id, template_slots.path_position')) {
+    return issue(`${fallbackPath}.pathPosition`, 'Slot position is duplicated in this template.');
+  }
+  if (
+    detail.includes('page_instances.') ||
+    detail.includes('canonical domain and path already map to another page instance')
+  ) {
+    const location = canonicalUrl ? ` at "${canonicalUrl}"` : '';
+    return issue(fallbackPath, `Generated route${location} collides with an existing page.`);
+  }
+  if (detail.includes('variants.id') || detail.includes('variant_revisions.id')) {
+    return issue('template.id', 'Template ID collides with derived default-layer identity.');
+  }
+  return issue(fallbackPath, 'Template provisioning could not persist this unique identity.');
 };
 
 const sourceOperationKey = (
@@ -593,6 +694,282 @@ export class CmsService {
     });
   }
 
+  private templateProvisioningIdentityIssues(
+    input: ProvisionTemplateInput,
+    preview: TemplateProvisioningPreview
+  ): readonly TemplateProvisioningIssue[] {
+    const issues: TemplateProvisioningIssue[] = [];
+    const templateIdExists = Boolean(
+      this.get<{ id: string }>('SELECT id FROM templates WHERE id = ?', [input.template.id])
+    );
+    if (templateIdExists) {
+      issues.push({
+        path: 'template.id',
+        code: 'collision',
+        message: `Template ID "${input.template.id}" is already in use.`,
+      });
+    }
+    if (this.get<{ id: string }>('SELECT id FROM templates WHERE key = ?', [input.template.key])) {
+      issues.push({
+        path: 'template.key',
+        code: 'collision',
+        message: `Template key "${input.template.key}" is already in use.`,
+      });
+    }
+    if (
+      this.get<{ id: string }>('SELECT id FROM templates WHERE domain = ? AND url_pattern = ?', [
+        preview.normalizedDomain,
+        preview.urlPattern,
+      ])
+    ) {
+      issues.push({
+        path: 'template.domain',
+        code: 'collision',
+        message: 'Template domain and derived URL grammar already identify another template.',
+      });
+    }
+    if (
+      !templateIdExists &&
+      this.get<{ conflict: number }>(
+        `SELECT (
+          EXISTS(SELECT 1 FROM variants WHERE id = ?)
+          OR EXISTS(SELECT 1 FROM variant_revisions WHERE id = ?)
+        ) AS conflict`,
+        [`${input.template.id}:default`, `${input.template.id}:default:r1`]
+      )?.conflict === 1
+    ) {
+      issues.push({
+        path: 'template.id',
+        code: 'collision',
+        message: 'Template ID collides with a derived default-layer identity.',
+      });
+    }
+    if (preview.slots.length > 0) {
+      const existingSlotIds = new Set(
+        this.all<{ id: string }>(
+          `SELECT id FROM template_slots
+           WHERE id IN (${preview.slots.map(() => '?').join(', ')})`,
+          preview.slots.map((slot) => slot.id)
+        ).map((row) => row.id)
+      );
+      for (const [index, slot] of preview.slots.entries()) {
+        if (existingSlotIds.has(slot.id)) {
+          issues.push({
+            path: `slots.${index}.id`,
+            code: 'collision',
+            message: `Slot ID "${slot.id}" is already in use.`,
+          });
+        }
+      }
+    }
+    return issues;
+  }
+
+  provisionTemplate(input: ProvisionTemplateInput): ProvisionTemplateResult {
+    const preview = previewTemplateProvisioning(input);
+    if (!preview.valid) {
+      throw new CmsServiceError(
+        'INVALID_INPUT',
+        `Template provisioning input is invalid: ${preview.errors
+          .slice(0, 3)
+          .map((issue) => issue.message)
+          .join(' ')}`,
+        preview.errors
+      );
+    }
+    const sourceObservedAt = normalizeSourceObservedAt(input.sourceObservedAt);
+    const sourceRevision = canonicalHash({
+      contract: 'cms-template-provisioning-v1',
+      templateId: input.template.id,
+      domain: preview.normalizedDomain,
+      urlPattern: preview.urlPattern,
+      slots: preview.slots.map((slot) => ({
+        id: slot.id,
+        key: slot.key,
+        label: slot.label,
+        kind: slot.kind,
+        variableKind: slot.variableKind,
+        pathPosition: slot.pathPosition,
+        staticValue: slot.staticValue,
+      })),
+      values: { locale: [...preview.values.locale], slug: [...preview.values.slug] },
+    });
+    const ingestionId = `${input.template.id}:provision:${sourceRevision.slice(0, 16)}`;
+    let activeProvisioningPath = 'template';
+    let activeCanonicalUrl: string | null = null;
+    try {
+      return this.transaction(() => {
+        const startedAt = this.now();
+        const identityIssues = this.templateProvisioningIdentityIssues(input, preview);
+        if (identityIssues.length > 0) {
+          throw new CmsServiceError(
+            'CONFLICT',
+            `Template provisioning identities conflict: ${identityIssues
+              .map((issue) => issue.message)
+              .join(' ')}`,
+            identityIssues
+          );
+        }
+        const template = this.createTemplate({
+          ...input.template,
+          domain: preview.normalizedDomain,
+          urlPattern: preview.urlPattern,
+        });
+        for (const [slotIndex, slot] of preview.slots.entries()) {
+          activeProvisioningPath = `slots.${slotIndex}`;
+          this.createTemplateSlot(template.id, {
+            id: slot.id,
+            key: slot.key,
+            label: slot.label,
+            kind: slot.kind,
+            variableKind: slot.variableKind,
+            pathPosition: slot.pathPosition,
+            staticValue: slot.staticValue,
+            valueType: 'string',
+            isRequired: true,
+          });
+        }
+        this.run(
+          `INSERT INTO route_ingestions (
+            id, template_id, source, source_revision, status, checksum, row_count,
+            source_observed_at, started_at, completed_at, created_at
+          ) VALUES (?, ?, 'router_service', ?, 'running', ?, 0, ?, ?, NULL, ?)`,
+          [
+            ingestionId,
+            template.id,
+            sourceRevision,
+            sourceRevision,
+            sourceObservedAt,
+            startedAt,
+            startedAt,
+          ]
+        );
+
+        let rowCount = 0;
+        const pageInsert = this.client.sqlite.prepare<unknown, SQLQueryBindings[]>(
+          provisionPageInsertSql
+        );
+        const slotValueInsert = this.client.sqlite.prepare<unknown, SQLQueryBindings[]>(
+          provisionSlotValueInsertSql
+        );
+        const auditInsert = this.client.sqlite.prepare<unknown, SQLQueryBindings[]>(
+          provisionAuditInsertSql
+        );
+        const auditDetailJson = stringifyJson({
+          source: 'router_service',
+          sourceRevision,
+          sourceObservedAt,
+          outcome: 'inserted',
+        });
+        try {
+          for (const routeBatch of iterateTemplateRouteValueBatches(
+            preview,
+            PROVISIONING_WRITE_BATCH_SIZE
+          )) {
+            for (const routeValues of routeBatch) {
+              activeProvisioningPath = `routes.${rowCount}`;
+              activeCanonicalUrl = canonicalUrlForProvisionedValues(preview.slots, routeValues);
+              const pageId = `page:${canonicalHash([template.id, activeCanonicalUrl])}`;
+              const routeExternalId = `router:${canonicalHash([
+                preview.normalizedDomain,
+                activeCanonicalUrl,
+              ])}`;
+              const slotValues = preview.slots.map((slot) => {
+                const value = routeValues[slot.key] ?? '';
+                return { slotId: slot.id, value, normalized: normalizeMachineValue(value) };
+              });
+              const normalizedSlotValues = Object.fromEntries(
+                preview.slots.map((slot, index) => [slot.key, slotValues[index]?.normalized ?? ''])
+              );
+              pageInsert.run(
+                pageId,
+                template.id,
+                activeCanonicalUrl,
+                routeExternalId,
+                sourceRevision,
+                ingestionId,
+                canonicalHash(normalizedSlotValues),
+                stringifyJson(routeValues),
+                startedAt,
+                startedAt
+              );
+              for (const slotValue of slotValues) {
+                slotValueInsert.run(
+                  pageId,
+                  template.id,
+                  slotValue.slotId,
+                  slotValue.value,
+                  slotValue.normalized,
+                  startedAt
+                );
+              }
+              auditInsert.run(
+                `${ingestionId}:audit:${rowCount.toString().padStart(8, '0')}`,
+                ingestionId,
+                pageId,
+                routeExternalId,
+                activeCanonicalUrl,
+                auditDetailJson,
+                startedAt
+              );
+              rowCount += 1;
+            }
+          }
+        } finally {
+          pageInsert.finalize();
+          slotValueInsert.finalize();
+          auditInsert.finalize();
+        }
+        activeProvisioningPath = 'template';
+        activeCanonicalUrl = null;
+        if (rowCount !== preview.cardinality) {
+          throw new CmsServiceError(
+            'CONFLICT',
+            `Provisioning generated ${rowCount} pages, expected ${preview.cardinality}.`
+          );
+        }
+        this.run(
+          `UPDATE route_ingestions
+           SET status = 'succeeded', row_count = ?, completed_at = ?
+           WHERE template_id = ? AND id = ?`,
+          [rowCount, this.now(), template.id, ingestionId]
+        );
+        this.interpolationAllowedRootsCache.delete(template.id);
+        const defaultVariant = this.listVariants(template.id).find((variant) => variant.isDefault);
+        if (!defaultVariant) {
+          throw new CmsServiceError(
+            'CONFLICT',
+            'Template provisioning did not retain its required default variant.'
+          );
+        }
+        return {
+          template,
+          defaultVariant,
+          slots: this.listTemplateSlots(template.id),
+          ingestionId,
+          sourceRevision,
+          rowCount,
+          approvedReadSurface: this.getApprovedReadSurface(template.id),
+        };
+      });
+    } catch (error) {
+      if (error instanceof CmsServiceError) {
+        throw error;
+      }
+      const issues = provisioningConstraintIssues(
+        error,
+        activeProvisioningPath,
+        activeCanonicalUrl
+      );
+      throw new CmsServiceError(
+        'CONFLICT',
+        `${issues.map((issue) => issue.message).join(' ')} No template data was committed.`,
+        issues,
+        { cause: error }
+      );
+    }
+  }
+
   getTemplate(templateId: string): TemplateRecord | null {
     return this.get<TemplateRow>(`${templateSelect} WHERE id = ?`, [templateId]);
   }
@@ -666,17 +1043,19 @@ export class CmsService {
 
   createTemplateSlot(templateId: string, input: TemplateSlotInput): TemplateSlotRecord {
     this.requireTemplate(templateId, true);
+    this.assertTemplateSlotsMutable(templateId);
     this.run(
       `INSERT INTO template_slots (
-        id, template_id, key, label, kind, path_position, static_value,
+        id, template_id, key, label, kind, variable_kind, path_position, static_value,
         value_type, is_required, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         input.id,
         templateId,
         input.key,
         input.label,
         input.kind,
+        input.variableKind ?? null,
         input.pathPosition ?? null,
         input.staticValue ?? null,
         input.valueType ?? 'string',
@@ -699,6 +1078,19 @@ export class CmsService {
     return { ...row, isRequired: row.isRequired === 1 };
   }
 
+  private assertTemplateSlotsMutable(templateId: string): void {
+    const page = this.get<{ id: string }>(
+      'SELECT id FROM page_instances WHERE template_id = ? LIMIT 1',
+      [templateId]
+    );
+    if (page) {
+      throw new CmsServiceError(
+        'CONFLICT',
+        'Template slots are frozen after canonical pages exist.'
+      );
+    }
+  }
+
   listTemplateSlots(templateId: string): readonly TemplateSlotRecord[] {
     this.requireTemplate(templateId);
     return this.all<SlotRow>(
@@ -715,16 +1107,18 @@ export class CmsService {
     input: Omit<TemplateSlotInput, 'id'>
   ): TemplateSlotRecord {
     this.requireTemplate(templateId, true);
+    this.assertTemplateSlotsMutable(templateId);
     this.requireSlot(templateId, slotId);
     this.run(
       `UPDATE template_slots
-       SET key = ?, label = ?, kind = ?, path_position = ?, static_value = ?,
+       SET key = ?, label = ?, kind = ?, variable_kind = ?, path_position = ?, static_value = ?,
            value_type = ?, is_required = ?
        WHERE template_id = ? AND id = ?`,
       [
         input.key,
         input.label,
         input.kind,
+        input.variableKind ?? null,
         input.pathPosition ?? null,
         input.staticValue ?? null,
         input.valueType ?? 'string',
@@ -739,6 +1133,7 @@ export class CmsService {
 
   deleteTemplateSlot(templateId: string, slotId: string): void {
     this.requireTemplate(templateId, true);
+    this.assertTemplateSlotsMutable(templateId);
     this.requireSlot(templateId, slotId);
     this.run('DELETE FROM template_slots WHERE template_id = ? AND id = ?', [templateId, slotId]);
     this.interpolationAllowedRootsCache.delete(templateId);
@@ -1651,10 +2046,15 @@ export class CmsService {
       },
     ];
     const slots = this.listTemplateSlots(templateId);
-    const namespaces = this.all<{ namespace: string }>(
-      'SELECT DISTINCT namespace FROM tags WHERE template_id = ? ORDER BY namespace',
-      [templateId]
-    ).map((row) => row.namespace);
+    const namespaces = [
+      ...new Set([
+        'tags',
+        ...this.all<{ namespace: string }>(
+          'SELECT DISTINCT namespace FROM tags WHERE template_id = ? ORDER BY namespace',
+          [templateId]
+        ).map((row) => row.namespace),
+      ]),
+    ].sort((left, right) => left.localeCompare(right));
     const reserved = new Set(builtins.map((field) => field.name));
     const slotKeys = new Set(slots.map((slot) => slot.key));
     const tagKeys = new Set(namespaces);
@@ -4676,6 +5076,12 @@ export class CmsService {
     return materializationMode === 'expanded' ? [serveSql] : [serveSql, publishedManifestSql];
   }
 
+  getCanonicalServeReadQueryTexts(materializationMode: 'manifest' | 'expanded'): readonly string[] {
+    return materializationMode === 'expanded'
+      ? [canonicalServeSql]
+      : [canonicalServeSql, publishedManifestSql];
+  }
+
   private assertPublicationMaterialization(
     templateId: string,
     publicationId: string,
@@ -4921,6 +5327,119 @@ export class CmsService {
           ),
     };
     return {
+      result,
+      materializationMode,
+      sqlQueryCount: row.renderedDocumentJson ? 1 : 2,
+      selectorSqlExecutions: 0,
+      celEvaluations: 0,
+      elapsedMilliseconds: performance.now() - startedAt,
+    };
+  }
+
+  serveCanonicalWithEvidence(canonicalHost: string, canonicalUrl: string): ServeCanonicalResult {
+    if (
+      !canonicalUrl.startsWith('/') ||
+      canonicalUrl.includes('?') ||
+      canonicalUrl.includes('#') ||
+      canonicalUrl.includes('//')
+    ) {
+      throw new CmsServiceError(
+        'INVALID_INPUT',
+        'Canonical serving requires one absolute path without query parameters or fragments.'
+      );
+    }
+    const domain = normalizeDomain(canonicalHost);
+    const startedAt = performance.now();
+    const row = this.get<{
+      templateId: string;
+      templateKey: string;
+      templateName: string;
+      templateDomain: string;
+      currentRouteStatus: RouteStatus;
+      publicationId: string | null;
+      pageInstanceId: string | null;
+      manifestId: string | null;
+      documentHash: string | null;
+      renderedDocumentJson: string | null;
+      resolvedDataJson: string | null;
+    }>(canonicalServeSql, [domain, canonicalUrl]);
+    if (!row) {
+      return {
+        template: null,
+        result: { status: 404, reason: 'missing' },
+        materializationMode: null,
+        sqlQueryCount: 1,
+        selectorSqlExecutions: 0,
+        celEvaluations: 0,
+        elapsedMilliseconds: performance.now() - startedAt,
+      };
+    }
+    const template = {
+      id: row.templateId,
+      key: row.templateKey,
+      name: row.templateName,
+      domain: row.templateDomain,
+    };
+    const materializationMode = row.renderedDocumentJson
+      ? ('expanded' as const)
+      : row.manifestId
+        ? ('manifest' as const)
+        : null;
+    if (row.currentRouteStatus === 'archived') {
+      return {
+        template,
+        result: { status: 404, reason: 'archived' },
+        materializationMode,
+        sqlQueryCount: 1,
+        selectorSqlExecutions: 0,
+        celEvaluations: 0,
+        elapsedMilliseconds: performance.now() - startedAt,
+      };
+    }
+    if (row.currentRouteStatus === 'not_live') {
+      return {
+        template,
+        result: { status: 404, reason: 'not_live' },
+        materializationMode,
+        sqlQueryCount: 1,
+        selectorSqlExecutions: 0,
+        celEvaluations: 0,
+        elapsedMilliseconds: performance.now() - startedAt,
+      };
+    }
+    if (
+      !row.publicationId ||
+      !row.pageInstanceId ||
+      !row.manifestId ||
+      !row.documentHash ||
+      !row.resolvedDataJson
+    ) {
+      return {
+        template,
+        result: { status: 404, reason: 'unpublished' },
+        materializationMode,
+        sqlQueryCount: 1,
+        selectorSqlExecutions: 0,
+        celEvaluations: 0,
+        elapsedMilliseconds: performance.now() - startedAt,
+      };
+    }
+    const result: ServeResult = {
+      status: 200,
+      publicationId: row.publicationId,
+      canonicalUrl,
+      documentHash: row.documentHash,
+      document: row.renderedDocumentJson
+        ? parsePublishedDocumentJson(row.renderedDocumentJson)
+        : this.renderPublishedManifest(
+            row.templateId,
+            row.pageInstanceId,
+            row.manifestId,
+            row.resolvedDataJson
+          ),
+    };
+    return {
+      template,
       result,
       materializationMode,
       sqlQueryCount: row.renderedDocumentJson ? 1 : 2,

@@ -1,17 +1,33 @@
 import * as z from 'zod';
 
-export const PublicScenarioIdSchema = z.enum(['stores', 'eligible-vehicles', 'structural-proof']);
+const TEMPLATE_KEY_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const CANONICAL_PATH_PATTERN =
+  /^(?:\/|\/(?:[A-Za-z0-9.!_~*'()-]|%[0-9A-Fa-f]{2})+(?:\/(?:[A-Za-z0-9.!_~*'()-]|%[0-9A-Fa-f]{2})+)*)$/;
+
+export const PublicTemplateKeySchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(80)
+  .regex(TEMPLATE_KEY_PATTERN, 'Use a lowercase kebab-case template key.');
+
+// Keep the existing presentation-field name while allowing any safe template key.
+export const PublicScenarioIdSchema = PublicTemplateKeySchema;
 export type PublicScenarioId = z.infer<typeof PublicScenarioIdSchema>;
 
+export const PublicCanonicalPathSchema = z.string().min(1).refine(isSafeCanonicalPath, {
+  error: 'Use one absolute canonical path with valid percent-encoded segments.',
+});
+
 export const PublicPageRequestSchema = z.strictObject({
-  canonicalUrl: z.string().regex(/^\/[A-Za-z0-9/_-]+$/),
+  canonicalUrl: PublicCanonicalPathSchema,
 });
 
 export interface PublicTemplateMatch {
   readonly scenarioId: PublicScenarioId;
   readonly templateId: string;
   readonly label: string;
-  readonly canonicalHost: 'www.uber.com' | 'www.ubereats.com';
+  readonly canonicalHost: string;
 }
 
 interface PublicTemplatePattern extends PublicTemplateMatch {
@@ -45,6 +61,30 @@ const publicTemplatePatterns: readonly PublicTemplatePattern[] = [
     expression: new RegExp(`^/${localeSegment}/airport/[a-z0-9]+(?:-[a-z0-9]+)*$`),
   },
 ] as const;
+
+function isSafeCanonicalPath(path: string): boolean {
+  if (!CANONICAL_PATH_PATTERN.test(path) || path === '/') return path === '/';
+  for (const segment of path.slice(1).split('/')) {
+    let decoded: string;
+    try {
+      decoded = decodeURIComponent(segment);
+    } catch {
+      return false;
+    }
+    if (decoded === '.' || decoded === '..' || hasUnsafeDecodedPathCharacter(decoded)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function hasUnsafeDecodedPathCharacter(value: string): boolean {
+  for (const character of value) {
+    const codeUnit = character.charCodeAt(0);
+    if (character === '/' || character === '\\' || codeUnit <= 31 || codeUnit === 127) return true;
+  }
+  return false;
+}
 
 export const representativePages = [
   {
@@ -84,7 +124,8 @@ export const publicRenderPolicy = {
 
 export function canonicalPathFromSplat(splat: string | undefined): string {
   if (!splat) return '/';
-  return `/${splat.replace(/^\/+/, '')}`;
+  const decodedSegments = splat.replace(/^\/+/, '').split('/');
+  return `/${decodedSegments.map((segment) => encodeURIComponent(segment)).join('/')}`;
 }
 
 export function resolvePublicTemplate(canonicalUrl: string): PublicTemplateMatch | null {
@@ -100,9 +141,18 @@ export function resolvePublicTemplate(canonicalUrl: string): PublicTemplateMatch
   return null;
 }
 
-function hostnameWithoutPort(host: string): string {
-  if (host.startsWith('[')) return host.slice(1, host.indexOf(']'));
-  return host.split(':', 1)[0]?.toLowerCase() ?? '';
+export function hostnameWithoutPort(host: string): string {
+  const normalized = host.normalize('NFKC').trim().toLowerCase();
+  if (normalized.startsWith('[')) {
+    const closingBracket = normalized.indexOf(']');
+    return closingBracket > 1 ? normalized.slice(1, closingBracket) : '';
+  }
+  return normalized.split(':', 1)[0] ?? '';
+}
+
+export function isLocalRequestHost(host: string): boolean {
+  const hostname = hostnameWithoutPort(host);
+  return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';
 }
 
 export function publicHostMatchesTemplate(
@@ -112,7 +162,7 @@ export function publicHostMatchesTemplate(
   allowLocalhost = false
 ): boolean {
   const hostname = hostnameWithoutPort(host);
-  const isLocal = hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';
+  const isLocal = isLocalRequestHost(host);
   if (isLocal && (nodeEnv !== 'production' || allowLocalhost)) return true;
   return hostname === template.canonicalHost;
 }

@@ -196,6 +196,19 @@ describe('preview request isolation', () => {
     ).toBe(false);
   });
 
+  test('accepts a percent-encoded canonical segment for a newly created template key', () => {
+    const canonicalUrl = '/en-US/contributors/Jos%C3%A9%20Silva';
+    expect(PreviewPageRequestSchema.parse({ canonicalUrl })).toEqual({ canonicalUrl });
+
+    const page = createPreviewPageViewModel({
+      scenarioId: 'author-profile',
+      canonicalUrl,
+      draft: { ...draft, page: { ...draft.page, canonicalUrl } },
+    });
+    expect(page.scenarioId).toBe('author-profile');
+    expect(PreviewPageViewModelSchema.parse(page)).toEqual(page);
+  });
+
   test('allows local development and fails closed in production until explicitly enabled', () => {
     const template = resolvePublicTemplate('/en-US/store/1001');
     if (!template) throw new Error('Expected the Store template.');

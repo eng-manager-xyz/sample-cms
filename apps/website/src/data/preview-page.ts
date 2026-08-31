@@ -1,5 +1,6 @@
 import * as z from 'zod';
 import {
+  PublicCanonicalPathSchema,
   PublicScenarioIdSchema,
   type PublicTemplateMatch,
   publicHostMatchesTemplate,
@@ -8,7 +9,7 @@ import {
 const JsonObjectSchema = z.record(z.string(), z.json());
 
 export const PreviewPageRequestSchema = z.strictObject({
-  canonicalUrl: z.string().regex(/^\/[A-Za-z0-9/_-]+$/),
+  canonicalUrl: PublicCanonicalPathSchema,
 });
 
 const AuthoringSourceSchema = z.strictObject({

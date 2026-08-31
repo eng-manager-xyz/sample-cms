@@ -17,6 +17,8 @@ const firstPage: ContentExplorerPage = {
   segments: ['en-US', 'store', '1001'],
   publicationState: 'published',
   documentHash: 'hash-1',
+  slotValues: { locale: 'en-US', store: 'store', store_id: '1001' },
+  tags: [],
 };
 
 const deepLinkedPage: ContentExplorerPage = {

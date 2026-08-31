@@ -12,6 +12,12 @@ test('the authoring-contract migrations upgrade populated schema-v1 rows safely'
       INSERT INTO templates (id, key, name, url_pattern)
       VALUES ('legacy-template', 'legacy', 'Legacy', '/{slug}');
 
+      INSERT INTO template_slots (
+        id, template_id, key, label, kind, path_position, value_type, is_required
+      ) VALUES (
+        'legacy-slot-slug', 'legacy-template', 'slug', 'Slug', 'variable', 0, 'string', 1
+      );
+
       INSERT INTO route_ingestions (
         id, template_id, source_revision, status, checksum, row_count,
         started_at, completed_at, created_at
@@ -66,6 +72,7 @@ test('the authoring-contract migrations upgrade populated schema-v1 rows safely'
     sqlite.exec(await readMigration('0004_selector-validation-and-preview-metadata.sql'));
     sqlite.exec(await readMigration('0005_route-source-observed-at.sql'));
     sqlite.exec(await readMigration('0006_natural_jubilee.sql'));
+    sqlite.exec(await readMigration('0007_template-provisioning.sql'));
 
     expect(
       sqlite
@@ -116,6 +123,24 @@ test('the authoring-contract migrations upgrade populated schema-v1 rows safely'
         )
         .get()
     ).toEqual({ source: 'router_service' });
+    expect(
+      sqlite
+        .query<{ variableKind: string | null }, []>(
+          `SELECT variable_kind AS variableKind
+           FROM template_slots WHERE template_id = 'legacy-template' AND key = 'slug'`
+        )
+        .get()
+    ).toEqual({ variableKind: 'slug' });
+    expect(
+      sqlite
+        .query<{ schema: string }, []>(
+          `SELECT schema_json AS schema FROM block_types WHERE key = 'avatar'`
+        )
+        .get()
+    ).toEqual({
+      schema:
+        '{"type":"object","required":["name","role"],"properties":{"name":{"type":"string","minLength":1},"role":{"type":"string","minLength":1}},"additionalProperties":false}',
+    });
 
     expect(() =>
       sqlite.exec(`
@@ -159,6 +184,27 @@ test('the authoring-contract migrations upgrade populated schema-v1 rows safely'
         WHERE id = 'legacy-ingestion'
       `)
     ).toThrow('source-observed timestamps are immutable');
+    expect(() =>
+      sqlite.exec(`
+        INSERT INTO template_slots (
+          id, template_id, key, label, kind, variable_kind, path_position,
+          static_value, value_type, is_required
+        ) VALUES (
+          'late-slot', 'legacy-template', 'late', 'Late', 'static', NULL, 1,
+          'late', 'string', 1
+        )
+      `)
+    ).toThrow('template slots are frozen');
+    expect(() =>
+      sqlite.exec(`
+        UPDATE template_slots SET label = 'Changed' WHERE id = 'legacy-slot-slug'
+      `)
+    ).toThrow('template slots are frozen');
+    expect(() =>
+      sqlite.exec(`
+        DELETE FROM template_slots WHERE id = 'legacy-slot-slug'
+      `)
+    ).toThrow('template slots are frozen');
   } finally {
     sqlite.close();
   }

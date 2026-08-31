@@ -15,12 +15,12 @@ INSERT OR IGNORE INTO templates (
 );
 
 INSERT OR IGNORE INTO template_slots (
-  id, template_id, key, label, kind, path_position, static_value, value_type, is_required, created_at
+  id, template_id, key, label, kind, variable_kind, path_position, static_value, value_type, is_required, created_at
 ) VALUES
-  ('slot-store-locale', 'tpl-store', 'locale', 'Locale', 'variable', 0, NULL, 'string', 1, '2026-01-01T00:00:00.000Z'),
-  ('slot-store-static', 'tpl-store', 'store', 'Store path', 'static', 1, 'store', 'string', 1, '2026-01-01T00:00:00.000Z'),
-  ('slot-store-id', 'tpl-store', 'store_id', 'Store ID', 'variable', 2, NULL, 'integer', 1, '2026-01-01T00:00:00.000Z'),
-  ('slot-store-name', 'tpl-store', 'store_name', 'Store name', 'derived', NULL, NULL, 'string', 1, '2026-01-01T00:00:00.000Z');
+  ('slot-store-locale', 'tpl-store', 'locale', 'Locale', 'variable', 'locale', 0, NULL, 'string', 1, '2026-01-01T00:00:00.000Z'),
+  ('slot-store-static', 'tpl-store', 'store', 'Store path', 'static', NULL, 1, 'store', 'string', 1, '2026-01-01T00:00:00.000Z'),
+  ('slot-store-id', 'tpl-store', 'store_id', 'Store ID', 'variable', NULL, 2, NULL, 'integer', 1, '2026-01-01T00:00:00.000Z'),
+  ('slot-store-name', 'tpl-store', 'store_name', 'Store name', 'derived', NULL, NULL, NULL, 'string', 1, '2026-01-01T00:00:00.000Z');
 
 INSERT OR IGNORE INTO route_ingestions (
   id, template_id, source, source_revision, status, checksum, row_count,
@@ -132,7 +132,8 @@ INSERT OR IGNORE INTO block_types (
   ('block-type-navigation', 'navigation', 'Navigation', 1, '{"type":"object","required":["label"]}', '{"kind":"wireframe","component":"navigation"}', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z'),
   ('block-type-hero', 'hero', 'Hero', 1, '{"type":"object","required":["headline"]}', '{"kind":"wireframe","component":"hero"}', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z'),
   ('block-type-promo', 'promo', 'Promotion', 1, '{"type":"object","required":["message"]}', '{"kind":"wireframe","component":"promo"}', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z'),
-  ('block-type-footer', 'footer', 'Footer', 1, '{"type":"object","required":["legal"]}', '{"kind":"wireframe","component":"footer"}', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z');
+  ('block-type-footer', 'footer', 'Footer', 1, '{"type":"object","required":["legal"]}', '{"kind":"wireframe","component":"footer"}', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z'),
+  ('block-type-avatar', 'avatar', 'Avatar', 1, '{"type":"object","required":["name","role"],"properties":{"name":{"type":"string","minLength":1},"role":{"type":"string","minLength":1}},"additionalProperties":false}', '{"kind":"wireframe","component":"avatar"}', '2026-08-31T00:00:00.000Z', '2026-08-31T00:00:00.000Z');
 
 INSERT OR IGNORE INTO block_lineages (
   id, template_id, key, label, created_at

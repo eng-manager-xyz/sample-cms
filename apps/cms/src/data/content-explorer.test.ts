@@ -11,7 +11,9 @@ import {
   contentSelectorFocus,
   FixedTemplateSlugSchema,
   selectorIdFromExplorerFocus,
+  TemplatePageTagMutationInputSchema,
   TemplateWorkspaceSearchSchema,
+  templateProvisioningCsvHint,
 } from './content-explorer';
 
 describe('AUT-540 content explorer schemas', () => {
@@ -37,13 +39,10 @@ describe('AUT-540 content explorer schemas', () => {
     expect(selectorIdFromExplorerFocus(encodedFocus)).toBe("seasonal/Québec stores!*'");
   });
 
-  test('allowlists exactly the three provisioned templates', () => {
-    expect(FixedTemplateSlugSchema.options).toEqual([
-      'stores',
-      'eligible-vehicles',
-      'structural-proof',
-    ]);
-    expect(FixedTemplateSlugSchema.safeParse('rogue-template').success).toBe(false);
+  test('accepts database-backed template keys and rejects unsafe route values', () => {
+    expect(FixedTemplateSlugSchema.parse('city-guides')).toBe('city-guides');
+    expect(FixedTemplateSlugSchema.safeParse('Rogue Template').success).toBe(false);
+    expect(FixedTemplateSlugSchema.safeParse('../../template').success).toBe(false);
   });
 
   test('bounds every server page read', () => {
@@ -52,6 +51,28 @@ describe('AUT-540 content explorer schemas', () => {
     ).toBe(true);
     expect(
       ContentExplorerInputSchema.safeParse({ template: 'stores', q: '', limit: 51 }).success
+    ).toBe(false);
+  });
+
+  test('documents exact CSV headers and caps self-serve tag selection at fifty pages', () => {
+    expect(templateProvisioningCsvHint('locale')).toStartWith('Header: locale.');
+    expect(templateProvisioningCsvHint('slug')).toStartWith('Header: slug.');
+    const mutation = {
+      template: 'stores',
+      mode: 'add' as const,
+      values: ['featured'],
+    };
+    expect(
+      TemplatePageTagMutationInputSchema.safeParse({
+        ...mutation,
+        pageIds: Array.from({ length: 50 }, (_, index) => `page-${index}`),
+      }).success
+    ).toBe(true);
+    expect(
+      TemplatePageTagMutationInputSchema.safeParse({
+        ...mutation,
+        pageIds: Array.from({ length: 51 }, (_, index) => `page-${index}`),
+      }).success
     ).toBe(false);
   });
 

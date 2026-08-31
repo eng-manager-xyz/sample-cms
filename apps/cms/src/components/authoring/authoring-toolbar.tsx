@@ -24,6 +24,7 @@ export function AuthoringToolbar({
   publicationTriggerRef,
   onSelectScope,
   onViewSelector,
+  onCreateSelector,
   onClearSelector,
   onReviewPublication,
 }: Readonly<{
@@ -42,6 +43,7 @@ export function AuthoringToolbar({
   publicationTriggerRef: Ref<HTMLButtonElement>;
   onSelectScope: (scopeId: string) => void;
   onViewSelector: () => void;
+  onCreateSelector: () => void;
   onClearSelector: () => void;
   onReviewPublication: () => void;
 }>) {
@@ -57,6 +59,7 @@ export function AuthoringToolbar({
         disabled={scopeDisabled}
         onSelectScope={onSelectScope}
         onViewSelector={onViewSelector}
+        onCreateSelector={onCreateSelector}
         onClearSelector={onClearSelector}
       />
       <span aria-hidden="true" className="mx-0.5 h-4 w-px shrink-0 bg-line" />

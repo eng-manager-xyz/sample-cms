@@ -35,10 +35,13 @@ const RegisteredObjectSchema = z.looseObject({
   properties: z.record(z.string(), JsonSchemaPropertySchema).optional().default({}),
 });
 
+const AuthoringStudioPanelSchema = z.enum(['fields', 'cascade', 'history', 'create-selector']);
+export type AuthoringStudioPanel = z.infer<typeof AuthoringStudioPanelSchema>;
+
 export const AuthoringStudioSearchSchema = z.object({
   canonicalUrl: CanonicalUrlSchema.optional(),
   scopeId: z.string().trim().min(1).max(160).optional(),
-  panel: z.enum(['fields', 'cascade', 'history']).optional(),
+  panel: AuthoringStudioPanelSchema.optional(),
 });
 
 export function authoringTemplateSearch(): z.infer<typeof AuthoringStudioSearchSchema> {
@@ -48,21 +51,24 @@ export function authoringTemplateSearch(): z.infer<typeof AuthoringStudioSearchS
 export function authoringScopeSearch(input: {
   readonly canonicalUrl: string;
   readonly nextScopeId: string;
-  readonly currentPanel: 'fields' | 'cascade' | 'history';
+  readonly currentPanel: AuthoringStudioPanel;
   readonly nextScopeIsDefault: boolean;
 }): z.infer<typeof AuthoringStudioSearchSchema> {
   return AuthoringStudioSearchSchema.parse({
     canonicalUrl: input.canonicalUrl,
     scopeId: input.nextScopeId,
     panel:
-      input.nextScopeIsDefault && input.currentPanel === 'cascade' ? 'fields' : input.currentPanel,
+      input.currentPanel === 'create-selector' ||
+      (input.nextScopeIsDefault && input.currentPanel === 'cascade')
+        ? 'fields'
+        : input.currentPanel,
   });
 }
 
 export function authoringPanelSearch(input: {
   readonly canonicalUrl: string;
   readonly scopeId: string;
-  readonly panel: 'fields' | 'cascade' | 'history';
+  readonly panel: AuthoringStudioPanel;
 }): z.infer<typeof AuthoringStudioSearchSchema> {
   return AuthoringStudioSearchSchema.parse(input);
 }

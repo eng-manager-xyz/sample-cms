@@ -32,6 +32,7 @@ const variants = [
 const callbacks = {
   onSelectScope: () => undefined,
   onViewSelector: () => undefined,
+  onCreateSelector: () => undefined,
   onClearSelector: () => undefined,
 };
 
@@ -51,6 +52,7 @@ describe('AUT-555 AuthoringScopeControl', () => {
     expect(markup).toContain('h-7 px-2 text-[11px]');
     expect(markup).toContain('w-24 shrink-0 font-medium sm:w-36 xl:w-44');
     expect(markup).toContain('template default');
+    expect(markup).toContain('aria-label="Create selector variation"');
     expect(markup).not.toContain('aria-label="View selector');
     expect(markup).not.toContain('Clear Default');
   });

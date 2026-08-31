@@ -1,9 +1,16 @@
 import * as z from 'zod';
 
 export const ScenarioIdSchema = z.enum(['stores', 'eligible-vehicles', 'structural-proof']);
+export const TemplateKeySchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(80)
+  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Use a lowercase kebab-case template key.');
 export const TemplateParamsSchema = z.object({ templateId: z.string().min(1) });
 
 export type ScenarioId = z.infer<typeof ScenarioIdSchema>;
+export type TemplateKey = z.infer<typeof TemplateKeySchema>;
 export type PublicationState = 'Published' | 'Ready to publish' | 'Draft';
 export type ConflictState = 'Clear' | '2 conflicts' | 'Unchecked';
 export type DimensionKind = 'path' | 'derived' | 'tag' | 'static';

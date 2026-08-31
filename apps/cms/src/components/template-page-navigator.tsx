@@ -1,4 +1,4 @@
-import { LockKeyhole, MapPin } from 'lucide-react';
+import { LockKeyhole, MapPin, RotateCcw } from 'lucide-react';
 import { useId } from 'react';
 
 import { Badge } from '@/components/ui/badge';
@@ -188,6 +188,40 @@ function TemplatePageSegmentControls({
   );
 }
 
+function DefaultPageButton({
+  navigation,
+  selectedPage,
+  disabled,
+  compact,
+  onPageChange,
+}: Readonly<{
+  navigation: ContentPageNavigation;
+  selectedPage: ContentPageNavigationOption;
+  disabled: boolean;
+  compact: boolean;
+  onPageChange: (page: ContentPageNavigationOption) => void;
+}>) {
+  const defaultPage = navigation.defaultPage;
+  if (!defaultPage) return null;
+  const isDefault = defaultPage.pageId === selectedPage.pageId;
+  return (
+    <button
+      type="button"
+      aria-label="Go to default preview page"
+      title={isDefault ? 'This is the default preview page' : 'Go to default preview page'}
+      disabled={disabled || isDefault}
+      onClick={() => onPageChange(defaultPage)}
+      className={cn(
+        'inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md border border-line-strong bg-canvas text-ink-muted outline-none transition-colors hover:bg-surface-muted hover:text-ink focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-default disabled:opacity-45',
+        compact ? 'size-7' : 'h-9 px-3 text-xs font-medium'
+      )}
+    >
+      <RotateCcw aria-hidden="true" className="size-3.5" />
+      {compact ? <span className="sr-only">Default</span> : <span>Default</span>}
+    </button>
+  );
+}
+
 export function TemplatePageNavigator({
   navigation,
   canonicalUrl,
@@ -222,14 +256,23 @@ export function TemplatePageNavigator({
 
   if (variant === 'compact') {
     return (
-      <TemplatePageSegmentControls
-        navigation={navigation}
-        selectedPage={selectedPage}
-        disabled={disabled}
-        compact
-        idPrefix={idPrefix}
-        onPageChange={onPageChange}
-      />
+      <div className="flex shrink-0 items-end gap-1">
+        <DefaultPageButton
+          navigation={navigation}
+          selectedPage={selectedPage}
+          disabled={disabled}
+          compact
+          onPageChange={onPageChange}
+        />
+        <TemplatePageSegmentControls
+          navigation={navigation}
+          selectedPage={selectedPage}
+          disabled={disabled}
+          compact
+          idPrefix={idPrefix}
+          onPageChange={onPageChange}
+        />
+      </div>
     );
   }
 
@@ -267,14 +310,23 @@ export function TemplatePageNavigator({
         </div>
       </div>
 
-      <TemplatePageSegmentControls
-        navigation={navigation}
-        selectedPage={selectedPage}
-        disabled={disabled}
-        compact={false}
-        idPrefix={idPrefix}
-        onPageChange={onPageChange}
-      />
+      <div className="mt-3 flex flex-wrap items-end gap-2">
+        <DefaultPageButton
+          navigation={navigation}
+          selectedPage={selectedPage}
+          disabled={disabled}
+          compact={false}
+          onPageChange={onPageChange}
+        />
+        <TemplatePageSegmentControls
+          navigation={navigation}
+          selectedPage={selectedPage}
+          disabled={disabled}
+          compact={false}
+          idPrefix={idPrefix}
+          onPageChange={onPageChange}
+        />
+      </div>
 
       {navigation.truncated ? (
         <p className="mt-2 text-[10px] text-ink-faint">

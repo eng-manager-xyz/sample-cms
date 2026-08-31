@@ -1,7 +1,9 @@
 import { describe, expect, test } from 'bun:test';
 import {
   canonicalPathFromSplat,
+  PublicCanonicalPathSchema,
   PublicPageRequestSchema,
+  PublicScenarioIdSchema,
   publicHostMatchesTemplate,
   publicRenderPolicy,
   representativePages,
@@ -44,6 +46,15 @@ describe('public canonical path mapping', () => {
   test('constructs one absolute canonical path from a TanStack splat', () => {
     expect(canonicalPathFromSplat('en-US/store/1001')).toBe('/en-US/store/1001');
     expect(canonicalPathFromSplat('/en-US/store/1001')).toBe('/en-US/store/1001');
+    expect(canonicalPathFromSplat('en-US/contributors/José Silva')).toBe(
+      '/en-US/contributors/Jos%C3%A9%20Silva'
+    );
+  });
+
+  test('accepts any safe template key as a presentation identifier', () => {
+    expect(PublicScenarioIdSchema.parse('author-profile')).toBe('author-profile');
+    expect(PublicScenarioIdSchema.safeParse('Author Profile').success).toBe(false);
+    expect(PublicScenarioIdSchema.safeParse('author/profile').success).toBe(false);
   });
 });
 
@@ -68,6 +79,27 @@ describe('public delivery policy', () => {
       editable: false,
       acceptsPreviewSearchParams: false,
     });
+  });
+
+  test('accepts persisted percent-encoded segments and rejects unsafe path forms', () => {
+    const canonicalUrl = '/en-US/contributors/Jos%C3%A9%20Silva';
+    expect(PublicCanonicalPathSchema.parse(canonicalUrl)).toBe(canonicalUrl);
+    expect(PublicPageRequestSchema.parse({ canonicalUrl })).toEqual({ canonicalUrl });
+
+    for (const unsafePath of [
+      '/en-US/contributors/Jos%C3%A9%20Silva#bio',
+      '/en-US/contributors/Jos%C3%A9%20Silva?mode=edit',
+      '/en-US/contributors/%ZZ',
+      '/en-US/contributors/%00',
+      '/en-US/contributors/%2Fprivate',
+      '/en-US/contributors/%2E%2E/private',
+      '/en-US/contributors/%C3%28',
+      '/en-US/contributors/../private',
+      '/en-US//contributors',
+      'https://www.uber.com/en-US/contributors/jose',
+    ]) {
+      expect(PublicCanonicalPathSchema.safeParse(unsafePath).success).toBe(false);
+    }
   });
 
   test('allows local development but enforces canonical hosts in production', () => {

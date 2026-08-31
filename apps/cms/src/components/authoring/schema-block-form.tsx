@@ -31,7 +31,7 @@ export const AUTHORING_BLOCK_FORM_ID = 'authoring-block-form';
 
 export interface BlockFormSaveInput {
   readonly placementKey: string;
-  readonly blockTypeKey: 'navigation' | 'hero' | 'hero_alt' | 'promo' | 'footer';
+  readonly blockTypeKey: 'avatar' | 'navigation' | 'hero' | 'hero_alt' | 'promo' | 'footer';
   readonly contentJson: string;
   readonly position?: 'start' | 'end' | 'before' | 'after';
   readonly referencePlacementKey?: string;
@@ -133,6 +133,7 @@ const textareaClassName =
 
 function registeredTypeKey(value: string): BlockFormSaveInput['blockTypeKey'] {
   if (
+    value === 'avatar' ||
     value === 'navigation' ||
     value === 'hero' ||
     value === 'hero_alt' ||

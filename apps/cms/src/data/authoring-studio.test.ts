@@ -35,6 +35,7 @@ describe('AUT-541 schema-driven block form model', () => {
         .success
     ).toBe(false);
     expect(AuthoringStudioSearchSchema.safeParse({ panel: 'sql' }).success).toBe(false);
+    expect(AuthoringStudioSearchSchema.safeParse({ panel: 'create-selector' }).success).toBe(true);
   });
 
   test('uses registered JSON schema properties as the primary field contract', () => {
@@ -507,6 +508,21 @@ describe('AUT-550 selector mode search transitions', () => {
     ).toEqual({
       canonicalUrl: '/en-US/store/1001',
       scopeId: 'variant-store-default',
+      panel: 'fields',
+    });
+  });
+
+  test('selecting an existing variation exits selector creation mode', () => {
+    expect(
+      authoringScopeSearch({
+        canonicalUrl: '/en-US/store/1001',
+        nextScopeId: 'variant-store-fast-food',
+        currentPanel: 'create-selector',
+        nextScopeIsDefault: false,
+      })
+    ).toEqual({
+      canonicalUrl: '/en-US/store/1001',
+      scopeId: 'variant-store-fast-food',
       panel: 'fields',
     });
   });

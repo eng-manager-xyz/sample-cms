@@ -70,6 +70,27 @@ describe('CMS database foundation', () => {
         )
         .get()
     ).toEqual({ renderer: 'hero' });
+    expect(
+      client.sqlite
+        .query<{ schema: string; renderer: string }, []>(
+          `SELECT schema_json AS schema,
+                  json_extract(preview_renderer_json, '$.component') AS renderer
+           FROM block_types WHERE key = 'avatar'`
+        )
+        .get()
+    ).toEqual({
+      schema:
+        '{"type":"object","required":["name","role"],"properties":{"name":{"type":"string","minLength":1},"role":{"type":"string","minLength":1}},"additionalProperties":false}',
+      renderer: 'avatar',
+    });
+    expect(
+      client.sqlite
+        .query<{ variableKind: string | null }, []>(
+          `SELECT variable_kind AS variableKind
+           FROM template_slots WHERE id = 'slot-store-locale'`
+        )
+        .get()
+    ).toEqual({ variableKind: 'locale' });
 
     await seedFoundationDatabase(client);
     const secondHealth = inspectDatabaseHealth(client);
@@ -130,6 +151,17 @@ describe('CMS database foundation', () => {
 
   test('enforces canonical domain-plus-path identity and one default per template', async () => {
     await seedFoundationDatabase(client);
+
+    expect(() =>
+      client.sqlite.exec(`
+        INSERT INTO templates (
+          id, key, name, domain, url_pattern, description, status, route_authority
+        ) VALUES (
+          'tpl-port-domain', 'port-domain', 'Port domain', 'example.test:443',
+          '/{locale}/store/{store_id}', '', 'active', 'router_service'
+        )
+      `)
+    ).toThrow('normalized bare host names');
 
     expect(() =>
       client.sqlite

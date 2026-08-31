@@ -1,17 +1,12 @@
 import { Link, useNavigate } from '@tanstack/react-router';
 import { CheckCircle2, FileClock, FilePenLine, History, Info, ShieldCheck } from 'lucide-react';
 import { useId, useState } from 'react';
-
+import type { AuthoringTemplateOption } from '@/components/authoring/authoring-context-navigation';
 import { Badge } from '@/components/ui/badge';
 import { buttonClassName } from '@/components/ui/button-styles';
 import { Card } from '@/components/ui/card';
 import { Select } from '@/components/ui/select';
-import {
-  type ScenarioFixture,
-  type ScenarioId,
-  ScenarioIdSchema,
-  scenarioFixtures,
-} from '@/data/scenario-fixtures';
+import { type TemplateKey, TemplateKeySchema } from '@/data/scenario-fixtures';
 import type {
   CmsPublicationHistory,
   CmsPublicationHistoryRow,
@@ -61,17 +56,19 @@ function releaseState(row: CmsPublicationHistoryRow): {
 
 export function PublicationContextNavigation({
   scenario,
+  scenarios,
   canonicalUrl,
   releaseCount,
 }: Readonly<{
-  scenario: ScenarioFixture;
+  scenario: AuthoringTemplateOption;
+  scenarios: readonly AuthoringTemplateOption[];
   canonicalUrl: string;
   releaseCount: number;
 }>) {
   const selectId = useId();
   const navigate = useNavigate();
 
-  const chooseTemplate = (scenarioId: ScenarioId) => {
+  const chooseTemplate = (scenarioId: TemplateKey) => {
     void navigate({
       to: '/publications/$templateId',
       params: { templateId: scenarioId },
@@ -94,9 +91,9 @@ export function PublicationContextNavigation({
         className="w-auto max-w-40 shrink-0 font-medium"
         value={scenario.id}
         title="Template"
-        onChange={(event) => chooseTemplate(ScenarioIdSchema.parse(event.currentTarget.value))}
+        onChange={(event) => chooseTemplate(TemplateKeySchema.parse(event.currentTarget.value))}
       >
-        {scenarioFixtures.map((option) => (
+        {scenarios.map((option) => (
           <option key={option.id} value={option.id}>
             {option.name}
           </option>
@@ -117,7 +114,7 @@ export function PublicationContextNavigation({
 export function PublicationHeaderActions({
   scenarioId,
   canonicalUrl,
-}: Readonly<{ scenarioId: ScenarioId; canonicalUrl: string }>) {
+}: Readonly<{ scenarioId: TemplateKey; canonicalUrl: string }>) {
   return (
     <nav aria-label="Template workspace views" className="flex items-center gap-1">
       <Link
@@ -325,7 +322,7 @@ export function PublicationInspection({
   workspace,
   history,
 }: Readonly<{
-  scenario: ScenarioFixture;
+  scenario: AuthoringTemplateOption;
   workspace: CmsWorkspaceSnapshot;
   history: CmsPublicationHistory;
 }>) {

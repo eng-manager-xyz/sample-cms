@@ -55,6 +55,7 @@ for (const sourceRoot of sourceRoots) {
       source.includes("from 'bun:sqlite'") &&
       !file.endsWith('.server.ts') &&
       !file.endsWith('.server.test.ts') &&
+      !file.endsWith('.server.test.tsx') &&
       !file.includes('/src/server-functions/')
     ) {
       errors.push(`${relative(root, file)} imports bun:sqlite outside a server-only boundary`);
@@ -65,6 +66,7 @@ for (const sourceRoot of sourceRoots) {
       /(?:from\s+|import\s*\()['"]@repo\/(?:cms-db|cms-service)['"]/.test(source) &&
       !file.endsWith('.server.ts') &&
       !file.endsWith('.server.test.ts') &&
+      !file.endsWith('.server.test.tsx') &&
       !file.includes('/src/server-functions/')
     ) {
       errors.push(

@@ -9,4 +9,9 @@ export {
   adaptStoredSelector,
   compileApprovedSelector,
 } from './selector-sql';
+export {
+  canonicalUrlForProvisionedValues,
+  iterateTemplateRouteValues,
+  previewTemplateProvisioning,
+} from './template-provisioning';
 export type * from './types';
