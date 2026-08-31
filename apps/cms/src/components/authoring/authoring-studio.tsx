@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from '@tanstack/react-router';
-import { CheckCircle2 } from 'lucide-react';
+import { Link, useNavigate } from '@tanstack/react-router';
+import { CheckCircle2, History } from 'lucide-react';
 import { useReducer, useRef, useState } from 'react';
 import { AppShell } from '@/components/app-shell';
 import { AuthoringContextNavigation } from '@/components/authoring/authoring-context-navigation';
@@ -23,6 +23,7 @@ import type {
   BlockFormSaveInput,
 } from '@/components/authoring/schema-block-form';
 import { SelectorWorkspace } from '@/components/selector-workspace';
+import { buttonClassName } from '@/components/ui/button-styles';
 import {
   authoringLifecycleLabel,
   authoringLifecycleReducer,
@@ -566,33 +567,46 @@ export function AuthoringStudio({
         />
       }
       headerActions={
-        <AuthoringToolbar
-          variants={workspace.variants}
-          selectedScopeId={workspace.scopeId}
-          scopeDisabled={pending || hasUnsavedForm}
-          lifecycleAnnouncement={lifecycle.announcement}
-          saveDisabled={
-            formActionsDisabled ||
-            documentInspectorTab !== 'fields' ||
-            selectorMode ||
-            !hasEditableForm ||
-            !canSaveDraft(lifecycle)
-          }
-          savePending={mutation.isPending}
-          saveTitle={saveTitle}
-          {...(previewHref ? { previewHref } : {})}
-          previewUnavailableTitle={unavailableOriginMessage}
-          reviewDisabled={pending || !canReviewPublication(lifecycle)}
-          reviewPending={preflightMutation.isPending}
-          reviewTitle={reviewTitle}
-          publicationTriggerRef={publicationTriggerRef}
-          onSelectScope={chooseScope}
-          onViewSelector={viewSelector}
-          onClearSelector={() => {
-            if (defaultVariant) chooseScope(defaultVariant.id);
-          }}
-          onReviewPublication={reviewPublication}
-        />
+        <div className="flex items-center gap-1">
+          <AuthoringToolbar
+            variants={workspace.variants}
+            selectedScopeId={workspace.scopeId}
+            scopeDisabled={pending || hasUnsavedForm}
+            lifecycleAnnouncement={lifecycle.announcement}
+            saveDisabled={
+              formActionsDisabled ||
+              documentInspectorTab !== 'fields' ||
+              selectorMode ||
+              !hasEditableForm ||
+              !canSaveDraft(lifecycle)
+            }
+            savePending={mutation.isPending}
+            saveTitle={saveTitle}
+            {...(previewHref ? { previewHref } : {})}
+            previewUnavailableTitle={unavailableOriginMessage}
+            reviewDisabled={pending || !canReviewPublication(lifecycle)}
+            reviewPending={preflightMutation.isPending}
+            reviewTitle={reviewTitle}
+            publicationTriggerRef={publicationTriggerRef}
+            onSelectScope={chooseScope}
+            onViewSelector={viewSelector}
+            onClearSelector={() => {
+              if (defaultVariant) chooseScope(defaultVariant.id);
+            }}
+            onReviewPublication={reviewPublication}
+          />
+          <span aria-hidden="true" className="mx-0.5 h-4 w-px shrink-0 bg-line" />
+          <Link
+            to="/publications/$templateId"
+            params={{ templateId: scenario.id }}
+            search={{ canonicalUrl: workspace.canonicalUrl }}
+            aria-label="Open release history"
+            title="Open release history"
+            className={buttonClassName({ variant: 'outline', size: 'icon-sm' })}
+          >
+            <History aria-hidden="true" className="size-4" />
+          </Link>
+        </div>
       }
     >
       <div className="min-h-0" aria-busy={pending}>

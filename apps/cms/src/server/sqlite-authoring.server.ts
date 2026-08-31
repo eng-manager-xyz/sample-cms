@@ -20,6 +20,8 @@ import type {
 import type {
   CmsCommand,
   CmsCommandResult,
+  CmsPublicationHistory,
+  CmsPublicationHistoryInput,
   CmsPublicationMutationResult,
   CmsPublicationPreflight,
   CmsPublicationPreflightInput,
@@ -29,7 +31,11 @@ import type {
   CmsWorkspaceSnapshot,
   SelectorPreviewSnapshot,
 } from '@/data/sqlite-authoring';
-import { CmsPublicationPreflightResultSchema } from '@/data/sqlite-authoring';
+import {
+  CmsPublicationHistoryInputSchema,
+  CmsPublicationHistorySchema,
+  CmsPublicationPreflightResultSchema,
+} from '@/data/sqlite-authoring';
 
 const ACTOR = 'prototype-ui';
 
@@ -55,6 +61,32 @@ interface BlockTypeRow {
 interface CurrentPublicationRow {
   currentPublicationId: string;
   rollbackPublicationId: string | null;
+}
+
+interface PublicationHistoryPointerRow {
+  currentPublicationId: string;
+  rollbackTargetPublicationId: string | null;
+}
+
+interface PublicationHistoryCountRow {
+  total: number;
+  published: number;
+  failed: number;
+}
+
+interface PublicationHistoryRow {
+  id: string;
+  sequence: number;
+  status: 'published' | 'failed';
+  inputHash: string;
+  previousPublicationId: string | null;
+  pageCount: number;
+  manifestCount: number;
+  createdBy: string;
+  publishedAt: string | null;
+  createdAt: string;
+  activatedAt: string | null;
+  activatedBy: string | null;
 }
 
 interface VariantOperationSummaryRow {
@@ -641,6 +673,117 @@ export function readCmsWorkspace(
     rollbackPublicationId: currentPublication?.rollbackPublicationId ?? null,
     publicationCount,
   };
+}
+
+export function readCmsPublicationHistory(
+  client: CmsDatabaseClient,
+  rawInput: CmsPublicationHistoryInput
+): CmsPublicationHistory {
+  const input = CmsPublicationHistoryInputSchema.parse(rawInput);
+  const registry = editableScenarioRegistry[input.scenarioId];
+  return client.sqlite
+    .transaction(() => {
+      const template = client.sqlite
+        .query<{ id: string }, [string]>('SELECT id FROM templates WHERE id = ?')
+        .get(registry.templateId);
+      if (!template) {
+        throw new CmsServiceError('NOT_FOUND', 'Publication history template was not found.');
+      }
+
+      const pointer = client.sqlite
+        .query<PublicationHistoryPointerRow, [string]>(
+          `SELECT current.publication_id AS currentPublicationId,
+                  publication.previous_publication_id AS rollbackTargetPublicationId
+           FROM current_publications AS current
+           JOIN publications AS publication
+             ON publication.id = current.publication_id
+            AND publication.template_id = current.template_id
+           WHERE current.template_id = ?`
+        )
+        .get(registry.templateId);
+      const counts = client.sqlite
+        .query<PublicationHistoryCountRow, [string]>(
+          `SELECT count(*) AS total,
+                  coalesce(sum(CASE WHEN status = 'published' THEN 1 ELSE 0 END), 0) AS published,
+                  coalesce(sum(CASE WHEN status = 'failed' THEN 1 ELSE 0 END), 0) AS failed
+           FROM publications
+           WHERE template_id = ?`
+        )
+        .get(registry.templateId) ?? { total: 0, published: 0, failed: 0 };
+      const currentPublicationId = pointer?.currentPublicationId ?? null;
+      const rollbackTargetPublicationId = pointer?.rollbackTargetPublicationId ?? null;
+      const pointerCount = new Set(
+        [currentPublicationId, rollbackTargetPublicationId].filter(
+          (publicationId): publicationId is string => publicationId !== null
+        )
+      ).size;
+      const rowLimit = Math.min(50, Math.max(input.limit ?? 50, pointerCount));
+      const rows = client.sqlite
+        .query<PublicationHistoryRow, [string | null, string | null, string, number]>(
+          `SELECT selected.id,
+                  selected.sequence,
+                  selected.status,
+                  selected.inputHash,
+                  selected.previousPublicationId,
+                  selected.pageCount,
+                  selected.manifestCount,
+                  selected.createdBy,
+                  selected.publishedAt,
+                  selected.createdAt,
+                  selected.activatedAt,
+                  selected.activatedBy
+           FROM (
+             SELECT publication.id,
+                    publication.sequence,
+                    publication.status,
+                    publication.input_hash AS inputHash,
+                    publication.previous_publication_id AS previousPublicationId,
+                    publication.page_count AS pageCount,
+                    publication.manifest_count AS manifestCount,
+                    publication.created_by AS createdBy,
+                    publication.published_at AS publishedAt,
+                    publication.created_at AS createdAt,
+                    current.activated_at AS activatedAt,
+                    current.activated_by AS activatedBy,
+                    CASE
+                      WHEN publication.id = ? OR publication.id = ? THEN 1
+                      ELSE 0
+                    END AS isPointer
+             FROM publications AS publication
+             LEFT JOIN current_publications AS current
+               ON current.template_id = publication.template_id
+              AND current.publication_id = publication.id
+             WHERE publication.template_id = ?
+             ORDER BY isPointer DESC, publication.sequence DESC, publication.id DESC
+             LIMIT ?
+           ) AS selected
+           ORDER BY selected.sequence DESC, selected.id DESC`
+        )
+        .all(currentPublicationId, rollbackTargetPublicationId, registry.templateId, rowLimit);
+      const currentCount = currentPublicationId === null ? 0 : 1;
+      const rollbackTargetCount = rollbackTargetPublicationId === null ? 0 : 1;
+
+      return CmsPublicationHistorySchema.parse({
+        scenarioId: input.scenarioId,
+        templateId: registry.templateId,
+        currentPublicationId,
+        rollbackTargetPublicationId,
+        total: counts.total,
+        counts: {
+          published: counts.published,
+          failed: counts.failed,
+          current: currentCount,
+          rollbackTarget: rollbackTargetCount,
+          historical: Math.max(0, counts.total - currentCount - rollbackTargetCount),
+        },
+        rows: rows.map((row) => ({
+          ...row,
+          isCurrent: row.id === currentPublicationId,
+          isRollbackTarget: row.id === rollbackTargetPublicationId,
+        })),
+      });
+    })
+    .deferred();
 }
 
 export function previewCmsSelector(

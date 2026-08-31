@@ -1,5 +1,13 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { type CmsDatabaseClient, seedFoundationDatabase } from '@repo/cms-db';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import {
+  type CmsDatabaseClient,
+  createCmsDatabase,
+  runMigrations,
+  seedFoundationDatabase,
+} from '@repo/cms-db';
 import { createTestDatabase } from '@repo/cms-db/testing';
 import { CmsService } from '@repo/cms-service';
 
@@ -10,6 +18,7 @@ import {
   preflightCmsPublication,
   previewCmsSelector,
   publishCmsPublication,
+  readCmsPublicationHistory,
   readCmsWorkspace,
   rollbackCmsPublication,
 } from './sqlite-authoring.server';
@@ -1370,5 +1379,188 @@ describe('AUT-543 typed publication lifecycle backend', () => {
       publication: { id: target.publication.id },
       workspace: { currentPublicationId: target.publication.id },
     });
+  });
+});
+
+describe('AUT-557 bounded publication history', () => {
+  test('returns actual template-scoped rows newest-first with current and rollback state', () => {
+    for (const scenarioId of ['stores', 'eligible-vehicles', 'structural-proof'] as const) {
+      readCmsWorkspace(client, scenarioId);
+    }
+    const before = client.sqlite
+      .query<{ count: number }, []>('SELECT count(*) AS count FROM publications')
+      .get()?.count;
+    const history = readCmsPublicationHistory(client, { scenarioId: 'stores', limit: 1 });
+
+    expect(history.total).toBe(2);
+    expect(history).toMatchObject({
+      scenarioId: 'stores',
+      templateId: 'tpl-store',
+      currentPublicationId: expect.any(String),
+      rollbackTargetPublicationId: expect.any(String),
+      counts: {
+        published: 2,
+        failed: 0,
+        current: 1,
+        rollbackTarget: 1,
+        historical: 0,
+      },
+    });
+    expect(history.counts.published + history.counts.failed).toBe(history.total);
+    expect(history.rows).toHaveLength(2);
+    expect(history.rows[0]).toMatchObject({
+      id: history.currentPublicationId,
+      isCurrent: true,
+      isRollbackTarget: false,
+      activatedAt: expect.any(String),
+      activatedBy: expect.any(String),
+    });
+    const completeHistory = readCmsPublicationHistory(client, { scenarioId: 'stores' });
+    expect(completeHistory.rows.map((row) => row.sequence)).toEqual(
+      [...completeHistory.rows.map((row) => row.sequence)].sort((left, right) => right - left)
+    );
+    expect(completeHistory.rows.find((row) => row.isRollbackTarget)).toMatchObject({
+      id: completeHistory.rollbackTargetPublicationId,
+      activatedAt: null,
+      activatedBy: null,
+    });
+    expect(completeHistory.rows.every((row) => row.id.startsWith('editable-eligible-'))).toBe(
+      false
+    );
+    expect(
+      readCmsPublicationHistory(client, { scenarioId: 'eligible-vehicles' }).rows.every((row) =>
+        row.id.startsWith('editable-eligible-')
+      )
+    ).toBe(true);
+    expect(
+      client.sqlite.query<{ count: number }, []>('SELECT count(*) AS count FROM publications').get()
+        ?.count
+    ).toBe(before);
+  });
+
+  test('keeps current and rollback rows available when both fall outside the newest 50', () => {
+    readCmsWorkspace(client, 'stores');
+    const insertFailure = client.sqlite.query<never, [string, number, string, string]>(
+      `INSERT INTO publications (
+         id,
+         template_id,
+         sequence,
+         status,
+         input_hash,
+         previous_publication_id,
+         route_revision,
+         page_count,
+         manifest_count,
+         failure_json,
+         created_by,
+         published_at,
+         created_at
+       ) VALUES (?, 'tpl-store', ?, 'failed', ?, NULL, 'history-test', 0, 0,
+                 '{"message":"bounded history fixture"}', 'history-test', NULL, ?)`
+    );
+    for (let sequence = 3; sequence <= 62; sequence += 1) {
+      insertFailure.run(
+        `history-store-${sequence}`,
+        sequence,
+        sequence.toString(16).padStart(64, '0'),
+        new Date(Date.UTC(2026, 0, sequence)).toISOString()
+      );
+    }
+
+    const history = readCmsPublicationHistory(client, { scenarioId: 'stores', limit: 50 });
+
+    expect(history.total).toBe(62);
+    expect(history.rows).toHaveLength(50);
+    expect(history.rows.map((row) => row.sequence)).toEqual(
+      [...history.rows.map((row) => row.sequence)].sort((left, right) => right - left)
+    );
+    expect(history.rows.find((row) => row.isCurrent)?.id).toBe('publication-store-2');
+    expect(history.rows.find((row) => row.isRollbackTarget)?.id).toBe('publication-store-1');
+    expect(history.rows.slice(-2).map((row) => row.sequence)).toEqual([2, 1]);
+  });
+
+  test('reads template, pointers, counts, and rows from one SQLite snapshot', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'auteur-publication-history-'));
+    const databasePath = join(directory, 'history.db');
+    let setup: CmsDatabaseClient | undefined;
+    let reader: CmsDatabaseClient | undefined;
+    let writer: CmsDatabaseClient | undefined;
+
+    try {
+      setup = createCmsDatabase({ databasePath });
+      await runMigrations(setup);
+      await seedFoundationDatabase(setup);
+      readCmsWorkspace(setup, 'stores');
+      setup.close();
+      setup = undefined;
+
+      writer = createCmsDatabase({ databasePath });
+      reader = createCmsDatabase({ databasePath, readonly: true, create: false });
+      let mutationApplied = false;
+      const instrumentedSqlite = new Proxy(reader.sqlite, {
+        get(target, property) {
+          if (property !== 'query') {
+            const value = Reflect.get(target, property, target);
+            return typeof value === 'function' ? value.bind(target) : value;
+          }
+          return (sql: string) => {
+            const statement = target.query(sql);
+            return new Proxy(statement, {
+              get(statementTarget, statementProperty) {
+                const value = Reflect.get(statementTarget, statementProperty, statementTarget);
+                if (statementProperty !== 'get' || typeof value !== 'function') {
+                  return typeof value === 'function' ? value.bind(statementTarget) : value;
+                }
+                return (...bindings: unknown[]) => {
+                  const result = Reflect.apply(value, statementTarget, bindings);
+                  if (!mutationApplied) {
+                    writer?.sqlite
+                      .query<never, [string]>(
+                        `UPDATE current_publications
+                         SET publication_id = ?,
+                             activated_at = '2026-01-31T00:00:00.000Z',
+                             activated_by = 'snapshot-test'
+                         WHERE template_id = 'tpl-store'`
+                      )
+                      .run('publication-store-1');
+                    mutationApplied = true;
+                  }
+                  return result;
+                };
+              },
+            });
+          };
+        },
+      }) as CmsDatabaseClient['sqlite'];
+
+      const history = readCmsPublicationHistory(
+        { ...reader, sqlite: instrumentedSqlite },
+        { scenarioId: 'stores' }
+      );
+
+      expect(mutationApplied).toBe(true);
+      expect(history.currentPublicationId).toBe('publication-store-2');
+      expect(history.rollbackTargetPublicationId).toBe('publication-store-1');
+      expect(history.rows.find((row) => row.isCurrent)?.id).toBe('publication-store-2');
+      expect(
+        writer.sqlite
+          .query<{ publicationId: string }, []>(
+            `SELECT publication_id AS publicationId
+             FROM current_publications
+             WHERE template_id = 'tpl-store'`
+          )
+          .get()?.publicationId
+      ).toBe('publication-store-1');
+    } finally {
+      setup?.close();
+      reader?.close();
+      writer?.close();
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  test('rejects unbounded publication-history reads', () => {
+    readCmsWorkspace(client, 'stores');
+    expect(() => readCmsPublicationHistory(client, { scenarioId: 'stores', limit: 51 })).toThrow();
   });
 });

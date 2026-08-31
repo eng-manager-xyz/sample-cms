@@ -3,7 +3,6 @@ import type { LucideIcon } from 'lucide-react';
 import {
   BookOpen,
   ChevronDown,
-  Database,
   FileStack,
   FolderTree,
   Map as MapIcon,
@@ -24,7 +23,7 @@ import { Separator } from '@/components/ui/separator';
 import type { ScenarioId } from '@/data/scenario-fixtures';
 import { cn } from '@/lib/cn';
 
-type ShellSection = 'maps' | 'content' | 'tutorial' | 'template' | 'publications';
+type ShellSection = 'maps' | 'content' | 'tutorial' | 'template';
 
 interface AppShellProps {
   children: ReactNode;
@@ -58,10 +57,7 @@ export const sidebarNavigation = [
     label: 'Content explorer',
     icon: FolderTree,
     section: 'content',
-    children: [
-      { label: 'Template workspace', icon: FileStack, section: 'template' },
-      { label: 'Publications', icon: Database, section: 'publications' },
-    ],
+    children: [{ label: 'Template workspace', icon: FileStack, section: 'template' }],
   },
 ] as const satisfies readonly NavigationBranch[];
 
@@ -85,7 +81,7 @@ export function isNavigationItemUnavailable(
   item: NavigationItem,
   templateId?: ScenarioId
 ): boolean {
-  return !templateId && (item.section === 'template' || item.section === 'publications');
+  return !templateId && item.section === 'template';
 }
 
 export function getContentExplorerNavigationSearch(templateId?: ScenarioId) {
@@ -201,21 +197,6 @@ function SidebarLink({
     return (
       <Link
         to="/author/$templateId"
-        params={{ templateId }}
-        aria-current={active ? 'page' : undefined}
-        onClick={onNavigate}
-        title={collapsed ? item.label : undefined}
-        className={className}
-      >
-        {contents}
-      </Link>
-    );
-  }
-
-  if (item.section === 'publications' && templateId) {
-    return (
-      <Link
-        to="/publications/$templateId"
         params={{ templateId }}
         aria-current={active ? 'page' : undefined}
         onClick={onNavigate}

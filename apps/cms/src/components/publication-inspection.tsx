@@ -1,538 +1,460 @@
-import { useMutation } from '@tanstack/react-query';
-import { Link } from '@tanstack/react-router';
-import {
-  ArrowLeft,
-  ArrowRight,
-  Clock3,
-  Database,
-  FileCheck2,
-  GitCompareArrows,
-  Globe2,
-  History,
-  LockKeyhole,
-  RefreshCcw,
-  RotateCcw,
-  ShieldCheck,
-} from 'lucide-react';
-import { useState } from 'react';
-import { ScenarioSwitcher } from '@/components/scenario-switcher';
+import { Link, useNavigate } from '@tanstack/react-router';
+import { CheckCircle2, FileClock, FilePenLine, History, Info, ShieldCheck } from 'lucide-react';
+import { useId, useState } from 'react';
+
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { buttonClassName } from '@/components/ui/button-styles';
 import { Card } from '@/components/ui/card';
-import type { PublicationRecord, ScenarioFixture } from '@/data/scenario-fixtures';
-import { scenarioFixtures } from '@/data/scenario-fixtures';
-import type { CmsWorkspaceSnapshot } from '@/data/sqlite-authoring';
+import { Select } from '@/components/ui/select';
+import {
+  type ScenarioFixture,
+  type ScenarioId,
+  ScenarioIdSchema,
+  scenarioFixtures,
+} from '@/data/scenario-fixtures';
+import type {
+  CmsPublicationHistory,
+  CmsPublicationHistoryRow,
+  CmsWorkspaceSnapshot,
+} from '@/data/sqlite-authoring';
 import { cn } from '@/lib/cn';
-import { executeCmsMutation } from '@/server-functions/cms.functions';
 
-function PublicationCard({
-  publication,
-  selected,
-  onSelect,
+export type ReleaseHistoryFilter = 'all' | 'active' | 'rollback' | 'history' | 'failed';
+
+const releaseDateFormatter = new Intl.DateTimeFormat('en-US', {
+  dateStyle: 'medium',
+  timeStyle: 'short',
+  timeZone: 'UTC',
+});
+
+function releaseDate(value: string | null): string {
+  if (!value) return 'Not completed';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : `${releaseDateFormatter.format(date)} UTC`;
+}
+
+export function filterPublicationHistory(
+  rows: readonly CmsPublicationHistoryRow[],
+  filter: ReleaseHistoryFilter
+): readonly CmsPublicationHistoryRow[] {
+  if (filter === 'active') return rows.filter((row) => row.isCurrent);
+  if (filter === 'rollback') return rows.filter((row) => row.isRollbackTarget);
+  if (filter === 'failed') return rows.filter((row) => row.status === 'failed');
+  if (filter === 'history') {
+    return rows.filter(
+      (row) => row.status === 'published' && !row.isCurrent && !row.isRollbackTarget
+    );
+  }
+  return rows;
+}
+
+function releaseState(row: CmsPublicationHistoryRow): {
+  label: string;
+  tone: 'danger' | 'info' | 'neutral' | 'success';
+  icon: typeof ShieldCheck;
+} {
+  if (row.status === 'failed') return { label: 'Failed', tone: 'danger', icon: Info };
+  if (row.isCurrent) return { label: 'Active', tone: 'success', icon: ShieldCheck };
+  if (row.isRollbackTarget) return { label: 'Rollback target', tone: 'info', icon: History };
+  return { label: 'Immutable history', tone: 'neutral', icon: FileClock };
+}
+
+export function PublicationContextNavigation({
+  scenario,
+  canonicalUrl,
+  releaseCount,
 }: Readonly<{
-  publication: PublicationRecord;
-  selected: boolean;
-  onSelect: () => void;
+  scenario: ScenarioFixture;
+  canonicalUrl: string;
+  releaseCount: number;
 }>) {
-  const stateTone =
-    publication.state === 'active'
-      ? 'success'
-      : publication.state === 'candidate'
-        ? 'info'
-        : 'neutral';
+  const selectId = useId();
+  const navigate = useNavigate();
+
+  const chooseTemplate = (scenarioId: ScenarioId) => {
+    void navigate({
+      to: '/publications/$templateId',
+      params: { templateId: scenarioId },
+      search: {},
+    });
+  };
+
   return (
-    <button
-      type="button"
-      onClick={onSelect}
-      aria-pressed={selected}
-      className={cn(
-        'w-full rounded-xl border bg-canvas p-4 text-left outline-none transition-[border-color,box-shadow] focus-visible:ring-2 focus-visible:ring-focus',
-        selected
-          ? 'border-accent/45 shadow-[0_0_0_3px_var(--color-accent-soft)]'
-          : 'border-line hover:border-line-strong'
-      )}
+    <nav
+      aria-label="Release history context"
+      className="flex h-full min-w-0 flex-1 items-center gap-1.5 overflow-x-auto overflow-y-hidden"
     >
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <Badge dot tone={stateTone} className="capitalize">
-            {publication.state}
-          </Badge>
-          <h3 className="mt-2 text-sm font-semibold text-ink">{publication.label}</h3>
-          <p className="mt-0.5 text-[10px] text-ink-faint">{publication.createdAt}</p>
-        </div>
-        {publication.state === 'active' ? (
-          <ShieldCheck aria-label="Current serving pointer" className="size-5 text-success" />
-        ) : publication.state === 'rollback' ? (
-          <History aria-label="Retained rollback target" className="size-5 text-ink-faint" />
-        ) : (
-          <FileCheck2 aria-label="Candidate snapshot" className="size-5 text-accent" />
-        )}
-      </div>
-      <p className="mt-3 text-[10px] leading-4 text-ink-muted">{publication.description}</p>
-      <dl className="mt-3 grid grid-cols-3 divide-x divide-line rounded-lg border border-line bg-surface-subtle">
-        <div className="px-2 py-2">
-          <dt className="text-[8px] text-ink-faint">Pages</dt>
-          <dd className="mt-0.5 text-[10px] font-semibold tabular-nums text-ink">
-            {publication.pageCount.toLocaleString()}
-          </dd>
-        </div>
-        <div className="px-2 py-2">
-          <dt className="text-[8px] text-ink-faint">Manifests</dt>
-          <dd className="mt-0.5 text-[10px] font-semibold tabular-nums text-ink">
-            {publication.manifestCount.toLocaleString()}
-          </dd>
-        </div>
-        <div className="px-2 py-2">
-          <dt className="text-[8px] text-ink-faint">Compile</dt>
-          <dd className="mt-0.5 text-[10px] font-semibold tabular-nums text-ink">
-            {publication.duration}
-          </dd>
-        </div>
-      </dl>
-      <code className="mt-3 block truncate font-mono text-[8px] text-ink-faint">
-        {publication.hash}
-      </code>
-    </button>
+      <span className="sr-only">Template context: {scenario.name}</span>
+      <label className="sr-only" htmlFor={selectId}>
+        Template
+      </label>
+      <Select
+        id={selectId}
+        density="compact"
+        className="w-auto max-w-40 shrink-0 font-medium"
+        value={scenario.id}
+        title="Template"
+        onChange={(event) => chooseTemplate(ScenarioIdSchema.parse(event.currentTarget.value))}
+      >
+        {scenarioFixtures.map((option) => (
+          <option key={option.id} value={option.id}>
+            {option.name}
+          </option>
+        ))}
+      </Select>
+      <span aria-hidden="true" className="shrink-0 text-ink-faint">
+        /
+      </span>
+      <span className="shrink-0 text-xs font-medium text-ink">Release history</span>
+      <Badge tone="neutral" className="h-5 shrink-0 px-1.5 text-[10px]">
+        {releaseCount} {releaseCount === 1 ? 'release' : 'releases'}
+      </Badge>
+      <span className="sr-only">Return page context: {canonicalUrl}</span>
+    </nav>
   );
 }
 
-function RequestTrace({ scenario }: Readonly<{ scenario: ScenarioFixture }>) {
-  const [selectedCaseId, setSelectedCaseId] = useState(scenario.requestCases[0]?.id ?? '');
-  const selectedCase =
-    scenario.requestCases.find((requestCase) => requestCase.id === selectedCaseId) ??
-    scenario.requestCases[0];
-
-  if (!selectedCase) return null;
-
-  const steps = [
-    {
-      icon: Globe2,
-      owner: 'RouterService',
-      title: 'Route authority',
-      detail: `External route ${selectedCase.externalRouteId} is ${selectedCase.lifecycle.replace('_', ' ')}.`,
-    },
-    {
-      icon: ArrowRight,
-      owner: 'Transition seam',
-      title: 'Template + page identity',
-      detail: 'Passes stable IDs; no selector SQL runs.',
-    },
-    {
-      icon: Database,
-      owner: 'Auteur',
-      title: 'Manifest lookup',
-      detail:
-        selectedCase.auteurState === 'published'
-          ? 'Reads the active immutable document by canonical URL.'
-          : selectedCase.auteurState === 'draft_only'
-            ? 'Draft authoring exists but is not on the serving pointer.'
-            : 'No active manifest exists; the seam rejects the unsafe state.',
-    },
-    {
-      icon: FileCheck2,
-      owner: 'Response',
-      title: `HTTP ${selectedCase.outcome}`,
-      detail: selectedCase.explanation,
-    },
-  ] as const;
+export function PublicationHeaderActions({
+  scenarioId,
+  canonicalUrl,
+}: Readonly<{ scenarioId: ScenarioId; canonicalUrl: string }>) {
   return (
-    <section
-      aria-labelledby="request-trace-heading"
-      className="rounded-xl border border-line bg-canvas"
-    >
-      <div className="border-b border-line p-4">
+    <nav aria-label="Template workspace views" className="flex items-center gap-1">
+      <Link
+        to="/author/$templateId"
+        params={{ templateId: scenarioId }}
+        search={{ canonicalUrl }}
+        aria-label="Open template authoring"
+        title="Open template authoring"
+        className={buttonClassName({ variant: 'outline', size: 'icon-sm' })}
+      >
+        <FilePenLine aria-hidden="true" className="size-4" />
+      </Link>
+      <span
+        aria-current="page"
+        title="Release history"
+        className={buttonClassName({ size: 'icon-sm' })}
+      >
+        <History aria-hidden="true" className="size-4" />
+        <span className="sr-only">Release history</span>
+      </span>
+    </nav>
+  );
+}
+
+function ReleaseSummary({ history }: Readonly<{ history: CmsPublicationHistory }>) {
+  const current = history.rows.find((row) => row.isCurrent);
+  const rollback = history.rows.find((row) => row.isRollbackTarget);
+  const hasCurrent = history.currentPublicationId !== null;
+  const hasRollback = history.rollbackTargetPublicationId !== null;
+
+  return (
+    <div className="grid gap-px overflow-hidden rounded-xl border border-line bg-line md:grid-cols-3">
+      <section className="bg-canvas p-4" aria-labelledby="current-release-heading">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-accent-strong">
-              Serving boundary
+            <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-ink-faint">
+              Current release
             </p>
-            <h2 id="request-trace-heading" className="mt-0.5 text-sm font-semibold text-ink">
-              RouterService → Auteur request trace
+            <h2 id="current-release-heading" className="mt-1 text-base font-semibold text-ink">
+              {current
+                ? `Release #${current.sequence}`
+                : hasCurrent
+                  ? 'Active release'
+                  : 'No active release'}
             </h2>
           </div>
-          <Badge
-            tone={
-              selectedCase.outcome === 200
-                ? 'success'
-                : selectedCase.outcome === 503
-                  ? 'danger'
-                  : 'neutral'
-            }
-            dot
+          <span
+            className={cn(
+              'grid size-8 place-items-center rounded-lg',
+              hasCurrent ? 'bg-success-soft text-success' : 'bg-surface-muted text-ink-muted'
+            )}
           >
-            {selectedCase.outcome === 200
-              ? 'request safe'
-              : selectedCase.outcome === 503
-                ? 'unsafe seam blocked'
-                : 'route gated'}
-          </Badge>
+            {hasCurrent ? (
+              <ShieldCheck aria-hidden="true" className="size-4" />
+            ) : (
+              <FileClock aria-hidden="true" className="size-4" />
+            )}
+          </span>
         </div>
-        <code className="mt-2 block truncate rounded-md bg-surface-subtle px-2 py-1.5 font-mono text-[9px] text-ink-muted">
-          GET {selectedCase.canonicalUrl}
-        </code>
-        <fieldset className="mt-3 flex flex-wrap gap-1.5 border-0 p-0">
-          <legend className="sr-only">Request outcome fixtures</legend>
-          {scenario.requestCases.map((requestCase) => (
-            <Button
-              key={requestCase.id}
-              variant={requestCase.id === selectedCase.id ? 'default' : 'outline'}
-              size="sm"
-              aria-pressed={requestCase.id === selectedCase.id}
-              onClick={() => setSelectedCaseId(requestCase.id)}
-            >
-              {requestCase.label} · {requestCase.outcome}
-            </Button>
-          ))}
-        </fieldset>
-      </div>
-      <ol className="grid gap-px bg-line md:grid-cols-4">
-        {steps.map(({ icon: Icon, owner, title, detail }, index) => (
-          <li key={title} className="relative bg-canvas p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <span className="grid size-7 place-items-center rounded-lg bg-accent-soft text-accent-strong">
-                <Icon aria-hidden="true" className="size-3.5" />
-              </span>
-              <span className="text-[9px] font-semibold tabular-nums text-ink-faint">
-                0{index + 1}
-              </span>
-            </div>
-            <p className="text-[8px] font-semibold uppercase tracking-[0.08em] text-ink-faint">
-              {owner}
+        <p className="mt-3 text-[11px] leading-5 text-ink-muted">
+          {current
+            ? `${current.pageCount.toLocaleString()} pages · ${current.manifestCount.toLocaleString()} manifests`
+            : hasCurrent
+              ? 'The active publication is outside this bounded history window.'
+              : 'The template does not have a public serving pointer.'}
+        </p>
+        <p className="mt-1 text-[10px] text-ink-faint">
+          {current
+            ? `Activated ${releaseDate(current.activatedAt)}`
+            : hasCurrent
+              ? history.currentPublicationId
+              : 'Publish from authoring first.'}
+        </p>
+      </section>
+
+      <section className="bg-canvas p-4" aria-labelledby="rollback-release-heading">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-ink-faint">
+              Retained predecessor
             </p>
-            <h3 className="mt-1 text-[11px] font-semibold text-ink">{title}</h3>
-            <p className="mt-1 text-[9px] leading-4 text-ink-muted">{detail}</p>
-          </li>
-        ))}
-      </ol>
-    </section>
+            <h2 id="rollback-release-heading" className="mt-1 text-base font-semibold text-ink">
+              {rollback
+                ? `Release #${rollback.sequence}`
+                : hasRollback
+                  ? 'Retained predecessor'
+                  : 'No rollback target'}
+            </h2>
+          </div>
+          <span
+            className={cn(
+              'grid size-8 place-items-center rounded-lg',
+              hasRollback ? 'bg-accent-soft text-accent-strong' : 'bg-surface-muted text-ink-muted'
+            )}
+          >
+            <History aria-hidden="true" className="size-4" />
+          </span>
+        </div>
+        <p className="mt-3 text-[11px] leading-5 text-ink-muted">
+          {rollback
+            ? 'This exact immutable predecessor is the only release currently eligible for rollback.'
+            : hasRollback
+              ? 'The retained predecessor is outside this bounded history window.'
+              : 'The active release does not retain a predecessor.'}
+        </p>
+        <p className="mt-1 text-[10px] text-ink-faint">
+          Rollback is reviewed from the authoring publication flow.
+        </p>
+      </section>
+
+      <section className="bg-canvas p-4" aria-labelledby="release-count-heading">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-ink-faint">
+              Immutable records
+            </p>
+            <h2 id="release-count-heading" className="mt-1 text-base font-semibold text-ink">
+              {history.total.toLocaleString()} total
+            </h2>
+          </div>
+          <span className="grid size-8 place-items-center rounded-lg bg-surface-muted text-ink-muted">
+            <FileClock aria-hidden="true" className="size-4" />
+          </span>
+        </div>
+        <p className="mt-3 text-[11px] leading-5 text-ink-muted">
+          Each successful publish records the compiled template state, counts, author, and input
+          hash.
+        </p>
+        <p className="mt-1 text-[10px] text-ink-faint">Newest sequence first · template scoped</p>
+      </section>
+    </div>
+  );
+}
+
+function ReleaseRow({ row }: Readonly<{ row: CmsPublicationHistoryRow }>) {
+  const state = releaseState(row);
+  const StateIcon = state.icon;
+
+  return (
+    <tr data-release-state={state.label.toLowerCase().replaceAll(' ', '-')}>
+      <td className="border-t border-line px-4 py-3 align-top">
+        <div className="flex items-start gap-2.5">
+          <span
+            className={cn(
+              'mt-0.5 grid size-7 shrink-0 place-items-center rounded-lg',
+              row.isCurrent
+                ? 'bg-success-soft text-success'
+                : row.isRollbackTarget
+                  ? 'bg-accent-soft text-accent-strong'
+                  : 'bg-surface-muted text-ink-muted'
+            )}
+          >
+            <StateIcon aria-hidden="true" className="size-3.5" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-xs font-semibold text-ink">Release #{row.sequence}</p>
+            <code className="mt-0.5 block max-w-52 truncate font-mono text-[9px] text-ink-faint">
+              {row.id}
+            </code>
+          </div>
+        </div>
+      </td>
+      <td className="border-t border-line px-4 py-3 align-top">
+        <Badge dot tone={state.tone} className="whitespace-nowrap">
+          {state.label}
+        </Badge>
+      </td>
+      <td className="border-t border-line px-4 py-3 align-top text-[11px] text-ink-muted">
+        <p>{releaseDate(row.publishedAt)}</p>
+        <p className="mt-0.5 text-[9px] text-ink-faint">{row.createdBy}</p>
+      </td>
+      <td className="border-t border-line px-4 py-3 align-top">
+        <p className="text-[11px] tabular-nums text-ink">{row.pageCount.toLocaleString()} pages</p>
+        <p className="mt-0.5 text-[9px] tabular-nums text-ink-faint">
+          {row.manifestCount.toLocaleString()} manifests
+        </p>
+      </td>
+      <td className="border-t border-line px-4 py-3 align-top">
+        <details className="group max-w-72">
+          <summary className="cursor-pointer list-none text-[10px] font-medium text-accent-strong outline-none hover:underline focus-visible:ring-2 focus-visible:ring-focus">
+            Technical details
+          </summary>
+          <dl className="mt-2 space-y-1.5 text-[9px] text-ink-faint">
+            <div>
+              <dt className="font-semibold text-ink-muted">Input hash</dt>
+              <dd className="break-all font-mono">{row.inputHash}</dd>
+            </div>
+            <div>
+              <dt className="font-semibold text-ink-muted">Previous publication</dt>
+              <dd className="break-all font-mono">{row.previousPublicationId ?? 'none'}</dd>
+            </div>
+            <div>
+              <dt className="font-semibold text-ink-muted">Created</dt>
+              <dd>{releaseDate(row.createdAt)}</dd>
+            </div>
+          </dl>
+        </details>
+      </td>
+    </tr>
   );
 }
 
 export function PublicationInspection({
   scenario,
-  initialWorkspace,
-}: Readonly<{ scenario: ScenarioFixture; initialWorkspace: CmsWorkspaceSnapshot }>) {
-  const candidate = scenario.publications.find((publication) => publication.state === 'candidate');
-  const active = scenario.publications.find((publication) => publication.state === 'active');
-  const rollback = scenario.publications.find((publication) => publication.state === 'rollback');
-  const [selectedId, setSelectedId] = useState(active?.id ?? scenario.publications[0]?.id ?? '');
-  const [rollbackPreview, setRollbackPreview] = useState(false);
-  const [publishPreview, setPublishPreview] = useState(false);
-  const [workspace, setWorkspace] = useState(initialWorkspace);
-  const [actionStatus, setActionStatus] = useState(
-    `Serving ${initialWorkspace.currentPublicationId ?? 'no active publication'}.`
-  );
-  const publicationMutation = useMutation({
-    mutationFn: (kind: 'publish' | 'rollback') =>
-      executeCmsMutation({ data: { kind, scenarioId: scenario.id } }),
-    onSuccess: (result) => {
-      setWorkspace(result.workspace);
-      setActionStatus(result.message);
-      setPublishPreview(false);
-      setRollbackPreview(false);
-    },
-    onError: (error) => setActionStatus(error instanceof Error ? error.message : String(error)),
-  });
-  const selected =
-    scenario.publications.find((publication) => publication.id === selectedId) ?? active;
-
-  if (!candidate || !active || !rollback || !selected) return null;
+  workspace,
+  history,
+}: Readonly<{
+  scenario: ScenarioFixture;
+  workspace: CmsWorkspaceSnapshot;
+  history: CmsPublicationHistory;
+}>) {
+  const filterId = useId();
+  const [filter, setFilter] = useState<ReleaseHistoryFilter>('all');
+  const filteredRows = filterPublicationHistory(history.rows, filter);
+  const authoringSearch = { canonicalUrl: workspace.canonicalUrl };
 
   return (
-    <div className="mx-auto w-full max-w-[1500px] px-4 py-5 sm:px-5 sm:py-6 lg:px-7 lg:py-7">
-      <header className="mb-6 flex flex-col justify-between gap-4 border-b border-line pb-5 lg:flex-row lg:items-end">
+    <div className="mx-auto w-full max-w-[1320px] px-4 py-5 sm:px-5 sm:py-6 lg:px-7 lg:py-7">
+      <header className="border-b border-line pb-5">
         <div>
           <div className="mb-2 flex flex-wrap items-center gap-2">
-            <Badge tone="info">Publication proof</Badge>
-            <Badge tone="success">Live SQLite publication controls</Badge>
+            <Badge tone="info">Template lifecycle</Badge>
+            <Badge tone="success" dot>
+              Live SQLite history
+            </Badge>
           </div>
           <h1 className="text-2xl font-semibold tracking-[-0.035em] text-ink sm:text-3xl">
-            {scenario.name} publications
+            Release history
           </h1>
           <p className="mt-1.5 max-w-2xl text-[12px] leading-5 text-ink-muted">
-            Inspect atomic publication, immutable serving state, and the retained rollback target
-            before changing the real local pointer.
+            Review immutable publications for {scenario.name}. A release compiles every eligible
+            page in this template and atomically moves one serving pointer.
           </p>
-          <p className="mt-2 font-mono text-[9px] text-ink-faint">
-            active: {workspace.currentPublicationId ?? 'none'} · {workspace.publicationCount}{' '}
-            immutable snapshots · {workspace.currentDocumentHash ?? 'no document hash'}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <ScenarioSwitcher
-            scenarios={scenarioFixtures}
-            activeId={scenario.id}
-            destination="publications"
-          />
-          <Link
-            to="/author/$templateId"
-            params={{ templateId: scenario.id }}
-            search={{ canonicalUrl: workspace.canonicalUrl }}
-            className={buttonClassName({ variant: 'outline', size: 'sm' })}
-          >
-            <ArrowLeft aria-hidden="true" className="size-3.5" />
-            Map workspace
-          </Link>
         </div>
       </header>
 
-      <RequestTrace scenario={scenario} />
+      <div className="mt-5 rounded-xl border border-accent/20 bg-accent-soft/50 p-4">
+        <div className="flex items-start gap-3">
+          <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-canvas text-accent-strong shadow-sm">
+            <Info aria-hidden="true" className="size-4" />
+          </span>
+          <div>
+            <h2 className="text-xs font-semibold text-ink">What a release represents</h2>
+            <p className="mt-1 max-w-4xl text-[11px] leading-5 text-ink-muted">
+              Publication records are immutable snapshots owned by this template. The active badge
+              marks the snapshot serving public pages; the rollback badge marks its exact retained
+              predecessor. Publishing and rollback stay in Authoring so both operations use the same
+              guarded preflight and concurrency checks.
+            </p>
+            <Link
+              to="/author/$templateId"
+              params={{ templateId: scenario.id }}
+              search={authoringSearch}
+              className="mt-2 inline-flex text-[11px] font-semibold text-accent-strong outline-none hover:underline focus-visible:ring-2 focus-visible:ring-focus"
+            >
+              Open authoring to review changes
+            </Link>
+          </div>
+        </div>
+      </div>
 
-      <div className="mt-5 grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
-        <div className="space-y-5">
-          <section aria-labelledby="publication-history-heading">
-            <div className="mb-3 flex items-end justify-between gap-3">
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-ink-faint">
-                  Immutable history
-                </p>
-                <h2
-                  id="publication-history-heading"
-                  className="mt-0.5 text-sm font-semibold text-ink"
-                >
-                  Candidate, active, and rollback snapshots
-                </h2>
-              </div>
-              <span className="text-[9px] text-ink-faint">select a snapshot to inspect</span>
-            </div>
-            <div className="grid gap-3 md:grid-cols-3">
-              {scenario.publications.map((publication) => (
-                <PublicationCard
-                  key={publication.id}
-                  publication={publication}
-                  selected={publication.id === selected.id}
-                  onSelect={() => setSelectedId(publication.id)}
-                />
-              ))}
-            </div>
-          </section>
+      <div className="mt-5">
+        <ReleaseSummary history={history} />
+      </div>
 
-          <section
-            aria-labelledby="pointer-heading"
-            className="rounded-xl border border-line bg-canvas p-4"
+      <Card className="mt-5 overflow-hidden p-0">
+        <div className="flex flex-col gap-3 border-b border-line p-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-ink-faint">
+              Selected template
+            </p>
+            <h2 className="mt-0.5 text-sm font-semibold text-ink">{scenario.name} releases</h2>
+            <p className="mt-1 text-[10px] text-ink-muted">
+              Showing {filteredRows.length.toLocaleString()} of {history.total.toLocaleString()}{' '}
+              immutable records.
+            </p>
+          </div>
+          <label
+            htmlFor={filterId}
+            className="flex items-center gap-2 text-[10px] font-medium text-ink-muted"
           >
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-accent-strong">
-                  Atomic pointer
-                </p>
-                <h2 id="pointer-heading" className="mt-0.5 text-sm font-semibold text-ink">
-                  One transaction changes what serving reads
-                </h2>
-              </div>
-              <Badge tone="success">
-                <LockKeyhole aria-hidden="true" className="mr-1 size-3" />
-                immutable snapshots
-              </Badge>
-            </div>
-            <div className="mt-4 grid items-center gap-2 md:grid-cols-[1fr_auto_1fr_auto_1fr]">
-              <div className="rounded-lg border border-line bg-surface-subtle p-3">
-                <p className="text-[8px] font-semibold uppercase text-ink-faint">Before</p>
-                <p className="mt-1 text-[11px] font-semibold text-ink">active → {active.id}</p>
-              </div>
-              <ArrowRight
-                aria-hidden="true"
-                className="mx-auto size-4 rotate-90 text-ink-faint md:rotate-0"
-              />
-              <div className="rounded-lg border border-accent/25 bg-accent-soft p-3">
-                <p className="text-[8px] font-semibold uppercase text-accent-strong">Transaction</p>
-                <p className="mt-1 text-[11px] font-semibold text-ink">validate + swap pointer</p>
-              </div>
-              <ArrowRight
-                aria-hidden="true"
-                className="mx-auto size-4 rotate-90 text-ink-faint md:rotate-0"
-              />
-              <div className="rounded-lg border border-line bg-surface-subtle p-3">
-                <p className="text-[8px] font-semibold uppercase text-ink-faint">After</p>
-                <p className="mt-1 text-[11px] font-semibold text-ink">active → {candidate.id}</p>
-              </div>
-            </div>
-            <div className="mt-3 flex gap-2 rounded-lg border border-line bg-surface-subtle p-3">
-              <RefreshCcw aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-accent" />
-              <p className="text-[9px] leading-4 text-ink-muted">
-                If compilation or pointer activation fails, the transaction rolls back and public
-                serving continues reading {active.label}. No partially published page set becomes
-                visible.
-              </p>
-            </div>
-          </section>
-
-          <section
-            aria-labelledby="publication-diff-heading"
-            className="rounded-xl border border-line bg-canvas"
-          >
-            <div className="flex items-center justify-between gap-3 border-b border-line p-4">
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-accent-strong">
-                  Manifest comparison
-                </p>
-                <h2 id="publication-diff-heading" className="mt-0.5 text-sm font-semibold text-ink">
-                  {selected.label} vs active publication
-                </h2>
-              </div>
-              <GitCompareArrows aria-hidden="true" className="size-4 text-accent" />
-            </div>
-            <div className="grid gap-px bg-line sm:grid-cols-3">
-              <div className="bg-canvas p-4">
-                <p className="text-[9px] text-ink-faint">Changed placements</p>
-                <p className="mt-1 text-lg font-semibold tabular-nums text-ink">
-                  {
-                    scenario.pin.placements.filter((placement) => placement.diff === 'changed')
-                      .length
-                  }
-                </p>
-              </div>
-              <div className="bg-canvas p-4">
-                <p className="text-[9px] text-ink-faint">Tombstones</p>
-                <p className="mt-1 text-lg font-semibold tabular-nums text-ink">
-                  {
-                    scenario.pin.placements.filter((placement) => placement.diff === 'hidden')
-                      .length
-                  }
-                </p>
-              </div>
-              <div className="bg-canvas p-4">
-                <p className="text-[9px] text-ink-faint">Conflicts</p>
-                <p
-                  className={cn(
-                    'mt-1 text-lg font-semibold tabular-nums',
-                    candidate.conflictCount > 0 ? 'text-danger-strong' : 'text-success-strong'
-                  )}
-                >
-                  {candidate.conflictCount}
-                </p>
-              </div>
-            </div>
-          </section>
+            Show
+            <Select
+              id={filterId}
+              density="compact"
+              aria-label="Filter release history"
+              value={filter}
+              onChange={(event) => setFilter(event.currentTarget.value as ReleaseHistoryFilter)}
+            >
+              <option value="all">All releases</option>
+              <option value="active">Active release</option>
+              <option value="rollback">Rollback target</option>
+              <option value="history">Older releases</option>
+              <option value="failed">Failed attempts</option>
+            </Select>
+          </label>
         </div>
 
-        <aside className="space-y-4 xl:sticky xl:top-[72px]">
-          <Card className="overflow-hidden">
-            <div className="border-b border-line p-4">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-accent-strong">
-                Publication actions
-              </p>
-              <h2 className="mt-0.5 text-sm font-semibold text-ink">Guarded pointer preview</h2>
-            </div>
-            <div className="space-y-3 p-4">
-              <div className="flex gap-2 rounded-lg border border-accent/25 bg-accent-soft p-3 text-accent-strong">
-                <Database aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
-                <div>
-                  <p className="text-[10px] font-semibold">Live command boundary</p>
-                  <p className="mt-0.5 text-[9px] leading-4">
-                    Confirmation validates the current SQLite revisions and conflicts. The fixture
-                    comparison to the left is explanatory and does not control this action.
-                  </p>
-                </div>
-              </div>
-              <Button
-                className="w-full"
-                disabled={publicationMutation.isPending}
-                onClick={() => setPublishPreview((value) => !value)}
-              >
-                <Database aria-hidden="true" className="size-3.5" />
-                Review live SQLite publish
-              </Button>
-              {publishPreview ? (
-                <div
-                  role="status"
-                  className="rounded-lg border border-accent/25 bg-accent-soft p-3"
-                >
-                  <p className="text-[10px] font-semibold text-accent-strong">Ready to persist</p>
-                  <p className="mt-1 text-[9px] leading-4 text-ink-muted">
-                    The service will compile the current authoring revisions, write immutable rows,
-                    and atomically replace {workspace.currentPublicationId ?? 'the empty pointer'}.
-                  </p>
-                  <Button
-                    className="mt-2 w-full"
-                    size="sm"
-                    disabled={publicationMutation.isPending}
-                    onClick={() => publicationMutation.mutate('publish')}
-                  >
-                    Confirm publish to SQLite
-                  </Button>
-                </div>
-              ) : null}
-            </div>
-          </Card>
-
-          <Card className="overflow-hidden">
-            <div className="border-b border-line p-4">
-              <div className="flex items-center gap-2">
-                <RotateCcw aria-hidden="true" className="size-4 text-ink-muted" />
-                <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-ink-faint">
-                    Rollback
-                  </p>
-                  <h2 className="mt-0.5 text-sm font-semibold text-ink">
-                    Restore retained SQLite target
-                  </h2>
-                </div>
-              </div>
-            </div>
-            <div className="space-y-3 p-4">
-              <div className="rounded-lg bg-surface-subtle p-3">
-                <p className="text-[9px] leading-4 text-ink-muted">
-                  Rollback repoints serving to an existing immutable snapshot. It never recompiles
-                  or mutates the retained publication.
-                </p>
-                <div className="mt-2 flex items-center gap-1.5 text-[9px] text-ink-faint">
-                  <Clock3 aria-hidden="true" className="size-3" />
-                  {workspace.rollbackPublicationId ?? 'No retained predecessor'}
-                </div>
-              </div>
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={() => setRollbackPreview((value) => !value)}
-              >
-                Preview rollback
-              </Button>
-              {rollbackPreview ? (
-                <div className="rounded-lg border border-warning/30 bg-warning-soft p-3">
-                  <p className="text-[10px] font-semibold text-warning-strong">
-                    Confirmation preview
-                  </p>
-                  <p className="mt-1 text-[9px] leading-4 text-ink-muted">
-                    Changes only the active pointer to the retained predecessor. No immutable
-                    publication rows are rewritten.
-                  </p>
-                  <div className="mt-2 flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => setRollbackPreview(false)}>
-                      Cancel
-                    </Button>
-                    <Button
-                      size="sm"
-                      disabled={publicationMutation.isPending || !workspace.rollbackPublicationId}
-                      onClick={() => publicationMutation.mutate('rollback')}
+        {filteredRows.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[820px] border-collapse text-left">
+              <thead className="bg-surface-muted/70">
+                <tr>
+                  {['Release', 'State', 'Published', 'Materialized', 'Details'].map((heading) => (
+                    <th
+                      key={heading}
+                      scope="col"
+                      className="px-4 py-2.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-ink-faint"
                     >
-                      Confirm rollback
-                    </Button>
-                  </div>
-                </div>
-              ) : null}
-              {!workspace.rollbackPublicationId ? (
-                <p className="text-[8px] leading-4 text-ink-faint">
-                  The current SQLite publication has no retained predecessor.
-                </p>
-              ) : (
-                <p className="truncate font-mono text-[8px] text-ink-faint">
-                  live target: {workspace.rollbackPublicationId}
-                </p>
-              )}
+                      {heading}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filteredRows.map((row) => (
+                  <ReleaseRow key={row.id} row={row} />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="grid min-h-40 place-items-center p-6 text-center">
+            <div>
+              <CheckCircle2 aria-hidden="true" className="mx-auto size-6 text-ink-faint" />
+              <p className="mt-2 text-xs font-medium text-ink">
+                {history.total === 0 ? 'No releases yet' : 'No records match this filter'}
+              </p>
+              <p className="mt-1 text-[10px] text-ink-muted">
+                {history.total === 0
+                  ? 'Open Authoring and review publication when this template is ready.'
+                  : 'Choose All releases to restore history.'}
+              </p>
             </div>
-          </Card>
-          <Card className="p-3">
-            <p className="text-[9px] font-semibold uppercase text-ink-faint">
-              SQLite action status
-            </p>
-            <p role="status" className="mt-1 text-[9px] leading-4 text-ink-muted">
-              {actionStatus}
-            </p>
-          </Card>
-        </aside>
-      </div>
+          </div>
+        )}
+      </Card>
     </div>
   );
 }

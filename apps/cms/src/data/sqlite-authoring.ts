@@ -42,6 +42,44 @@ const PublicationMetadataSchema = z.object({
   activatedBy: z.string().min(1).nullable(),
 });
 
+export const CmsPublicationHistoryInputSchema = z.object({
+  scenarioId: ScenarioIdSchema,
+  limit: z.int().min(1).max(50).optional(),
+});
+
+const CmsPublicationHistoryRowSchema = z.object({
+  id: z.string().min(1),
+  sequence: z.int().min(1),
+  status: z.enum(['published', 'failed']),
+  inputHash: z.string().regex(/^[a-f0-9]{64}$/),
+  previousPublicationId: z.string().min(1).nullable(),
+  pageCount: z.int().min(0),
+  manifestCount: z.int().min(0),
+  createdBy: z.string().min(1),
+  publishedAt: z.string().min(1).nullable(),
+  createdAt: z.string().min(1),
+  activatedAt: z.string().min(1).nullable(),
+  activatedBy: z.string().min(1).nullable(),
+  isCurrent: z.boolean(),
+  isRollbackTarget: z.boolean(),
+});
+
+export const CmsPublicationHistorySchema = z.object({
+  scenarioId: ScenarioIdSchema,
+  templateId: z.string().min(1),
+  currentPublicationId: z.string().min(1).nullable(),
+  rollbackTargetPublicationId: z.string().min(1).nullable(),
+  total: z.int().min(0),
+  counts: z.object({
+    published: z.int().min(0),
+    failed: z.int().min(0),
+    current: z.int().min(0).max(1),
+    rollbackTarget: z.int().min(0).max(1),
+    historical: z.int().min(0),
+  }),
+  rows: z.array(CmsPublicationHistoryRowSchema).max(50),
+});
+
 export const CmsLifecycleErrorCodeSchema = z.enum([
   'PRIORITY_CONFLICT',
   'NOT_FOUND',
@@ -118,6 +156,9 @@ export const CmsRollbackPublicationInputSchema = z.object({
 });
 
 export type CmsPublicationMetadata = z.infer<typeof PublicationMetadataSchema>;
+export type CmsPublicationHistoryInput = z.infer<typeof CmsPublicationHistoryInputSchema>;
+export type CmsPublicationHistoryRow = z.infer<typeof CmsPublicationHistoryRowSchema>;
+export type CmsPublicationHistory = z.infer<typeof CmsPublicationHistorySchema>;
 export type CmsPublicationPreflight = z.infer<typeof CmsPublicationPreflightResultSchema>;
 export type CmsPublicationPreflightInput = z.infer<typeof CmsPublicationPreflightInputSchema>;
 export type CmsPublishPublicationInput = z.infer<typeof CmsPublishPublicationInputSchema>;

@@ -113,9 +113,10 @@ function WorkspaceHeader({ scenario }: Readonly<{ scenario: ScenarioFixture }>) 
             <Link
               to="/publications/$templateId"
               params={{ templateId: scenario.id }}
+              search={{}}
               className={buttonClassName({ variant: 'outline', size: 'sm' })}
             >
-              <Database aria-hidden="true" className="size-3.5" /> Publications
+              <Database aria-hidden="true" className="size-3.5" /> Release history
             </Link>
           </div>
         </div>

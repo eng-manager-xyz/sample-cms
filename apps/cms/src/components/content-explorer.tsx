@@ -523,9 +523,10 @@ function TemplateInspector({
             <Link
               to="/publications/$templateId"
               params={{ templateId: template.slug }}
+              search={previewCanonicalUrl ? { canonicalUrl: previewCanonicalUrl } : {}}
               className={secondaryActionClassName}
             >
-              <Database aria-hidden="true" className="size-3.5" /> Publications
+              <Database aria-hidden="true" className="size-3.5" /> Release history
             </Link>
             <Link
               to="/author/$templateId"
