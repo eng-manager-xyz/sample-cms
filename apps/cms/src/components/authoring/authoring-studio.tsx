@@ -85,6 +85,8 @@ export function AuthoringStudio({
   websiteOrigin,
   sidebarCollapsed,
   onSidebarCollapsedChange,
+  inspectorCollapsed,
+  onInspectorCollapsedChange,
 }: Readonly<{
   scenario: ScenarioFixture;
   initialWorkspace: CmsWorkspaceSnapshot;
@@ -93,6 +95,8 @@ export function AuthoringStudio({
   websiteOrigin: WebsiteOriginState;
   sidebarCollapsed: boolean;
   onSidebarCollapsedChange: (collapsed: boolean) => void;
+  inspectorCollapsed: boolean;
+  onInspectorCollapsedChange: (collapsed: boolean) => void;
 }>) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -606,7 +610,7 @@ export function AuthoringStudio({
             />
           </AuthoringSelectorSurface>
         ) : (
-          <AuthoringDocumentSurface>
+          <AuthoringDocumentSurface inspectorCollapsed={inspectorCollapsed}>
             <AuthoringCanvasPane
               scenarioId={scenario.id}
               workspace={workspace}
@@ -624,6 +628,7 @@ export function AuthoringStudio({
               {...(addInsertion ? { addInsertion } : {})}
               inspectorTab={documentInspectorTab}
               inspectorNavigationDisabled={hasUnsavedForm}
+              collapsed={inspectorCollapsed}
               pending={pending}
               placementActionsDisabled={formActionsDisabled}
               serverError={serverError}
@@ -631,6 +636,7 @@ export function AuthoringStudio({
                 if (hasUnsavedForm && tab !== 'fields') return;
                 changeInspectorTab(tab);
               }}
+              onCollapsedChange={onInspectorCollapsedChange}
               onDiscardChanges={() => {
                 setAddInsertion(null);
                 setServerError(null);

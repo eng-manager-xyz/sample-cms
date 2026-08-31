@@ -57,6 +57,7 @@ function AuthoringRoute() {
   const search = Route.useSearch();
   const scenario = getScenarioFixture(scenarioId);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [inspectorCollapsed, setInspectorCollapsed] = useState(false);
   return (
     <AuthoringStudio
       key={`${workspace.pageId}:${workspace.scopeId}`}
@@ -67,6 +68,8 @@ function AuthoringRoute() {
       websiteOrigin={websiteOrigin}
       sidebarCollapsed={sidebarCollapsed}
       onSidebarCollapsedChange={setSidebarCollapsed}
+      inspectorCollapsed={inspectorCollapsed}
+      onInspectorCollapsedChange={setInspectorCollapsed}
     />
   );
 }

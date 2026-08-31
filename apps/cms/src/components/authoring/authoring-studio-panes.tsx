@@ -1,5 +1,5 @@
 import { CMS_RENDERED_PAGE_CLASS } from '@repo/cms-renderer';
-import { FileClock, GitBranch, Layers3, Plus, RotateCcw } from 'lucide-react';
+import { FileClock, GitBranch, Layers3, PanelRight, Plus, RotateCcw } from 'lucide-react';
 
 import { CanvasBlock, HiddenCanvasBlock } from '@/components/authoring/canvas-block';
 import {
@@ -179,84 +179,140 @@ function HistoryPanel({ placement }: Readonly<{ placement?: CmsWorkspacePlacemen
   if (!placement) {
     return <p className="text-xs text-ink-muted">Select a visible placement to inspect history.</p>;
   }
+  const currentVersion = placement.versionHistory.find(
+    (version) => version.id === placement.blockVersionId
+  );
   return (
-    <div className="space-y-5">
-      <section>
-        <h3 className="text-xs font-semibold text-ink">Draft versus published</h3>
-        <dl className="mt-3 grid gap-2 text-[11px]">
-          <div className="rounded-lg border border-line bg-surface-muted/40 p-2.5">
-            <dt className="text-ink-faint">Stable lineage</dt>
-            <dd className="mt-1 break-all font-mono text-ink">{placement.lineageId}</dd>
+    <div className="space-y-6">
+      <section aria-labelledby="history-state-heading" className="border-l-2 border-accent pl-3">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-accent-strong">
+              Selected block
+            </p>
+            <h3 id="history-state-heading" className="mt-1 text-xs font-semibold text-ink">
+              Draft and publication state
+            </h3>
           </div>
-          <div className="rounded-lg border border-line bg-surface-muted/40 p-2.5">
-            <dt className="text-ink-faint">Draft immutable version</dt>
-            <dd className="mt-1 break-all font-mono text-ink">{placement.blockVersionId}</dd>
+          <Badge tone={placement.inherited ? 'neutral' : 'info'}>
+            {placement.inherited ? 'inherited' : 'local'}
+          </Badge>
+        </div>
+        <dl className="mt-3 divide-y divide-line text-[11px]">
+          <div className="flex items-start justify-between gap-3 py-2">
+            <dt className="text-ink-muted">Draft</dt>
+            <dd className="text-right font-medium text-ink">
+              Version {currentVersion?.versionNumber ?? 'current'}
+            </dd>
           </div>
-          <div className="rounded-lg border border-line bg-surface-muted/40 p-2.5">
-            <dt className="text-ink-faint">Draft content hash</dt>
-            <dd className="mt-1 break-all font-mono text-ink">{placement.contentHash}</dd>
+          <div className="flex items-start justify-between gap-3 py-2">
+            <dt className="text-ink-muted">Published</dt>
+            <dd className="max-w-48 break-all text-right text-ink">
+              {placement.publishedBlockVersionId ? 'In current publication' : 'Not published'}
+            </dd>
           </div>
-          <div className="rounded-lg border border-line bg-surface-muted/40 p-2.5">
-            <dt className="text-ink-faint">Published immutable version</dt>
-            <dd className="mt-1 break-all font-mono text-ink">
-              {placement.publishedBlockVersionId ?? 'Not in current publication'}
+          <div className="flex items-start justify-between gap-3 py-2">
+            <dt className="text-ink-muted">Lineage</dt>
+            <dd className="max-w-48 break-all text-right font-mono text-[10px] text-ink-faint">
+              {placement.lineageId}
             </dd>
           </div>
         </dl>
       </section>
-      <section>
-        <h3 className="text-xs font-semibold text-ink">Version lineage</h3>
-        <ol className="mt-3 space-y-2">
-          {placement.versionHistory.map((version) => (
-            <li
-              key={version.id}
-              className={cn(
-                'rounded-lg border p-2.5 text-[11px]',
-                version.id === placement.blockVersionId
-                  ? 'border-accent/30 bg-accent-soft/45'
-                  : 'border-line bg-canvas'
-              )}
-            >
-              <div className="flex items-center justify-between gap-2">
-                <span className="font-semibold text-ink">Version {version.versionNumber}</span>
-                <Badge tone={version.id === placement.blockVersionId ? 'info' : 'neutral'}>
+
+      <section aria-labelledby="version-lineage-heading">
+        <div className="flex items-baseline justify-between gap-3">
+          <h3 id="version-lineage-heading" className="text-xs font-semibold text-ink">
+            Version lineage
+          </h3>
+          <span className="text-[10px] text-ink-faint">
+            {placement.versionHistory.length}{' '}
+            {placement.versionHistory.length === 1 ? 'revision' : 'revisions'}
+          </span>
+        </div>
+        <ol className="relative mt-4 space-y-4 border-l border-line pl-4">
+          {placement.versionHistory.map((version) => {
+            const isDraft = version.id === placement.blockVersionId;
+            const isPublished = version.id === placement.publishedBlockVersionId;
+            return (
+              <li key={version.id} className="relative text-[11px]">
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    'absolute -left-[20.5px] top-1 size-2 rounded-full ring-4 ring-canvas',
+                    isDraft ? 'bg-accent' : 'bg-line-strong'
+                  )}
+                />
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="font-semibold text-ink">Version {version.versionNumber}</p>
+                    <p className="mt-0.5 text-ink-muted">
+                      {version.createdBy} · {version.createdAt}
+                    </p>
+                  </div>
+                  <span className="flex flex-wrap justify-end gap-1">
+                    {isDraft ? <Badge tone="info">draft</Badge> : null}
+                    {isPublished ? <Badge tone="success">published</Badge> : null}
+                  </span>
+                </div>
+                <p className="mt-2 text-ink-muted">
                   {version.blockType} · schema {version.schemaVersion}
-                </Badge>
-              </div>
-              <code className="mt-2 block break-all text-[10px] text-ink-muted">{version.id}</code>
-              <p className="mt-2 break-all font-mono text-[10px] text-ink-muted">
-                Hash: {version.contentHash}
-              </p>
-              <p className="mt-2 text-ink-muted">
-                Parent: <code>{version.parentBlockVersionId ?? 'initial version'}</code>
-              </p>
-              <p className="mt-1 text-ink-faint">
-                {version.createdBy} · {version.createdAt}
-              </p>
-            </li>
-          ))}
+                </p>
+                <details className="mt-2 text-[10px] text-ink-faint">
+                  <summary className="cursor-pointer outline-none hover:text-ink focus-visible:ring-2 focus-visible:ring-focus">
+                    Technical provenance
+                  </summary>
+                  <dl className="mt-2 space-y-1.5 border-l border-line pl-2.5 font-mono">
+                    <div>
+                      <dt className="inline font-sans">Version ID: </dt>
+                      <dd className="inline break-all">{version.id}</dd>
+                    </div>
+                    <div>
+                      <dt className="inline font-sans">Content hash: </dt>
+                      <dd className="inline break-all">{version.contentHash}</dd>
+                    </div>
+                    <div>
+                      <dt className="inline font-sans">Parent: </dt>
+                      <dd className="inline break-all">
+                        {version.parentBlockVersionId ?? 'initial version'}
+                      </dd>
+                    </div>
+                  </dl>
+                </details>
+              </li>
+            );
+          })}
         </ol>
       </section>
-      <section>
-        <h3 className="text-xs font-semibold text-ink">Cascade trace</h3>
-        <ol className="mt-3 space-y-2">
-          {placement.trace.map((step, index) => (
-            <li
-              key={`${step.sourceRevisionId}:${step.kind}:${step.blockVersionId ?? step.order ?? 'none'}`}
-              className="flex gap-2 text-[11px]"
-            >
-              <span className="grid size-5 shrink-0 place-items-center rounded-full bg-surface-muted font-mono text-[9px] text-ink-muted">
-                {index + 1}
-              </span>
-              <span>
-                <strong className="text-ink">{step.sourceVariantName}</strong>{' '}
-                <span className="text-ink-muted">
-                  {step.kind} at priority {step.sourcePriority}
+
+      <section aria-labelledby="cascade-trace-heading">
+        <details>
+          <summary
+            id="cascade-trace-heading"
+            className="cursor-pointer text-xs font-semibold text-ink outline-none hover:text-accent-strong focus-visible:ring-2 focus-visible:ring-focus"
+          >
+            Resolution trace · {placement.trace.length}{' '}
+            {placement.trace.length === 1 ? 'step' : 'steps'}
+          </summary>
+          <ol className="mt-3 space-y-2 border-l border-line pl-3">
+            {placement.trace.map((step, index) => (
+              <li
+                key={`${step.sourceRevisionId}:${step.kind}:${step.blockVersionId ?? step.order ?? 'none'}`}
+                className="flex gap-2 text-[11px]"
+              >
+                <span className="grid size-5 shrink-0 place-items-center rounded-full bg-surface-muted font-mono text-[9px] text-ink-muted">
+                  {index + 1}
                 </span>
-              </span>
-            </li>
-          ))}
-        </ol>
+                <span>
+                  <strong className="text-ink">{step.sourceVariantName}</strong>{' '}
+                  <span className="text-ink-muted">
+                    {step.kind} at priority {step.sourcePriority}
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ol>
+        </details>
       </section>
     </div>
   );
@@ -269,10 +325,12 @@ export function AuthoringInspectorPane({
   addInsertion,
   inspectorTab,
   inspectorNavigationDisabled,
+  collapsed,
   pending,
   placementActionsDisabled,
   serverError,
   onTabChange,
+  onCollapsedChange,
   onDiscardChanges,
   onSave,
   onFormDirty,
@@ -284,45 +342,113 @@ export function AuthoringInspectorPane({
   addInsertion?: BlockFormInsertion;
   inspectorTab: Exclude<AuthoringInspectorTab, 'cascade'>;
   inspectorNavigationDisabled: boolean;
+  collapsed: boolean;
   pending: boolean;
   placementActionsDisabled: boolean;
   serverError: string | null;
   onTabChange: (tab: Exclude<AuthoringInspectorTab, 'cascade'>) => void;
+  onCollapsedChange: (collapsed: boolean) => void;
   onDiscardChanges: () => void;
   onSave: (input: BlockFormSaveInput) => Promise<void>;
   onFormDirty: (description: string) => void;
   inspectField: (source: string) => Promise<CmsWorkspaceFieldInspection>;
 }>) {
+  const inspectorLabel = inspectorTab === 'fields' ? 'Fields' : 'History';
+  const collapseLabel = collapsed
+    ? `Expand ${inspectorLabel} inspector`
+    : `Collapse ${inspectorLabel} inspector`;
   return (
-    <aside className="min-h-0 rounded-xl border border-line bg-canvas xl:sticky xl:top-16 xl:max-h-[calc(100vh-5rem)] xl:overflow-y-auto">
-      <div className="sticky top-0 z-10 flex border-b border-line bg-canvas p-1.5">
-        {(
-          [
-            ['fields', 'Fields', GitBranch],
-            ['history', 'History', FileClock],
-          ] as const
-        ).map(([tab, label, Icon]) => (
-          <button
-            key={tab}
+    <aside
+      className={cn(
+        'min-h-0 rounded-xl border border-line bg-canvas xl:sticky xl:top-16 xl:max-h-[calc(100vh-5rem)]',
+        collapsed
+          ? 'xl:overflow-hidden xl:rounded-none xl:border-y-0 xl:border-r-0 xl:bg-transparent'
+          : 'xl:overflow-y-auto'
+      )}
+      data-inspector-collapsed={collapsed ? 'true' : 'false'}
+      aria-label={`${inspectorLabel} inspector`}
+    >
+      <div
+        className={cn(
+          'sticky top-0 z-10 flex min-h-11 items-center gap-1 border-b border-line bg-canvas p-1.5',
+          collapsed && 'xl:justify-center xl:border-b-0 xl:bg-transparent'
+        )}
+      >
+        <div className="hidden shrink-0 xl:block">
+          <Button
             type="button"
+            variant="ghost"
+            size="icon"
             className={cn(
-              'flex h-8 flex-1 items-center justify-center gap-1.5 rounded-md text-xs font-medium outline-none focus-visible:ring-2 focus-visible:ring-focus',
-              inspectorTab === tab ? 'bg-surface-muted text-ink' : 'text-ink-muted hover:text-ink'
+              'size-8 text-ink-muted hover:bg-surface-muted hover:text-ink',
+              collapsed ? '!cursor-w-resize bg-canvas shadow-sm' : '!cursor-e-resize'
             )}
-            disabled={pending || (inspectorNavigationDisabled && tab !== 'fields')}
-            aria-pressed={inspectorTab === tab}
-            title={
-              inspectorNavigationDisabled && tab !== 'fields'
-                ? 'Save or cancel local block changes before leaving Fields.'
-                : undefined
-            }
-            onClick={() => onTabChange(tab)}
+            aria-controls="authoring-block-inspector-content"
+            aria-expanded={!collapsed}
+            aria-label={collapseLabel}
+            title={collapseLabel}
+            onClick={() => onCollapsedChange(!collapsed)}
           >
-            <Icon aria-hidden="true" className="size-3.5" /> {label}
-          </button>
-        ))}
+            <PanelRight aria-hidden="true" className="size-4" strokeWidth={1.8} />
+          </Button>
+        </div>
+        <div
+          role="tablist"
+          aria-label="Block inspector"
+          className={cn('flex min-w-0 flex-1', collapsed && 'xl:hidden')}
+        >
+          {(
+            [
+              ['fields', 'Fields', GitBranch],
+              ['history', 'History', FileClock],
+            ] as const
+          ).map(([tab, label, Icon]) => (
+            <button
+              key={tab}
+              id={`authoring-inspector-tab-${tab}`}
+              type="button"
+              role="tab"
+              className={cn(
+                'flex h-8 flex-1 items-center justify-center gap-1.5 rounded-md text-xs font-medium outline-none focus-visible:ring-2 focus-visible:ring-focus',
+                inspectorTab === tab ? 'bg-surface-muted text-ink' : 'text-ink-muted hover:text-ink'
+              )}
+              disabled={pending || (inspectorNavigationDisabled && tab !== 'fields')}
+              aria-controls="authoring-block-inspector-content"
+              aria-selected={inspectorTab === tab}
+              tabIndex={inspectorTab === tab ? 0 : -1}
+              title={
+                inspectorNavigationDisabled && tab !== 'fields'
+                  ? 'Save or cancel local block changes before leaving Fields.'
+                  : undefined
+              }
+              onClick={() => onTabChange(tab)}
+              onKeyDown={(event) => {
+                if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+                const nextTab =
+                  event.key === 'Home'
+                    ? 'fields'
+                    : event.key === 'End'
+                      ? 'history'
+                      : tab === 'fields'
+                        ? 'history'
+                        : 'fields';
+                if (inspectorNavigationDisabled && nextTab !== 'fields') return;
+                event.preventDefault();
+                onTabChange(nextTab);
+                document.getElementById(`authoring-inspector-tab-${nextTab}`)?.focus();
+              }}
+            >
+              <Icon aria-hidden="true" className="size-3.5" /> {label}
+            </button>
+          ))}
+        </div>
       </div>
-      <div className="p-4">
+      <div
+        id="authoring-block-inspector-content"
+        role="tabpanel"
+        aria-labelledby={`authoring-inspector-tab-${inspectorTab}`}
+        className={cn('p-4', collapsed && 'xl:hidden')}
+      >
         {inspectorTab === 'fields' ? (
           <>
             <div className="mb-5 flex items-start justify-between gap-3">

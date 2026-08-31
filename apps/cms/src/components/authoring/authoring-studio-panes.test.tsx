@@ -1,8 +1,33 @@
 import { describe, expect, test } from 'bun:test';
 import { renderToStaticMarkup } from 'react-dom/server';
 
-import { AuthoringCanvasPane } from '@/components/authoring/authoring-studio-panes';
-import type { CmsWorkspacePlacement, CmsWorkspaceSnapshot } from '@/data/sqlite-authoring';
+import {
+  AuthoringCanvasPane,
+  AuthoringInspectorPane,
+} from '@/components/authoring/authoring-studio-panes';
+import type {
+  CmsWorkspaceBlockType,
+  CmsWorkspacePlacement,
+  CmsWorkspaceSnapshot,
+} from '@/data/sqlite-authoring';
+
+const heroBlockType: CmsWorkspaceBlockType = {
+  key: 'hero',
+  name: 'Hero',
+  schemaVersion: 1,
+  schemaJson: JSON.stringify({
+    type: 'object',
+    required: ['headline'],
+    properties: {
+      headline: {
+        type: 'string',
+        title: 'Headline',
+        description: 'Primary page message',
+      },
+    },
+  }),
+  exampleContentJson: '{"headline":"Example hero"}',
+};
 
 const hero: CmsWorkspacePlacement = {
   placementKey: 'primary-hero',
@@ -27,7 +52,18 @@ const hero: CmsWorkspacePlacement = {
   createdAt: '2026-08-30T00:00:00.000Z',
   publishedBlockVersionId: 'block-version-1',
   draftDifference: 'same',
-  versionHistory: [],
+  versionHistory: [
+    {
+      id: 'block-version-1',
+      parentBlockVersionId: null,
+      versionNumber: 1,
+      blockType: 'hero',
+      schemaVersion: 1,
+      contentHash: 'hash-1',
+      createdBy: 'test',
+      createdAt: '2026-08-30T00:00:00.000Z',
+    },
+  ],
   fieldInspections: [],
 };
 
@@ -53,7 +89,7 @@ const workspace: CmsWorkspaceSnapshot = {
     },
   ],
   selectorFields: [],
-  blockTypes: [],
+  blockTypes: [heroBlockType],
   placements: [hero],
   tombstones: [],
   matchedVariantRevisionIds: ['default-revision-1'],
@@ -90,5 +126,81 @@ describe('AuthoringCanvasPane', () => {
     expect(markup).not.toContain('<main');
     expect(markup).not.toContain('Selected scope projection');
     expect(markup).not.toContain('Serving pointer');
+  });
+});
+
+describe('AUT-556 AuthoringInspectorPane', () => {
+  test('keeps Fields mounted behind an accessible collapsed desktop rail', () => {
+    const markup = renderToStaticMarkup(
+      <AuthoringInspectorPane
+        workspace={workspace}
+        selectedPlacement={hero}
+        addingBlock={false}
+        inspectorTab="fields"
+        inspectorNavigationDisabled={false}
+        collapsed
+        pending={false}
+        placementActionsDisabled={false}
+        serverError={null}
+        onTabChange={() => undefined}
+        onCollapsedChange={() => undefined}
+        onDiscardChanges={() => undefined}
+        onSave={async () => undefined}
+        onFormDirty={() => undefined}
+        inspectField={async () => ({
+          path: '$.headline',
+          source: 'Example hero',
+          success: true,
+          dependencies: [],
+          allowedVariables: [],
+          expressionCount: 0,
+          maxAstDepth: 0,
+          evaluatedSample: 'Example hero',
+          error: null,
+        })}
+      />
+    );
+
+    expect(markup).toContain('data-inspector-collapsed="true"');
+    expect(markup).toContain('aria-label="Expand Fields inspector"');
+    expect(markup).toContain('aria-expanded="false"');
+    expect(markup).toContain('!cursor-w-resize');
+    expect(markup).toContain('role="tablist"');
+    expect(markup).toContain('tabindex="-1"');
+    expect(markup).toContain('role="tabpanel"');
+    expect(markup).toContain('xl:hidden');
+    expect(markup).toContain('Primary page message');
+  });
+
+  test('exposes the active History tab and compact revision provenance', () => {
+    const markup = renderToStaticMarkup(
+      <AuthoringInspectorPane
+        workspace={workspace}
+        selectedPlacement={hero}
+        addingBlock={false}
+        inspectorTab="history"
+        inspectorNavigationDisabled={false}
+        collapsed={false}
+        pending={false}
+        placementActionsDisabled={false}
+        serverError={null}
+        onTabChange={() => undefined}
+        onCollapsedChange={() => undefined}
+        onDiscardChanges={() => undefined}
+        onSave={async () => undefined}
+        onFormDirty={() => undefined}
+        inspectField={async () => {
+          throw new Error('History does not inspect fields.');
+        }}
+      />
+    );
+
+    expect(markup).toContain('aria-label="Collapse History inspector"');
+    expect(markup).toContain('aria-expanded="true"');
+    expect(markup).toContain('!cursor-e-resize');
+    expect(markup).toContain('aria-selected="true"');
+    expect(markup).toContain('Draft and publication state');
+    expect(markup).toContain('Version lineage');
+    expect(markup).toContain('Technical provenance');
   });
 });
