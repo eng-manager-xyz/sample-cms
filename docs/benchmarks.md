@@ -253,22 +253,21 @@ bun run scenarios:benchmark:1m
 ```
 
 The authoritative stress run completed successfully from clean governed commit
-`b419baa79dfdbc2369c297e08c145b1510859ff1` between `2026-08-30T07:37:35.225Z` and
-`2026-08-30T07:56:01.673Z`. That revision includes the AUT-544 implementation and uses the same
-clean tree and lockfile as the bounded run. The recorded invocation wrote
-`.data/aut544-store-1m.json` against `.data/aut544-store-1m.sqlite`; the byte-identical delivery
-source is `docs/evidence/store-1m.json`. Values below are copied from that envelope rather than
-inferred from the bounded run.
+`45dc18861c65a1a12629f2ed4f0264192b5f3dbe` between `2026-08-31T01:52:03.770Z` and
+`2026-08-31T02:11:04.753Z`. That revision includes AUT-554 and its refreshed bounded evidence, and
+uses a clean tree with the current lockfile. The recorded invocation wrote
+`docs/evidence/store-1m.json` against `.data/store-1m.sqlite`. Values below are copied from that
+envelope rather than inferred from the bounded run.
 
 | Run provenance and host | Measured result |
 | --- | --- |
-| Git / pre-run tree | `b419baa79dfdbc2369c297e08c145b1510859ff1` / clean |
-| Lock SHA-256 / package-manager pin | `f629b6b281247b4953f55e5d2c11fd0400f55726aa5247400e1cb967bb2e5129` / `bun@1.3.14` |
+| Git / pre-run tree | `45dc18861c65a1a12629f2ed4f0264192b5f3dbe` / clean |
+| Lock SHA-256 / package-manager pin | `aeaa3ecbc3adb15ce407dc2bdeb58ccf6dacc5b12243f933cf05649f9c5010d1` / `bun@1.3.14` |
 | Runtime | actual Bun `1.3.11`; SQLite `3.43.2` |
 | Host | macOS Darwin `24.6.0`, arm64 Apple M4 Max, 16 logical CPUs, 51,539,607,552 bytes (48 GiB) physical memory |
-| Wall / CPU | 1,106,440.516 ms wall; 997.504 s user CPU; 109.529 s system CPU |
-| Maximum resident memory | 608,944,128 bytes (580.73 MiB) |
-| Final database | 2,692,648,960 bytes (2.508 GiB), 657,385 × 4,096-byte pages, zero freelist pages |
+| Wall / CPU | 1,140,962.376 ms wall; 997.469 s user CPU; 120.007 s system CPU |
+| Maximum resident memory | 589,398,016 bytes (562.09 MiB) |
+| Final database | 2,694,868,992 bytes (2.510 GiB), 657,927 × 4,096-byte pages, zero freelist pages |
 
 | Persisted cardinality | Exact result |
 | --- | ---: |
@@ -282,9 +281,9 @@ inferred from the bounded run.
 | Publications / page documents | 2 / 1,000,004 |
 | Manifests / manifest items | 5 / 20 |
 
-The initial seed took 61,902.738 ms. Replaying the same scale identity took 66.102 ms, inserted zero
+The initial seed took 64,034.233 ms. Replaying the same scale identity took 64.820 ms, inserted zero
 rows, reproduced the same SHA-256 identity, and left page and membership counts unchanged. Integrity
-was `ok` on schema v6 with zero foreign-key violations.
+was `ok` on schema v7 with zero foreign-key violations.
 
 All inspected read and selector plans used named indexes. Canonical lookup used
 `templates_domain_pattern_unique` followed by `page_instances_template_canonical_unique`. Tag lookup
@@ -294,14 +293,14 @@ for the requested ordering. Each selector preview used the canonical-page index 
 
 | Selector | Exact matches | Preview time |
 | --- | ---: | ---: |
-| `store_type = 'chain_store'` | 500,001 | 774.697 ms |
-| `category = 'fast_food'` | 200,001 | 751.022 ms |
-| `brand = 'burger_king'` | 50,000 | 710.123 ms |
-| `brand = 'mcdonalds'` | 50,001 | 722.047 ms |
+| `store_type = 'chain_store'` | 500,001 | 792.919 ms |
+| `category = 'fast_food'` | 200,001 | 761.985 ms |
+| `brand = 'burger_king'` | 50,000 | 733.125 ms |
+| `brand = 'mcdonalds'` | 50,001 | 739.405 ms |
 
-The bounded 50-row publication preview over all 1,000,002 eligible pages took 49.440 ms. The full
-generic publication took 638,276.277 ms and persisted 1,000,002 documents at a measured local rate
-of 1,566.72 documents/second. The identical-input compile took 355,715.793 ms, returned the same
+The bounded 50-row publication preview over all 1,000,002 eligible pages took 51.826 ms. The full
+generic publication took 662,074.477 ms and persisted 1,000,002 documents at a measured local rate
+of 1,510.41 documents/second. The identical-input compile took 339,439.579 ms, returned the same
 publication ID and input hash, reproduced exactly 1,143,681,174 logical expanded payload bytes, and
 added no page-document rows.
 
@@ -315,14 +314,14 @@ added no page-document rows.
 | Saved canonical structure bytes | 828,397,407 |
 | Logical fully expanded rendered-document bytes | 1,143,681,174 |
 | Estimated manifest plus page-row bytes | 507,791,017 |
-| SQLite allocation before/after publication | 1,895,190,528 / 2,692,648,960 bytes |
+| SQLite allocation before/after publication | 1,897,410,560 / 2,694,868,992 bytes |
 | Actual publication allocation delta | 797,458,432 bytes (797.46 bytes/document) |
 
-Across 250 full-scale samples, indexed canonical lookup measured 0.007292 ms p50 and 0.008375 ms
-p95. Manifest reconstruction measured 0.066667 ms p50 and 0.287417 ms p95, using exactly two SQL
+Across 250 full-scale samples, indexed canonical lookup measured 0.007000 ms p50 and 0.008875 ms
+p95. Manifest reconstruction measured 0.062250 ms p50 and 0.297000 ms p95, using exactly two SQL
 statements, zero selector statements, and zero CEL evaluations per request. The separate expanded
 serving fixture used one SQL statement, zero selectors, and zero CEL evaluations, measuring
-0.019208 ms p50 and 0.035125 ms p95. These local hot-cache SQLite measurements compare shapes; they
+0.017416 ms p50 and 0.028458 ms p95. These local hot-cache SQLite measurements compare shapes; they
 are not production SLOs. No resource limitation occurred.
 
 ## Scenario C — structural replacement (`AUT-529`)
