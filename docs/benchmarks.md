@@ -68,10 +68,10 @@ The envelope's `run` object is the authoritative environment record. It includes
 | Inputs | page/sample/case counts and deterministic seed in `invocation` |
 
 The current bounded envelope was generated from clean governed commit
-`b419baa79dfdbc2369c297e08c145b1510859ff1` between `2026-08-30T07:37:27.673Z` and
-`2026-08-30T07:37:28.778Z`. Its recorded wall time is `1,104.948417` ms, its pre-run tree is empty,
+`40ecac488b168b23b6af9824b482e1ca914a1878` between `2026-08-31T01:51:07.550Z` and
+`2026-08-31T01:51:08.759Z`. Its recorded wall time is `1,209.254417` ms, its pre-run tree is empty,
 and its `bun.lock` SHA-256 is
-`f629b6b281247b4953f55e5d2c11fd0400f55726aa5247400e1cb967bb2e5129` with package-manager pin
+`aeaa3ecbc3adb15ce407dc2bdeb58ccf6dacc5b12243f933cf05649f9c5010d1` with package-manager pin
 `bun@1.3.14`.
 
 The evidence runner records the exact pre-run tree state instead of assuming it was clean. The
