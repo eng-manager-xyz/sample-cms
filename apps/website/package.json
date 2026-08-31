@@ -14,6 +14,7 @@
   "dependencies": {
     "@repo/cms-db": "workspace:*",
     "@repo/cms-domain": "workspace:*",
+    "@repo/cms-renderer": "workspace:*",
     "@repo/cms-service": "workspace:*",
     "@tanstack/react-router": "1.170.32",
     "@tanstack/react-start": "1.168.49",

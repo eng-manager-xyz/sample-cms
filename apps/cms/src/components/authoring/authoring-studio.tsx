@@ -653,7 +653,6 @@ export function AuthoringStudio({
             <AuthoringCanvasPane
               scenarioId={scenario.id}
               workspace={workspace}
-              websiteOrigin={websiteOrigin}
               selectedPlacementKey={selectedPlacement?.placementKey}
               addingBlock={addingBlock}
               actionsDisabled={structureActionsDisabled}

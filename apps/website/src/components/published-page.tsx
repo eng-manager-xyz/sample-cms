@@ -1,3 +1,4 @@
+import { CMS_RENDERED_PAGE_CLASS } from '@repo/cms-renderer';
 import type { WebsitePageViewModel } from '@/data/website-page';
 import { PublishedBlock } from './block-renderer';
 import { PublicationDrawer } from './publication-drawer';
@@ -5,7 +6,7 @@ import { PublicationDrawer } from './publication-drawer';
 export function PublishedPage({ page }: Readonly<{ page: WebsitePageViewModel }>) {
   return (
     <div
-      className={`published-page published-page--${page.scenarioId}`}
+      className={`${CMS_RENDERED_PAGE_CLASS} published-page published-page--${page.scenarioId}`}
       data-cms-mode={page.renderMode}
       data-cms-editable={String(page.editable)}
       id="overview"

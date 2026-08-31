@@ -1,4 +1,5 @@
-import { FileClock, GitBranch, Layers3, PanelRight, Plus, RotateCcw } from 'lucide-react';
+import { CMS_RENDERED_PAGE_CLASS } from '@repo/cms-renderer';
+import { FileClock, GitBranch, Layers3, Plus, RotateCcw } from 'lucide-react';
 
 import { CanvasBlock, HiddenCanvasBlock } from '@/components/authoring/canvas-block';
 import {
@@ -8,7 +9,6 @@ import {
 } from '@/components/authoring/schema-block-form';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { publishedWebsiteHref, type WebsiteOriginState } from '@/data/authoring-studio';
 import type { ScenarioFixture } from '@/data/scenario-fixtures';
 import type {
   CmsCommand,
@@ -23,7 +23,6 @@ export type AuthoringInspectorTab = 'fields' | 'cascade' | 'history';
 export function AuthoringCanvasPane({
   scenarioId,
   workspace,
-  websiteOrigin,
   selectedPlacementKey,
   addingBlock,
   actionsDisabled,
@@ -33,7 +32,6 @@ export function AuthoringCanvasPane({
 }: Readonly<{
   scenarioId: ScenarioFixture['id'];
   workspace: CmsWorkspaceSnapshot;
-  websiteOrigin: WebsiteOriginState;
   selectedPlacementKey?: string;
   addingBlock: boolean;
   actionsDisabled: boolean;
@@ -45,54 +43,30 @@ export function AuthoringCanvasPane({
   const isDefault = Boolean(selectedVariant?.isDefault);
   const hasLocalOrder =
     !isDefault && workspace.placements.some((placement) => !placement.orderInherited);
-  const publishedHref =
-    websiteOrigin.status === 'ready'
-      ? publishedWebsiteHref(workspace.canonicalUrl, websiteOrigin.origin)
-      : undefined;
-  const unavailableOriginMessage =
-    websiteOrigin.status === 'unavailable' && websiteOrigin.reason === 'invalid-config'
-      ? 'CMS_WEBSITE_ORIGIN is invalid; the published-page link is unavailable.'
-      : 'Set CMS_WEBSITE_ORIGIN on the CMS server to enable website links in this environment.';
   return (
-    <main className="min-w-0">
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-2 px-1">
-        <div>
-          <p className="flex items-center gap-1.5 text-xs font-semibold text-ink">
-            <PanelRight aria-hidden="true" className="size-3.5" /> Selected scope projection
-          </p>
-          <p className="mt-1 max-w-2xl text-[10px] leading-4 text-ink-faint">
-            Canvas includes defaults, lower layers, and the selected scope. Preview opens the
-            persisted saved draft as the full active cascade, so local unsaved edits are excluded
-            and higher matching layers may change the website result.
-          </p>
+    <section className="group/document relative min-w-0" aria-label="Authoring document canvas">
+      {hasLocalOrder ? (
+        <div className="authoring-hover-control pointer-events-none absolute right-2 top-12 z-40 opacity-0 transition-opacity group-hover/document:pointer-events-auto group-hover/document:opacity-100 group-focus-within/document:pointer-events-auto group-focus-within/document:opacity-100">
+          <Button
+            size="sm"
+            variant="outline"
+            className="bg-canvas/95 shadow-sm backdrop-blur"
+            disabled={actionsDisabled}
+            title="Remove this variation's local order and inherit the prior sequence"
+            onClick={() =>
+              runPlacementCommand({
+                kind: 'revertOrder',
+                scenarioId,
+                scopeId: workspace.scopeId,
+                canonicalUrl: workspace.canonicalUrl,
+              })
+            }
+          >
+            <RotateCcw aria-hidden="true" className="size-3.5" /> Revert page order
+          </Button>
         </div>
-        <div className="flex flex-wrap items-center gap-1.5">
-          {hasLocalOrder ? (
-            <Button
-              size="sm"
-              variant="ghost"
-              disabled={actionsDisabled}
-              title="Remove this variation's local order and inherit the prior sequence"
-              onClick={() =>
-                runPlacementCommand({
-                  kind: 'revertOrder',
-                  scenarioId,
-                  scopeId: workspace.scopeId,
-                  canonicalUrl: workspace.canonicalUrl,
-                })
-              }
-            >
-              <RotateCcw aria-hidden="true" className="size-3.5" /> Revert order
-            </Button>
-          ) : null}
-          <Badge tone="info">private preview resolution</Badge>
-          <Badge tone="neutral">{workspace.matchedVariantRevisionIds.length} matched layers</Badge>
-          {!workspace.scopeMatchesSamplePage ? (
-            <Badge tone="warning">scope does not match page</Badge>
-          ) : null}
-        </div>
-      </div>
-      <div className="isolate rounded-xl border border-line-strong bg-canvas shadow-[0_12px_35px_rgba(22,22,26,0.08)]">
+      ) : null}
+      <div className={cn(CMS_RENDERED_PAGE_CLASS, 'isolate relative min-w-0 overflow-visible')}>
         {workspace.placements.length > 0 || workspace.tombstones.length > 0 ? (
           [
             ...workspace.placements.map((placement) => ({
@@ -111,6 +85,12 @@ export function AuthoringCanvasPane({
               item.kind === 'visible' ? (
                 <CanvasBlock
                   key={item.placement.placementKey}
+                  page={{
+                    scenarioId,
+                    canonicalUrl: workspace.canonicalUrl,
+                    renderMode: 'preview',
+                    interactionMode: 'static',
+                  }}
                   placement={item.placement}
                   selected={!addingBlock && item.placement.placementKey === selectedPlacementKey}
                   disabled={actionsDisabled}
@@ -191,26 +171,7 @@ export function AuthoringCanvasPane({
           </div>
         )}
       </div>
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-line bg-canvas px-3 py-2 text-[11px] text-ink-muted">
-        <span>
-          Serving pointer: <code>{workspace.currentPublicationId ?? 'unpublished'}</code>
-        </span>
-        {publishedHref ? (
-          <a
-            href={publishedHref}
-            target="_blank"
-            rel="noreferrer"
-            className="font-semibold text-accent-strong underline-offset-2 hover:underline focus-visible:ring-2 focus-visible:ring-focus"
-          >
-            Open published page
-          </a>
-        ) : (
-          <span aria-disabled="true" className="text-ink-faint" title={unavailableOriginMessage}>
-            Published page unavailable
-          </span>
-        )}
-      </div>
-    </main>
+    </section>
   );
 }
 
