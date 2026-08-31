@@ -51,4 +51,16 @@ describe('AUT-550/AUT-556 authoring studio mode surfaces', () => {
     expect(markup).toContain('aria-label="Return to document authoring"');
     expect(markup).not.toContain('xl:grid-cols-[minmax(520px,1fr)_390px]');
   });
+
+  test('labels the route-backed creation surface as a cancellable wizard', () => {
+    const markup = renderToStaticMarkup(
+      <AuthoringSelectorSurface disabled={false} mode="create" onReturnToDocument={() => undefined}>
+        <span>Selector creation wizard</span>
+      </AuthoringSelectorSurface>
+    );
+
+    expect(markup).toContain('Create a selector variation');
+    expect(markup).toContain('aria-label="Cancel selector creation"');
+    expect(markup).toContain('Selector creation wizard');
+  });
 });

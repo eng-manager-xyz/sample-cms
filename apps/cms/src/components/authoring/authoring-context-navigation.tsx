@@ -4,8 +4,13 @@ import { pageForNavigation, TemplatePageNavigator } from '@/components/template-
 import { Badge, type BadgeProps } from '@/components/ui/badge';
 import { Select } from '@/components/ui/select';
 import type { ContentPageNavigation, ContentPageNavigationOption } from '@/data/content-explorer';
-import { type ScenarioFixture, type ScenarioId, ScenarioIdSchema } from '@/data/scenario-fixtures';
+import { type TemplateKey, TemplateKeySchema } from '@/data/scenario-fixtures';
 import type { CmsWorkspaceSnapshot } from '@/data/sqlite-authoring';
+
+export interface AuthoringTemplateOption {
+  readonly id: TemplateKey;
+  readonly name: string;
+}
 
 export function AuthoringContextNavigation({
   scenarios,
@@ -20,8 +25,8 @@ export function AuthoringContextNavigation({
   onTemplateChange,
   onPageChange,
 }: Readonly<{
-  scenarios: readonly ScenarioFixture[];
-  scenario: ScenarioFixture;
+  scenarios: readonly AuthoringTemplateOption[];
+  scenario: AuthoringTemplateOption;
   navigation: ContentPageNavigation;
   canonicalUrl: string;
   resolutionStatus: CmsWorkspaceSnapshot['resolutionStatus'];
@@ -29,7 +34,7 @@ export function AuthoringContextNavigation({
   lifecycleTone: BadgeProps['tone'];
   lifecycleAnnouncement: string;
   disabled: boolean;
-  onTemplateChange: (scenarioId: ScenarioId) => void;
+  onTemplateChange: (scenarioId: TemplateKey) => void;
   onPageChange: (page: ContentPageNavigationOption) => void;
 }>) {
   const idPrefix = useId();
@@ -54,7 +59,7 @@ export function AuthoringContextNavigation({
         value={scenario.id}
         disabled={disabled}
         title="Template"
-        onChange={(event) => onTemplateChange(ScenarioIdSchema.parse(event.currentTarget.value))}
+        onChange={(event) => onTemplateChange(TemplateKeySchema.parse(event.currentTarget.value))}
       >
         {scenarios.map((option) => (
           <option key={option.id} value={option.id}>

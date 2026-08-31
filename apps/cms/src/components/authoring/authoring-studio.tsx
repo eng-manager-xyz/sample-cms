@@ -3,11 +3,13 @@ import { Link, useNavigate } from '@tanstack/react-router';
 import { CheckCircle2, History } from 'lucide-react';
 import { useReducer, useRef, useState } from 'react';
 import { AppShell } from '@/components/app-shell';
-import { AuthoringContextNavigation } from '@/components/authoring/authoring-context-navigation';
+import {
+  AuthoringContextNavigation,
+  type AuthoringTemplateOption,
+} from '@/components/authoring/authoring-context-navigation';
 import {
   AuthoringCanvasPane,
   AuthoringInspectorPane,
-  type AuthoringInspectorTab,
 } from '@/components/authoring/authoring-studio-panes';
 import {
   AuthoringDocumentSurface,
@@ -34,6 +36,7 @@ import {
   isAuthoringLifecyclePending,
 } from '@/data/authoring-lifecycle';
 import {
+  type AuthoringStudioPanel,
   authoringPanelSearch,
   authoringScopeSearch,
   authoringTemplateSearch,
@@ -41,7 +44,7 @@ import {
   websitePreviewHref,
 } from '@/data/authoring-studio';
 import type { ContentPageNavigation } from '@/data/content-explorer';
-import { type ScenarioFixture, scenarioFixtures } from '@/data/scenario-fixtures';
+import type { TemplateKey } from '@/data/scenario-fixtures';
 import type { SelectorWorkspacePreviewInput } from '@/data/selector-workspace';
 import type {
   CmsCommand,
@@ -71,7 +74,7 @@ function isConflictCode(code: CmsLifecycleErrorCode): boolean {
 }
 
 function workspaceKey(
-  scenarioId: ScenarioFixture['id'],
+  scenarioId: TemplateKey,
   canonicalUrl: string,
   scopeId: string
 ): readonly string[] {
@@ -80,6 +83,7 @@ function workspaceKey(
 
 export function AuthoringStudio({
   scenario,
+  scenarios,
   initialWorkspace,
   initialInspectorTab,
   pageNavigation,
@@ -89,9 +93,10 @@ export function AuthoringStudio({
   inspectorCollapsed,
   onInspectorCollapsedChange,
 }: Readonly<{
-  scenario: ScenarioFixture;
+  scenario: AuthoringTemplateOption;
+  scenarios: readonly AuthoringTemplateOption[];
   initialWorkspace: CmsWorkspaceSnapshot;
-  initialInspectorTab: AuthoringInspectorTab;
+  initialInspectorTab: AuthoringStudioPanel;
   pageNavigation: ContentPageNavigation;
   websiteOrigin: WebsiteOriginState;
   sidebarCollapsed: boolean;
@@ -120,7 +125,8 @@ export function AuthoringStudio({
   const [addInsertion, setAddInsertion] = useState<BlockFormInsertion | null>(null);
   const addingBlock = addInsertion !== null;
   const inspectorTab = initialInspectorTab;
-  const selectorMode = inspectorTab === 'cascade';
+  const selectorMode = inspectorTab === 'cascade' || inspectorTab === 'create-selector';
+  const selectorCreationMode = inspectorTab === 'create-selector';
   const documentInspectorTab = inspectorTab === 'history' ? 'history' : 'fields';
   const [lifecycle, dispatchLifecycle] = useReducer(
     authoringLifecycleReducer,
@@ -135,19 +141,30 @@ export function AuthoringStudio({
   const [publicationError, setPublicationError] = useState<string | null>(null);
   const publicationTriggerRef = useRef<HTMLButtonElement>(null);
 
-  const applyWorkspace = (nextWorkspace: CmsWorkspaceSnapshot): void => {
+  const applyWorkspace = (
+    nextWorkspace: CmsWorkspaceSnapshot,
+    panelOverride?: AuthoringStudioPanel
+  ): void => {
+    const nextCanonicalUrl = nextWorkspace.canonicalUrl;
     queryClient.setQueryData(
-      workspaceKey(scenario.id, canonicalUrl, nextWorkspace.scopeId),
+      workspaceKey(scenario.id, nextCanonicalUrl, nextWorkspace.scopeId),
       nextWorkspace
     );
-    if (nextWorkspace.scopeId === workspace.scopeId) {
+    if (
+      nextWorkspace.scopeId === workspace.scopeId &&
+      nextCanonicalUrl === workspace.canonicalUrl
+    ) {
       queryClient.setQueryData(queryKey, nextWorkspace);
       return;
     }
     void navigate({
       to: '/author/$templateId',
       params: { templateId: scenario.id },
-      search: { canonicalUrl, scopeId: nextWorkspace.scopeId, panel: inspectorTab },
+      search: {
+        canonicalUrl: nextCanonicalUrl,
+        scopeId: nextWorkspace.scopeId,
+        panel: panelOverride ?? inspectorTab,
+      },
     });
   };
 
@@ -164,7 +181,8 @@ export function AuthoringStudio({
         data: {
           scenarioId: scenario.id,
           scopeId: reloadScopeId,
-          canonicalUrl,
+          canonicalUrl:
+            command.kind === 'createVariant' ? result.workspace.canonicalUrl : canonicalUrl,
         },
       });
       return { ...result, workspace: normalizedWorkspace };
@@ -179,13 +197,13 @@ export function AuthoringStudio({
       });
       dispatchLifecycle({ type: 'save-started' });
     },
-    onSuccess: (result) => {
+    onSuccess: (result, command) => {
       setServerError(null);
       dispatchLifecycle({
         type: 'save-succeeded',
         message: `${result.message} The exact canonical-page draft was reloaded.`,
       });
-      applyWorkspace(result.workspace);
+      applyWorkspace(result.workspace, command.kind === 'createVariant' ? 'fields' : undefined);
     },
     onError: (error, command) => {
       const message = readableError(error);
@@ -429,7 +447,7 @@ export function AuthoringStudio({
     });
   };
 
-  const changeInspectorTab = (tab: AuthoringInspectorTab): void => {
+  const changeInspectorTab = (tab: AuthoringStudioPanel): void => {
     void navigate({
       to: '/author/$templateId',
       params: { templateId: scenario.id },
@@ -440,6 +458,10 @@ export function AuthoringStudio({
 
   const viewSelector = (): void => {
     changeInspectorTab('cascade');
+  };
+
+  const createSelector = (): void => {
+    changeInspectorTab('create-selector');
   };
 
   const choosePage = (nextCanonicalUrl: string): void => {
@@ -454,8 +476,8 @@ export function AuthoringStudio({
     });
   };
 
-  const chooseTemplate = (nextScenarioId: ScenarioFixture['id']): void => {
-    const nextScenario = scenarioFixtures.find((candidate) => candidate.id === nextScenarioId);
+  const chooseTemplate = (nextScenarioId: TemplateKey): void => {
+    const nextScenario = scenarios.find((candidate) => candidate.id === nextScenarioId);
     if (!nextScenario || nextScenario.id === scenario.id) return;
     void navigate({
       to: '/author/$templateId',
@@ -553,7 +575,7 @@ export function AuthoringStudio({
       templateId={scenario.id}
       headerContent={
         <AuthoringContextNavigation
-          scenarios={scenarioFixtures}
+          scenarios={scenarios}
           scenario={scenario}
           navigation={pageNavigation}
           canonicalUrl={workspace.canonicalUrl}
@@ -590,6 +612,7 @@ export function AuthoringStudio({
             publicationTriggerRef={publicationTriggerRef}
             onSelectScope={chooseScope}
             onViewSelector={viewSelector}
+            onCreateSelector={createSelector}
             onClearSelector={() => {
               if (defaultVariant) chooseScope(defaultVariant.id);
             }}
@@ -613,12 +636,14 @@ export function AuthoringStudio({
         {selectorMode ? (
           <AuthoringSelectorSurface
             disabled={pending}
+            mode={selectorCreationMode ? 'create' : 'inspect'}
             onReturnToDocument={() => changeInspectorTab('fields')}
           >
             <SelectorWorkspace
               scenarioId={scenario.id}
               workspace={workspace}
               pending={pending}
+              mode={selectorCreationMode ? 'create' : 'inspect'}
               runCommand={runCommand}
               previewSelector={runSelectorPreview}
             />

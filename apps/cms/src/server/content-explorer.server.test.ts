@@ -6,8 +6,14 @@ import { CmsService } from '@repo/cms-service';
 import {
   CONTENT_EXPLORER_PAGE_OPTION_LIMIT,
   CONTENT_EXPLORER_SELECTOR_SAMPLE_LIMIT,
+  CONTENT_EXPLORER_TEMPLATE_LIMIT,
 } from '@/data/content-explorer';
-import { readContentExplorer } from './content-explorer.server';
+import {
+  mutateTemplatePageTags,
+  previewContentTemplateCreation,
+  provisionContentTemplate,
+  readContentExplorer,
+} from './content-explorer.server';
 import { readCmsWorkspace } from './sqlite-authoring.server';
 
 let client: CmsDatabaseClient;
@@ -21,7 +27,7 @@ beforeEach(async () => {
 afterEach(() => client.close());
 
 describe('AUT-540 SQLite content explorer', () => {
-  test('returns exactly the allowlisted persisted templates with counts and publication state', () => {
+  test('returns every persisted template with counts and publication state', () => {
     new CmsService(client).createTemplate({
       id: 'rogue-template',
       key: 'rogue-template',
@@ -40,10 +46,13 @@ describe('AUT-540 SQLite content explorer', () => {
       'stores',
       'eligible-vehicles',
       'structural-proof',
+      'rogue-template',
     ]);
     expect(snapshot.templates.some((template) => template.templateId === 'rogue-template')).toBe(
-      false
+      true
     );
+    expect(snapshot.templateCount).toBe(4);
+    expect(snapshot.templatesTruncated).toBe(false);
     const storeTemplate = snapshot.templates[0];
     expect(storeTemplate).toMatchObject({
       templateId: 'tpl-store',
@@ -55,7 +64,7 @@ describe('AUT-540 SQLite content explorer', () => {
       publishedPageCount: 14,
     });
     expect(
-      snapshot.templates.map(({ pageCount, publishedPageCount }) => ({
+      snapshot.templates.slice(0, 3).map(({ pageCount, publishedPageCount }) => ({
         pageCount,
         publishedPageCount,
       }))
@@ -64,7 +73,36 @@ describe('AUT-540 SQLite content explorer', () => {
       { pageCount: 14, publishedPageCount: 14 },
       { pageCount: 14, publishedPageCount: 14 },
     ]);
-    expect(snapshot.templates.every((template) => template.slots.length > 0)).toBe(true);
+    expect(snapshot.templates.slice(0, 3).every((template) => template.slots.length > 0)).toBe(
+      true
+    );
+  });
+
+  test('bounds the template catalog while retaining the explicitly selected template', () => {
+    const service = new CmsService(client);
+    for (let index = 0; index < CONTENT_EXPLORER_TEMPLATE_LIMIT + 5; index += 1) {
+      const suffix = index.toString().padStart(3, '0');
+      service.createTemplate({
+        id: `catalog-template-${suffix}`,
+        key: `catalog-${suffix}`,
+        name: `Catalog ${suffix}`,
+        domain: `catalog-${suffix}.example.test`,
+        urlPattern: '/catalog',
+      });
+    }
+
+    const selectedSlug = `catalog-${CONTENT_EXPLORER_TEMPLATE_LIMIT + 4}`;
+    const snapshot = readContentExplorer(client, {
+      template: selectedSlug,
+      q: '',
+      limit: 20,
+    });
+
+    expect(snapshot.templates).toHaveLength(CONTENT_EXPLORER_TEMPLATE_LIMIT);
+    expect(snapshot.templateCount).toBe(CONTENT_EXPLORER_TEMPLATE_LIMIT + 8);
+    expect(snapshot.templatesTruncated).toBe(true);
+    expect(snapshot.selectedTemplate).toBe(selectedSlug);
+    expect(snapshot.templates[0]?.slug).toBe(selectedSlug);
   });
 
   test('projects ordered path slots and the deterministic proof page as navigation context', () => {
@@ -427,5 +465,207 @@ describe('AUT-540 SQLite content explorer', () => {
     expect(() => readCmsWorkspace(client, 'stores', undefined, '/en-US/airport/hero-alt')).toThrow(
       'not found in the selected template'
     );
+  });
+});
+
+describe('AUT-565 guided template provisioning adapter', () => {
+  const creationInput = {
+    template: {
+      id: 'tpl:city-guides',
+      key: 'city-guides',
+      name: 'City guides',
+      domain: 'www.example.com',
+      description: 'Finite locale and guide routes',
+    },
+    slots: [
+      {
+        id: 'slot:city-guides:locale',
+        key: 'locale',
+        label: 'Locale',
+        kind: 'variable' as const,
+        variableKind: 'locale' as const,
+      },
+      {
+        id: 'slot:city-guides:resource',
+        key: 'resource',
+        label: 'Resource',
+        kind: 'static' as const,
+        staticValue: 'cities',
+      },
+      {
+        id: 'slot:city-guides:slug',
+        key: 'slug',
+        label: 'Slug',
+        kind: 'variable' as const,
+        variableKind: 'slug' as const,
+      },
+    ],
+    localeCsv: 'locale\nen-US\nfr-CA',
+    slugCsv: 'slug\ndowntown\nairport',
+  };
+
+  test('previews a bounded Cartesian product with a stable review fingerprint', () => {
+    const first = previewContentTemplateCreation(creationInput);
+    const second = previewContentTemplateCreation(creationInput);
+
+    expect(first).toMatchObject({
+      fingerprint: second.fingerprint,
+      urlPattern: '/{locale}/cities/{slug}',
+      cardinality: 4,
+      localeCount: 2,
+      slugCount: 2,
+      errors: [],
+    });
+    expect(first.sampleCanonicalUrls).toHaveLength(4);
+    expect(
+      previewContentTemplateCreation({
+        ...creationInput,
+        slugCsv: 'slug\ndowntown\nairport\nwaterfront',
+      }).fingerprint
+    ).not.toBe(first.fingerprint);
+  });
+
+  test('commits only the reviewed input and exposes the new template and routes', () => {
+    const preview = previewContentTemplateCreation(creationInput);
+    const result = provisionContentTemplate(client, {
+      input: creationInput,
+      previewFingerprint: preview.fingerprint,
+    });
+
+    expect(result).toMatchObject({
+      templateId: 'tpl:city-guides',
+      templateKey: 'city-guides',
+      pageCount: 4,
+    });
+    const snapshot = readContentExplorer(client, {
+      template: 'city-guides',
+      q: '',
+      limit: 20,
+      includeSelectors: true,
+    });
+    expect(snapshot.selectedTemplate).toBe('city-guides');
+    expect(snapshot.templates.map((template) => template.slug)).toContain('city-guides');
+    expect(snapshot.pages).toHaveLength(4);
+    expect(snapshot.pages.every((page) => page.slotValues.locale && page.slotValues.slug)).toBe(
+      true
+    );
+    expect(snapshot.pages.every((page) => page.tags.length === 0)).toBe(true);
+    expect(snapshot.selectors).toHaveLength(1);
+    expect(snapshot.selectors[0]).toMatchObject({ isDefault: true, status: 'active' });
+  });
+
+  test('rejects a stale fingerprint without creating partial template state', () => {
+    const preview = previewContentTemplateCreation(creationInput);
+    expect(() =>
+      provisionContentTemplate(client, {
+        input: { ...creationInput, slugCsv: 'slug\nchanged' },
+        previewFingerprint: preview.fingerprint,
+      })
+    ).toThrow('preview is stale');
+    expect(new CmsService(client).getTemplate('tpl:city-guides')).toBeNull();
+  });
+});
+
+describe('AUT-562 bounded page tag commands', () => {
+  test('adds and removes exact tags namespace assignments for selected pages', () => {
+    new CmsService(client).createVariant('tpl-store', {
+      id: 'variant-store-featured-tags',
+      revisionId: 'revision-store-featured-tags-1',
+      key: 'featured-tags',
+      name: 'Featured stores',
+      priority: 45,
+      status: 'active',
+      selector: "tags = 'featured'",
+      createdBy: 'test',
+      mode: 'linked',
+    });
+    const selectedPageIds = ['page-store-1001', 'page-store-1002'];
+    const added = mutateTemplatePageTags(client, {
+      template: 'stores',
+      pageIds: selectedPageIds,
+      mode: 'add',
+      values: ['featured', 'summer_campaign'],
+    });
+    expect(added).toEqual({
+      selectedPageCount: 2,
+      tagCount: 2,
+      changedAssignmentCount: 4,
+      unchangedAssignmentCount: 0,
+      selectorImpacts: [
+        {
+          selectorId: 'variant-store-featured-tags',
+          selectorName: 'Featured stores',
+          priority: 45,
+          beforeMatchCount: 0,
+          afterMatchCount: 2,
+          beforeSelectedPageMatchCount: 0,
+          afterSelectedPageMatchCount: 2,
+        },
+      ],
+      selectorImpactTotalCount: 1,
+      selectorImpactsTruncated: false,
+    });
+    expect(
+      mutateTemplatePageTags(client, {
+        template: 'stores',
+        pageIds: selectedPageIds,
+        mode: 'add',
+        values: ['featured', 'summer_campaign'],
+      })
+    ).toMatchObject({ changedAssignmentCount: 0, unchangedAssignmentCount: 4 });
+
+    const snapshot = readContentExplorer(client, {
+      template: 'stores',
+      q: '/en-US/store/100',
+      limit: 20,
+      includeSelectors: false,
+    });
+    for (const pageId of selectedPageIds) {
+      expect(
+        snapshot.pages
+          .find((page) => page.id === pageId)
+          ?.tags.filter((tag) => tag.namespace === 'tags')
+          .map((tag) => tag.value)
+      ).toEqual(['featured', 'summer_campaign']);
+    }
+
+    expect(
+      mutateTemplatePageTags(client, {
+        template: 'stores',
+        pageIds: ['page-store-1001'],
+        mode: 'remove',
+        values: ['featured'],
+      })
+    ).toMatchObject({
+      changedAssignmentCount: 1,
+      unchangedAssignmentCount: 0,
+      selectorImpacts: [
+        {
+          selectorId: 'variant-store-featured-tags',
+          beforeMatchCount: 2,
+          afterMatchCount: 1,
+          beforeSelectedPageMatchCount: 1,
+          afterSelectedPageMatchCount: 0,
+        },
+      ],
+      selectorImpactTotalCount: 1,
+      selectorImpactsTruncated: false,
+    });
+    const afterRemoval = readContentExplorer(client, {
+      template: 'stores',
+      q: '/en-US/store/100',
+      limit: 20,
+      includeSelectors: false,
+    });
+    expect(
+      afterRemoval.pages
+        .find((page) => page.id === 'page-store-1001')
+        ?.tags.some((tag) => tag.namespace === 'tags' && tag.value === 'featured')
+    ).toBe(false);
+    expect(
+      afterRemoval.pages
+        .find((page) => page.id === 'page-store-1002')
+        ?.tags.some((tag) => tag.namespace === 'tags' && tag.value === 'featured')
+    ).toBe(true);
   });
 });

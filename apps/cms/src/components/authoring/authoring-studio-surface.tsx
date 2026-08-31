@@ -27,10 +27,12 @@ export function AuthoringDocumentSurface({
 export function AuthoringSelectorSurface({
   children,
   disabled,
+  mode = 'inspect',
   onReturnToDocument,
 }: Readonly<{
   children: ReactNode;
   disabled: boolean;
+  mode?: 'inspect' | 'create';
   onReturnToDocument: () => void;
 }>) {
   return (
@@ -45,11 +47,12 @@ export function AuthoringSelectorSurface({
             Template-wide mode
           </p>
           <h2 id="selector-mode-heading" className="mt-0.5 text-sm font-semibold text-ink">
-            Selector and cascade
+            {mode === 'create' ? 'Create a selector variation' : 'Selector and cascade'}
           </h2>
           <p className="mt-1 text-[11px] text-ink-muted">
-            The selected page remains preview context while selector intent and impact span the
-            entire template.
+            {mode === 'create'
+              ? 'Define one template-wide predicate, prove its exact page impact, then start with linked default content.'
+              : 'The selected page remains preview context while selector intent and impact span the entire template.'}
           </p>
         </div>
         <Button
@@ -57,9 +60,12 @@ export function AuthoringSelectorSurface({
           size="sm"
           disabled={disabled}
           onClick={onReturnToDocument}
-          aria-label="Return to document authoring"
+          aria-label={
+            mode === 'create' ? 'Cancel selector creation' : 'Return to document authoring'
+          }
         >
-          <ArrowLeft aria-hidden="true" className="size-3.5" /> Back to document
+          <ArrowLeft aria-hidden="true" className="size-3.5" />
+          {mode === 'create' ? 'Cancel' : 'Back to document'}
         </Button>
       </div>
       {children}

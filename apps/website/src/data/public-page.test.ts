@@ -82,4 +82,17 @@ describe('published page view model', () => {
       sourcePriority: 30,
     });
   });
+
+  test('accepts a newly created template key as the presentation identifier', () => {
+    const page = createPublicPageViewModel({
+      scenarioId: 'author-profile',
+      publicationId: 'publication-author-profile-1',
+      canonicalUrl: '/en-US/contributors/avery',
+      documentHash: 'hash-author-profile-1',
+      document: representativeDocument,
+    });
+
+    expect(page.scenarioId).toBe('author-profile');
+    expect(PublicPageViewModelSchema.parse(page)).toEqual(page);
+  });
 });

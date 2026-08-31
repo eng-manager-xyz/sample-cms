@@ -48,6 +48,27 @@ describe('shared CMS renderer', () => {
     expect(markup).not.toContain('href=');
   });
 
+  test('renders the self-contained avatar contract as a semantic contributor profile', () => {
+    const markup = renderToStaticMarkup(
+      <CmsRenderedBlock
+        page={page}
+        placement={{
+          placementKey: 'featured-author',
+          order: 0,
+          blockType: 'avatar',
+          content: { name: 'Avery Harwood', role: 'Template author' },
+        }}
+      />
+    );
+
+    expect(markup).toContain('class="site-avatar"');
+    expect(markup).toContain('data-placement="featured-author"');
+    expect(markup).toContain('<span>AH</span>');
+    expect(markup).toContain('<h2>Avery Harwood</h2>');
+    expect(markup).toContain('<p>Template author</p>');
+    expect(markup).not.toContain('Unknown block');
+  });
+
   test('keeps unknown content visible through direct and dispatched rendering', () => {
     const placement = {
       placementKey: 'future-module',

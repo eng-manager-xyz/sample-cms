@@ -4,19 +4,21 @@ import {
   compactScenarioRegistry,
   ensureCompactPublishedScenario,
 } from '@repo/cms-scenarios/compact-seed';
+import type { ApprovedSelectorCompilation } from '@repo/cms-service';
 import {
   adaptStoredSelector,
   CmsService,
   CmsServiceError,
   compileApprovedSelector,
 } from '@repo/cms-service';
-import type { ScenarioId } from '@/data/scenario-fixtures';
+import type { ScenarioId, TemplateKey } from '@/data/scenario-fixtures';
 import type {
   PlacementTraceStep,
   SelectorConflict,
   SelectorScalar,
   SelectorWorkspacePreviewInput,
 } from '@/data/selector-workspace';
+import { SelectorWorkspacePreviewSchema } from '@/data/selector-workspace';
 import type {
   CmsCommand,
   CmsCommandResult,
@@ -112,6 +114,11 @@ interface PageUrlRow {
   canonicalUrl: string;
 }
 
+interface SelectorFingerprintPageRow {
+  pageId: string;
+  canonicalUrl: string;
+}
+
 interface BlockVersionHistoryRow {
   id: string;
   lineageId: string;
@@ -125,14 +132,39 @@ interface BlockVersionHistoryRow {
 }
 
 const blockExamples: Readonly<Record<string, JsonObject>> = {
+  avatar: { name: 'Ada Lovelace', role: 'Template author' },
   navigation: { label: 'Auteur prototype' },
   hero: { headline: 'A new immutable hero' },
   hero_alt: { headline: 'A split-layout hero', mapAssetKey: 'map-demo' },
   promo: { message: 'A new promotion' },
   footer: { legal: 'Prototype terms' },
 };
+const selfServeStarterBlockTypes = new Set(['avatar', 'hero', 'footer']);
 
 const randomId = (scope: string): string => `${scope}:${globalThis.crypto.randomUUID()}`;
+
+/** Hashes the complete ordered match set without retaining it in memory. */
+function selectorMatchSetFingerprint(
+  client: CmsDatabaseClient,
+  templateId: string,
+  compilation: ApprovedSelectorCompilation
+): string {
+  const hasher = new Bun.CryptoHasher('sha256');
+  hasher.update('cms-selector-match-set-v1\n');
+  const rows = client.sqlite
+    .query<SelectorFingerprintPageRow, SQLQueryBindings[]>(
+      `SELECT p.id AS pageId, p.canonical_url AS canonicalUrl
+       FROM page_instances AS p
+       WHERE p.template_id = ? AND (${compilation.predicateSql})
+       ORDER BY p.canonical_url, p.id`
+    )
+    .iterate(templateId, ...compilation.parameters);
+  for (const row of rows) {
+    hasher.update(`${JSON.stringify([row.pageId, row.canonicalUrl])}\n`);
+  }
+
+  return hasher.digest('hex');
+}
 
 function parseContentJson(value: string): JsonObject {
   let parsed: unknown;
@@ -250,15 +282,56 @@ function insertionIndex(
   return position === 'before' ? referenceIndex : referenceIndex + 1;
 }
 
-const ensureEditableScenario = ensureCompactPublishedScenario;
+interface EditableTemplateRegistration {
+  readonly templateId: string;
+  readonly pageId: string;
+}
+
+function isSeedScenario(templateKey: TemplateKey): templateKey is ScenarioId {
+  return Object.hasOwn(editableScenarioRegistry, templateKey);
+}
+
+function resolveEditableTemplate(
+  client: CmsDatabaseClient,
+  templateKey: TemplateKey
+): EditableTemplateRegistration {
+  if (isSeedScenario(templateKey)) {
+    return ensureCompactPublishedScenario(client, templateKey);
+  }
+  return lookupPersistedTemplate(client, templateKey);
+}
+
+function lookupPersistedTemplate(
+  client: CmsDatabaseClient,
+  templateKey: TemplateKey
+): EditableTemplateRegistration {
+  if (isSeedScenario(templateKey)) return editableScenarioRegistry[templateKey];
+  const registration = client.sqlite
+    .query<EditableTemplateRegistration, [string]>(
+      `SELECT templates.id AS templateId, pages.id AS pageId
+       FROM templates
+       JOIN page_instances AS pages ON pages.template_id = templates.id
+       WHERE templates.key = ? AND templates.status = 'active'
+       ORDER BY pages.canonical_url, pages.id
+       LIMIT 1`
+    )
+    .get(templateKey);
+  if (!registration) {
+    throw new CmsServiceError(
+      'NOT_FOUND',
+      `Template "${templateKey}" has no editable concrete page.`
+    );
+  }
+  return registration;
+}
 
 export function inspectCmsBlockField(
   client: CmsDatabaseClient,
-  scenarioId: ScenarioId,
+  scenarioId: TemplateKey,
   canonicalUrl: string,
   source: string
 ): CmsWorkspaceFieldInspection {
-  const registry = editableScenarioRegistry[scenarioId];
+  const registry = resolveEditableTemplate(client, scenarioId);
   const service = new CmsService(client);
   if (!service.getTemplate(registry.templateId)) {
     throw new CmsServiceError('NOT_FOUND', 'Editable template was not found.');
@@ -452,11 +525,11 @@ function resolutionConflicts(
 
 export function readCmsWorkspace(
   client: CmsDatabaseClient,
-  scenarioId: ScenarioId,
+  scenarioId: TemplateKey,
   requestedScopeId?: string,
   requestedCanonicalUrl?: string
 ): CmsWorkspaceSnapshot {
-  const registry = ensureEditableScenario(client, scenarioId);
+  const registry = resolveEditableTemplate(client, scenarioId);
   const service = new CmsService(client);
   const template = service.getTemplate(registry.templateId);
   if (!template) throw new CmsServiceError('NOT_FOUND', 'Editable template was not found.');
@@ -557,7 +630,11 @@ export function readCmsWorkspace(
        ORDER BY key`
     )
     .all()
-    .filter((blockType) => blockType.key in blockExamples)
+    .filter(
+      (blockType) =>
+        blockType.key in blockExamples &&
+        (isSeedScenario(scenarioId) || selfServeStarterBlockTypes.has(blockType.key))
+    )
     .map((blockType) => ({
       ...blockType,
       exampleContentJson: JSON.stringify(blockExamples[blockType.key], null, 2),
@@ -680,9 +757,9 @@ export function readCmsPublicationHistory(
   rawInput: CmsPublicationHistoryInput
 ): CmsPublicationHistory {
   const input = CmsPublicationHistoryInputSchema.parse(rawInput);
-  const registry = editableScenarioRegistry[input.scenarioId];
   return client.sqlite
     .transaction(() => {
+      const registry = lookupPersistedTemplate(client, input.scenarioId);
       const template = client.sqlite
         .query<{ id: string }, [string]>('SELECT id FROM templates WHERE id = ?')
         .get(registry.templateId);
@@ -788,13 +865,13 @@ export function readCmsPublicationHistory(
 
 export function previewCmsSelector(
   client: CmsDatabaseClient,
-  scenarioId: ScenarioId,
+  scenarioId: TemplateKey,
   selector: string,
   options: Partial<
     Pick<SelectorWorkspacePreviewInput, 'priority' | 'scopeId' | 'canonicalUrl' | 'sampleLimit'>
   > = {}
 ): SelectorPreviewSnapshot {
-  const { templateId } = ensureEditableScenario(client, scenarioId);
+  const { templateId } = resolveEditableTemplate(client, scenarioId);
   const service = new CmsService(client);
   const variants = service.listVariants(templateId);
   const selectedVariant = variants.find((variant) => variant.id === options.scopeId);
@@ -913,9 +990,10 @@ LIMIT ?`;
   overlaps.sort(
     (left, right) => left.priority - right.priority || left.variantId.localeCompare(right.variantId)
   );
-  return {
+  return SelectorWorkspacePreviewSchema.parse({
     approvedFields: [...surface.fields],
     normalizedSelector: preview.normalizedSelector,
+    matchSetFingerprint: selectorMatchSetFingerprint(client, templateId, compilation),
     execution: {
       sql: executionSql,
       parameters: [templateId, ...compilation.parameters, sampleLimit + 1].map(displayBinding),
@@ -930,7 +1008,7 @@ LIMIT ?`;
     affectedPlacementCount: targetPlacements.size,
     overlaps,
     plan: [...preview.plan],
-  };
+  });
 }
 
 function scopeForCommand(service: CmsService, templateId: string, scopeId: string) {
@@ -1086,7 +1164,7 @@ function executeCmsCommandInTransaction(
   client: CmsDatabaseClient,
   command: CmsCommand
 ): CmsCommandResult {
-  const registry = ensureEditableScenario(client, command.scenarioId);
+  const registry = resolveEditableTemplate(client, command.scenarioId);
   const service = new CmsService(client);
   let scopeId = 'scopeId' in command ? command.scopeId : undefined;
   let message: string;
@@ -1118,18 +1196,62 @@ function executeCmsCommandInTransaction(
         }
         selector = sourceSelector;
       }
-      service.previewSelector(registry.templateId, selector, 10);
-      const key =
+      const selectorPreview = service.previewSelector(registry.templateId, selector, 10);
+      const selectorCompilation = compileApprovedSelector(
+        selector,
+        service.getApprovedReadSurface(registry.templateId).fields
+      );
+      if (
+        command.expectedNormalizedSelector !== undefined &&
+        command.expectedNormalizedSelector !== selectorPreview.normalizedSelector
+      ) {
+        throw new CmsServiceError(
+          'CONFLICT',
+          'The selector changed after its impact preview. Run the preview again before creating it.'
+        );
+      }
+      if (
+        command.expectedMatchCount !== undefined &&
+        command.expectedMatchCount !== selectorPreview.totalCount
+      ) {
+        throw new CmsServiceError(
+          'CONFLICT',
+          'The template page set changed after the selector preview. Run the preview again.'
+        );
+      }
+      if (
+        command.expectedMatchSetFingerprint !==
+        selectorMatchSetFingerprint(client, registry.templateId, selectorCompilation)
+      ) {
+        throw new CmsServiceError(
+          'CONFLICT',
+          'The exact template page match set changed after the selector preview. Run the preview again.'
+        );
+      }
+      const generatedKey =
         command.name
           .normalize('NFKC')
           .toLowerCase()
           .replace(/[^a-z0-9]+/g, '-')
           .replace(/^-|-$/g, '') || 'variant';
       const id = randomId('variant');
+      if (
+        command.key &&
+        client.sqlite
+          .query<{ id: string }, [string, string]>(
+            'SELECT id FROM variants WHERE template_id = ? AND key = ? LIMIT 1'
+          )
+          .get(registry.templateId, command.key)
+      ) {
+        throw new CmsServiceError(
+          'INVALID_INPUT',
+          `Selector key "${command.key}" already exists in this template.`
+        );
+      }
       service.createVariant(registry.templateId, {
         id,
         revisionId: randomId('revision'),
-        key: `${key}-${id.slice(-8)}`,
+        key: command.key ?? `${generatedKey}-${id.slice(-8)}`,
         name: command.name,
         priority: command.priority,
         status: 'active',
@@ -1424,7 +1546,7 @@ export function preflightCmsPublication(
   client: CmsDatabaseClient,
   input: CmsPublicationPreflightInput
 ): CmsPublicationPreflight {
-  const registry = editableScenarioRegistry[input.scenarioId];
+  const registry = resolveEditableTemplate(client, input.scenarioId);
   const service = new CmsService(client);
   if (!service.getTemplate(registry.templateId)) {
     throw new CmsServiceError(
@@ -1446,7 +1568,7 @@ export function publishCmsPublication(
   client: CmsDatabaseClient,
   input: CmsPublishPublicationInput
 ): CmsPublicationMutationResult {
-  const registry = ensureEditableScenario(client, input.scenarioId);
+  const registry = resolveEditableTemplate(client, input.scenarioId);
   const service = new CmsService(client);
   const result = service.publish(registry.templateId, {
     createdBy: ACTOR,
@@ -1479,7 +1601,7 @@ export function rollbackCmsPublication(
   client: CmsDatabaseClient,
   input: CmsRollbackPublicationInput
 ): CmsPublicationMutationResult {
-  const registry = ensureEditableScenario(client, input.scenarioId);
+  const registry = resolveEditableTemplate(client, input.scenarioId);
   const service = new CmsService(client);
   const result = service.rollback(registry.templateId, {
     targetPublicationId: input.targetPublicationId,

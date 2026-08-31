@@ -1,6 +1,13 @@
 import { describe, expect, test } from 'bun:test';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import type { ContentPageNavigation } from '@/data/content-explorer';
-import { nextPageForSegment, pageForNavigation, valuesForSegment } from './template-page-navigator';
+import {
+  nextPageForSegment,
+  pageForNavigation,
+  TemplatePageNavigator,
+  valuesForSegment,
+} from './template-page-navigator';
 
 const navigation = {
   segments: [
@@ -127,5 +134,30 @@ describe('AUT-547 segmented template page navigation', () => {
       slotValues: { locale: 'en-US', state: 'tx', slug: 'delivery' },
     });
     expect(nextPageForSegment(completeNavigation, current, 2, 'state', 'ny')).toBeNull();
+  });
+
+  test('always exposes an explicit return to the persisted default page', () => {
+    const selectedPage = navigation.options[1];
+    if (!selectedPage) throw new Error('Missing selected navigation fixture page.');
+
+    const panelMarkup = renderToStaticMarkup(
+      createElement(TemplatePageNavigator, {
+        navigation: { ...completeNavigation, selectedPage },
+        canonicalUrl: selectedPage.canonicalUrl,
+        onPageChange: () => undefined,
+      })
+    );
+    const compactMarkup = renderToStaticMarkup(
+      createElement(TemplatePageNavigator, {
+        navigation: { ...completeNavigation, selectedPage },
+        canonicalUrl: selectedPage.canonicalUrl,
+        variant: 'compact',
+        onPageChange: () => undefined,
+      })
+    );
+
+    expect(panelMarkup).toContain('aria-label="Go to default preview page"');
+    expect(panelMarkup).toContain('>Default</span>');
+    expect(compactMarkup).toContain('aria-label="Go to default preview page"');
   });
 });

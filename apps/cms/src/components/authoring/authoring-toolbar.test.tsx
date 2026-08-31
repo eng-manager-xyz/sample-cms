@@ -22,6 +22,7 @@ const variants = [
 const callbacks = {
   onSelectScope: () => undefined,
   onViewSelector: () => undefined,
+  onCreateSelector: () => undefined,
   onClearSelector: () => undefined,
   onReviewPublication: () => undefined,
 };

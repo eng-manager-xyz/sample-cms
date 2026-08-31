@@ -7,6 +7,7 @@ import type {
 
 export type RouteStatus = 'live' | 'not_live' | 'archived';
 export type ProvenanceSource = 'pipeline' | 'author' | 'seed';
+export type TemplateVariableKind = 'locale' | 'slug';
 
 export interface TemplateInput {
   readonly id: string;
@@ -36,6 +37,7 @@ export interface TemplateSlotInput {
   readonly key: string;
   readonly label: string;
   readonly kind: 'static' | 'variable' | 'derived';
+  readonly variableKind?: TemplateVariableKind | null;
   readonly pathPosition?: number | null;
   readonly staticValue?: string | null;
   readonly valueType?: 'string' | 'integer' | 'boolean';
@@ -48,11 +50,107 @@ export interface TemplateSlotRecord {
   readonly key: string;
   readonly label: string;
   readonly kind: TemplateSlotInput['kind'];
+  readonly variableKind: TemplateVariableKind | null;
   readonly pathPosition: number | null;
   readonly staticValue: string | null;
   readonly valueType: NonNullable<TemplateSlotInput['valueType']>;
   readonly isRequired: boolean;
   readonly createdAt: string;
+}
+
+export interface TemplateProvisioningTemplateInput {
+  readonly id: string;
+  readonly key: string;
+  readonly name: string;
+  readonly domain: string;
+  readonly description?: string;
+}
+
+export type ProvisionTemplateSlotInput =
+  | {
+      readonly id: string;
+      readonly key: string;
+      readonly label: string;
+      readonly kind: 'static';
+      readonly staticValue: string;
+    }
+  | {
+      readonly id: string;
+      readonly key: string;
+      readonly label: string;
+      readonly kind: 'variable';
+      readonly variableKind: TemplateVariableKind;
+    };
+
+export interface TemplateProvisioningLimits {
+  readonly maxUploadBytes?: number;
+  readonly maxRowsPerCsv?: number;
+  readonly maxCardinality?: number;
+  readonly sampleLimit?: number;
+}
+
+export interface TemplateProvisioningPreviewInput {
+  readonly template: TemplateProvisioningTemplateInput;
+  readonly slots: readonly ProvisionTemplateSlotInput[];
+  readonly localeCsv?: string;
+  readonly slugCsv?: string;
+  readonly limits?: TemplateProvisioningLimits;
+}
+
+export interface TemplateProvisioningIssue {
+  readonly path: string;
+  readonly code:
+    | 'blank'
+    | 'cardinality_limit'
+    | 'collision'
+    | 'duplicate'
+    | 'invalid_csv'
+    | 'invalid_domain'
+    | 'invalid_header'
+    | 'invalid_locale'
+    | 'invalid_slug'
+    | 'invalid_slot'
+    | 'missing_csv'
+    | 'row_limit'
+    | 'upload_limit';
+  readonly message: string;
+  readonly row?: number;
+}
+
+export interface NormalizedProvisionTemplateSlot {
+  readonly id: string;
+  readonly key: string;
+  readonly label: string;
+  readonly kind: 'static' | 'variable';
+  readonly variableKind: TemplateVariableKind | null;
+  readonly pathPosition: number;
+  readonly staticValue: string | null;
+}
+
+export interface TemplateProvisioningPreview {
+  readonly valid: boolean;
+  readonly normalizedDomain: string;
+  readonly urlPattern: string;
+  readonly slots: readonly NormalizedProvisionTemplateSlot[];
+  readonly values: Readonly<Record<TemplateVariableKind, readonly string[]>>;
+  readonly cardinality: number;
+  readonly sampleCanonicalUrls: readonly string[];
+  readonly errors: readonly TemplateProvisioningIssue[];
+}
+
+export interface ProvisionTemplateInput extends TemplateProvisioningPreviewInput {
+  /** Timestamp observed at the RouterService transition seam. Defaults to the Unix epoch. */
+  readonly sourceObservedAt?: string;
+}
+
+export interface ProvisionTemplateResult {
+  readonly template: TemplateRecord;
+  readonly defaultVariant: VariantRecord;
+  readonly slots: readonly TemplateSlotRecord[];
+  readonly ingestionId: string;
+  readonly sourceRevision: string;
+  readonly rowCount: number;
+  readonly approvedReadSurface: ApprovedReadSurface;
 }
 
 export interface PageInput {
@@ -537,6 +635,17 @@ export interface ServeReadEvidence {
   readonly selectorSqlExecutions: 0;
   readonly celEvaluations: 0;
   readonly elapsedMilliseconds: number;
+}
+
+export interface CanonicalTemplateMetadata {
+  readonly id: string;
+  readonly key: string;
+  readonly name: string;
+  readonly domain: string;
+}
+
+export interface ServeCanonicalResult extends ServeReadEvidence {
+  readonly template: CanonicalTemplateMetadata | null;
 }
 
 export interface CmsServiceOptions {

@@ -32,6 +32,15 @@ beforeEach(async () => {
 
 afterEach(() => client.close());
 
+function selectorReview(scenarioId: Parameters<typeof previewCmsSelector>[1], selector: string) {
+  const preview = previewCmsSelector(client, scenarioId, selector);
+  return {
+    expectedNormalizedSelector: preview.normalizedSelector,
+    expectedMatchCount: preview.totalCount,
+    expectedMatchSetFingerprint: preview.matchSetFingerprint,
+  };
+}
+
 describe('AUT-514/AUT-542 persisted authoring workbench', () => {
   test('loads all three bounded scenarios idempotently with resolvable SQLite documents', () => {
     const store = readCmsWorkspace(client, 'stores');
@@ -251,6 +260,7 @@ describe('AUT-514/AUT-542 persisted authoring workbench', () => {
   test('persists linked and blank variants, selector revisions, copy-on-write, tombstones, and revert', () => {
     const preview = previewCmsSelector(client, 'stores', "brand = 'mcdonalds'");
     expect(preview).toMatchObject({ totalCount: 1, templatePageCount: 14 });
+    expect(preview.matchSetFingerprint).toMatch(/^[a-f0-9]{64}$/);
     expect(() => previewCmsSelector(client, 'stores', 'DROP TABLE pages')).toThrow();
 
     const linked = executeCmsCommand(client, {
@@ -260,6 +270,9 @@ describe('AUT-514/AUT-542 persisted authoring workbench', () => {
       selector: "brand = 'mcdonalds'",
       priority: 60,
       mode: 'linked',
+      expectedNormalizedSelector: preview.normalizedSelector,
+      expectedMatchCount: preview.totalCount,
+      expectedMatchSetFingerprint: preview.matchSetFingerprint,
     }).workspace;
     expect(linked.placements.every((placement) => placement.inherited)).toBe(true);
     const linkedScope = linked.scopeId;
@@ -358,9 +371,295 @@ describe('AUT-514/AUT-542 persisted authoring workbench', () => {
       selector: "store_type = 'independent'",
       priority: 70,
       mode: 'empty',
+      ...selectorReview('stores', "store_type = 'independent'"),
     }).workspace;
     expect(blank.placements).toEqual([]);
     expect(blank.tombstones).toHaveLength(4);
+  });
+
+  test('creates an explicit selector identity only from the exact reviewed impact', () => {
+    const selector = "brand = 'mcdonalds'";
+    const impact = previewCmsSelector(client, 'stores', selector, { priority: 61 });
+    const created = executeCmsCommand(client, {
+      kind: 'createVariant',
+      scenarioId: 'stores',
+      name: 'Reviewed McDonald’s',
+      key: 'reviewed-mcdonalds',
+      selector,
+      priority: 61,
+      mode: 'linked',
+      expectedNormalizedSelector: impact.normalizedSelector,
+      expectedMatchCount: impact.totalCount,
+      expectedMatchSetFingerprint: impact.matchSetFingerprint,
+    }).workspace;
+
+    expect(created.variants.find((variant) => variant.id === created.scopeId)).toMatchObject({
+      name: 'Reviewed McDonald’s',
+      priority: 61,
+    });
+    expect(
+      client.sqlite
+        .query<{ key: string }, [string]>('SELECT key FROM variants WHERE id = ?')
+        .get(created.scopeId)
+    ).toEqual({ key: 'reviewed-mcdonalds' });
+    expect(() =>
+      executeCmsCommand(client, {
+        kind: 'createVariant',
+        scenarioId: 'stores',
+        name: 'Stale impact',
+        key: 'stale-impact',
+        selector,
+        priority: 62,
+        mode: 'linked',
+        expectedNormalizedSelector: impact.normalizedSelector,
+        expectedMatchCount: impact.totalCount + 1,
+        expectedMatchSetFingerprint: impact.matchSetFingerprint,
+      })
+    ).toThrow('page set changed');
+    expect(() =>
+      executeCmsCommand(client, {
+        kind: 'createVariant',
+        scenarioId: 'stores',
+        name: 'Duplicate key',
+        key: 'reviewed-mcdonalds',
+        selector,
+        priority: 63,
+        mode: 'linked',
+        ...selectorReview('stores', selector),
+      })
+    ).toThrow('already exists');
+  });
+
+  test('rejects selector creation when the exact match set drifts at the same count', () => {
+    const service = new CmsService(client);
+    const firstPageId = client.sqlite
+      .query<{ id: string }, [string, string]>(
+        'SELECT id FROM page_instances WHERE template_id = ? AND canonical_url = ?'
+      )
+      .get('tpl-store', '/en-US/store/1001')?.id;
+    const secondPageId = client.sqlite
+      .query<{ id: string }, [string, string]>(
+        'SELECT id FROM page_instances WHERE template_id = ? AND canonical_url = ?'
+      )
+      .get('tpl-store', '/en-US/store/1002')?.id;
+    if (!firstPageId || !secondPageId) throw new Error('Expected both Store proof pages.');
+    const tag = service.createTag('tpl-store', {
+      id: 'tag-store-fingerprint-target',
+      namespace: 'tags',
+      value: 'fingerprint-target',
+      label: 'Fingerprint target',
+      source: 'author',
+    });
+    service.assignTags('tpl-store', firstPageId, [tag.id], 'author');
+    const selector = "tags = 'fingerprint-target'";
+    const reviewed = previewCmsSelector(client, 'stores', selector);
+
+    service.unassignTag('tpl-store', firstPageId, tag.id);
+    service.assignTags('tpl-store', secondPageId, [tag.id], 'author');
+    const current = previewCmsSelector(client, 'stores', selector);
+    expect(current.totalCount).toBe(reviewed.totalCount);
+    expect(current.matchSetFingerprint).not.toBe(reviewed.matchSetFingerprint);
+
+    expect(() =>
+      executeCmsCommand(client, {
+        kind: 'createVariant',
+        scenarioId: 'stores',
+        name: 'Stale same-count selector',
+        selector,
+        priority: 64,
+        mode: 'linked',
+        expectedNormalizedSelector: reviewed.normalizedSelector,
+        expectedMatchCount: reviewed.totalCount,
+        expectedMatchSetFingerprint: reviewed.matchSetFingerprint,
+      })
+    ).toThrow('exact template page match set changed');
+  });
+
+  test('proves the self-created template, default publication, sparse variant, and one-block fork end to end', () => {
+    const provisioned = new CmsService(client).provisionTemplate({
+      template: {
+        id: 'tpl-author-profiles',
+        key: 'author-profiles',
+        name: 'Author profiles',
+        domain: 'authors.example.test',
+      },
+      slots: [
+        {
+          id: 'slot-author-locale',
+          key: 'locale',
+          label: 'Locale',
+          kind: 'variable',
+          variableKind: 'locale',
+        },
+        {
+          id: 'slot-author-static',
+          key: 'profiles',
+          label: 'Profiles path',
+          kind: 'static',
+          staticValue: 'profiles',
+        },
+        {
+          id: 'slot-author-slug',
+          key: 'slug',
+          label: 'Profile slug',
+          kind: 'variable',
+          variableKind: 'slug',
+        },
+      ],
+      localeCsv: 'locale\nen-US\nfr-CA\n',
+      slugCsv: 'slug\nstandard\nvip\n',
+    });
+    expect(provisioned.rowCount).toBe(4);
+
+    const defaultScopeId = provisioned.defaultVariant.id;
+    const standardUrl = '/en-US/profiles/standard';
+    const vipUrl = '/en-US/profiles/vip';
+    expect(
+      readCmsWorkspace(client, 'author-profiles', defaultScopeId, standardUrl).blockTypes.map(
+        (blockType) => blockType.key
+      )
+    ).toEqual(['avatar', 'footer', 'hero']);
+    const defaultBlocks = [
+      {
+        placementKey: 'profile-avatar',
+        blockTypeKey: 'avatar' as const,
+        contentJson: '{"name":"Default author","role":"Writer"}',
+      },
+      {
+        placementKey: 'primary-hero',
+        blockTypeKey: 'hero' as const,
+        contentJson: '{"headline":"Default profile"}',
+      },
+      {
+        placementKey: 'footer',
+        blockTypeKey: 'footer' as const,
+        contentJson: '{"legal":"Author profile terms"}',
+      },
+    ];
+    for (const block of defaultBlocks) {
+      executeCmsCommand(client, {
+        kind: 'addPlacement',
+        scenarioId: 'author-profiles',
+        scopeId: defaultScopeId,
+        canonicalUrl: standardUrl,
+        ...block,
+      });
+    }
+    executeCmsCommand(client, { kind: 'publish', scenarioId: 'author-profiles' });
+
+    const initialDefault = readCmsWorkspace(client, 'author-profiles', defaultScopeId, standardUrl);
+    const defaultVersionByPlacement = new Map(
+      initialDefault.placements.map((placement) => [
+        placement.placementKey,
+        placement.blockVersionId,
+      ])
+    );
+    const initialVip = new CmsService(client).serveCanonicalWithEvidence(
+      'authors.example.test',
+      vipUrl
+    );
+    expect(initialVip.result.status).toBe(200);
+
+    const selector = "slug = 'vip'";
+    const impact = previewCmsSelector(client, 'author-profiles', selector, {
+      priority: 50,
+      canonicalUrl: vipUrl,
+    });
+    expect(impact).toMatchObject({
+      totalCount: 2,
+      templatePageCount: 4,
+      selectedPageMatches: true,
+    });
+    const variant = executeCmsCommand(client, {
+      kind: 'createVariant',
+      scenarioId: 'author-profiles',
+      name: 'VIP profiles',
+      key: 'vip-profiles',
+      selector,
+      priority: 50,
+      mode: 'linked',
+      expectedNormalizedSelector: impact.normalizedSelector,
+      expectedMatchCount: impact.totalCount,
+      expectedMatchSetFingerprint: impact.matchSetFingerprint,
+    }).workspace;
+    const inherited = readCmsWorkspace(client, 'author-profiles', variant.scopeId, vipUrl);
+    expect(inherited.placements).toHaveLength(3);
+    expect(inherited.placements.every((placement) => placement.inherited)).toBe(true);
+
+    const versionCountBeforeFork = client.sqlite
+      .query<{ count: number }, []>('SELECT count(*) AS count FROM block_versions')
+      .get()?.count;
+    const edited = executeCmsCommand(client, {
+      kind: 'editPlacement',
+      scenarioId: 'author-profiles',
+      scopeId: variant.scopeId,
+      canonicalUrl: vipUrl,
+      placementKey: 'primary-hero',
+      blockTypeKey: 'hero',
+      contentJson: '{"headline":"VIP profile"}',
+    }).workspace;
+    const editedVersionByPlacement = new Map(
+      edited.placements.map((placement) => [placement.placementKey, placement.blockVersionId])
+    );
+    expect(
+      edited.placements.find((placement) => placement.placementKey === 'primary-hero')
+    ).toMatchObject({
+      inherited: false,
+      parentBlockVersionId: defaultVersionByPlacement.get('primary-hero'),
+    });
+    expect(editedVersionByPlacement.get('profile-avatar')).toBe(
+      defaultVersionByPlacement.get('profile-avatar')
+    );
+    expect(editedVersionByPlacement.get('footer')).toBe(defaultVersionByPlacement.get('footer'));
+    expect(editedVersionByPlacement.get('primary-hero')).not.toBe(
+      defaultVersionByPlacement.get('primary-hero')
+    );
+    expect(
+      client.sqlite
+        .query<{ count: number }, []>('SELECT count(*) AS count FROM block_versions')
+        .get()?.count
+    ).toBe((versionCountBeforeFork ?? 0) + 1);
+
+    executeCmsCommand(client, { kind: 'publish', scenarioId: 'author-profiles' });
+    const publishedVip = new CmsService(client).serveCanonicalWithEvidence(
+      'authors.example.test',
+      vipUrl
+    );
+    const publishedStandard = new CmsService(client).serveCanonicalWithEvidence(
+      'authors.example.test',
+      standardUrl
+    );
+    expect(publishedVip).toMatchObject({
+      template: { key: 'author-profiles' },
+      result: { status: 200 },
+      selectorSqlExecutions: 0,
+    });
+    expect(publishedStandard).toMatchObject({
+      template: { key: 'author-profiles' },
+      result: { status: 200 },
+      selectorSqlExecutions: 0,
+    });
+    if (publishedVip.result.status !== 200 || publishedStandard.result.status !== 200) {
+      throw new Error('Expected both self-created pages to be publicly materialized.');
+    }
+    const vipVersions = new Map(
+      publishedVip.result.document.placements.map((placement) => [
+        placement.placementKey,
+        placement.blockVersionId,
+      ])
+    );
+    const standardVersions = new Map(
+      publishedStandard.result.document.placements.map((placement) => [
+        placement.placementKey,
+        placement.blockVersionId,
+      ])
+    );
+    expect(vipVersions.get('primary-hero')).toBe(editedVersionByPlacement.get('primary-hero'));
+    expect(standardVersions.get('primary-hero')).toBe(
+      defaultVersionByPlacement.get('primary-hero')
+    );
+    expect(vipVersions.get('profile-avatar')).toBe(standardVersions.get('profile-avatar'));
+    expect(vipVersions.get('footer')).toBe(standardVersions.get('footer'));
   });
 
   test('seeds copy-on-write from the exact displayed page and returns that page snapshot', () => {
@@ -371,6 +670,7 @@ describe('AUT-514/AUT-542 persisted authoring workbench', () => {
       selector: "route_status = 'live'",
       priority: 80,
       mode: 'linked',
+      ...selectorReview('stores', "route_status = 'live'"),
     }).workspace;
     const firstPage = readCmsWorkspace(client, 'stores', broad.scopeId, '/en-US/store/1001');
     const secondPage = readCmsWorkspace(client, 'stores', broad.scopeId, '/en-US/store/1002');
@@ -408,6 +708,7 @@ describe('AUT-514/AUT-542 persisted authoring workbench', () => {
       selector: "brand = 'mcdonalds'",
       priority: 80,
       mode: 'linked',
+      ...selectorReview('stores', "brand = 'mcdonalds'"),
     }).workspace;
     const higher = executeCmsCommand(client, {
       kind: 'createVariant',
@@ -416,6 +717,7 @@ describe('AUT-514/AUT-542 persisted authoring workbench', () => {
       selector: "brand = 'mcdonalds'",
       priority: 90,
       mode: 'linked',
+      ...selectorReview('stores', "brand = 'mcdonalds'"),
     }).workspace;
     const higherWorkspace = executeCmsCommand(client, {
       kind: 'editPlacement',
@@ -498,6 +800,7 @@ describe('AUT-514/AUT-542 persisted authoring workbench', () => {
       selector: "brand = 'mcdonalds'",
       priority: 90,
       mode: 'linked',
+      ...selectorReview('stores', "brand = 'mcdonalds'"),
     }).workspace;
     executeCmsCommand(client, {
       kind: 'editPlacement',
@@ -603,6 +906,7 @@ describe('AUT-514/AUT-542 persisted authoring workbench', () => {
       selector: "brand = 'mcdonalds'",
       priority: 80,
       mode: 'linked',
+      ...selectorReview('stores', "brand = 'mcdonalds'"),
     }).workspace;
     executeCmsCommand(client, {
       kind: 'addPlacement',
@@ -620,6 +924,7 @@ describe('AUT-514/AUT-542 persisted authoring workbench', () => {
       selector: "route_status = 'live'",
       priority: 90,
       mode: 'linked',
+      ...selectorReview('stores', "route_status = 'live'"),
     }).workspace;
     const revisionBefore = client.sqlite
       .query<{ revisionId: string }, [string]>(
@@ -663,6 +968,7 @@ describe('AUT-514/AUT-542 persisted authoring workbench', () => {
       selector: "brand = 'mcdonalds'",
       priority: 80,
       mode: 'linked',
+      ...selectorReview('stores', "brand = 'mcdonalds'"),
     }).workspace;
     executeCmsCommand(client, {
       kind: 'addPlacement',
@@ -680,6 +986,7 @@ describe('AUT-514/AUT-542 persisted authoring workbench', () => {
       selector: "brand = 'mcdonalds'",
       priority: 90,
       mode: 'linked',
+      ...selectorReview('stores', "brand = 'mcdonalds'"),
     }).workspace;
     executeCmsCommand(client, {
       kind: 'movePlacement',
@@ -720,6 +1027,7 @@ describe('AUT-514/AUT-542 persisted authoring workbench', () => {
       selector: "brand = 'mcdonalds'",
       priority: 80,
       mode: 'linked',
+      ...selectorReview('stores', "brand = 'mcdonalds'"),
     }).workspace;
     executeCmsCommand(client, {
       kind: 'addPlacement',
@@ -737,6 +1045,7 @@ describe('AUT-514/AUT-542 persisted authoring workbench', () => {
       selector: "brand = 'mcdonalds'",
       priority: 90,
       mode: 'linked',
+      ...selectorReview('stores', "brand = 'mcdonalds'"),
     }).workspace;
     executeCmsCommand(client, {
       kind: 'movePlacement',
@@ -777,6 +1086,7 @@ describe('AUT-514/AUT-542 persisted authoring workbench', () => {
       selector: "brand = 'mcdonalds'",
       priority: 100,
       mode: 'linked',
+      ...selectorReview('stores', "brand = 'mcdonalds'"),
     }).workspace;
     const secondConflict = executeCmsCommand(client, {
       kind: 'createVariant',
@@ -785,6 +1095,7 @@ describe('AUT-514/AUT-542 persisted authoring workbench', () => {
       selector: "brand = 'mcdonalds'",
       priority: 100,
       mode: 'linked',
+      ...selectorReview('stores', "brand = 'mcdonalds'"),
     }).workspace;
     executeCmsCommand(client, {
       kind: 'editPlacement',
@@ -813,6 +1124,7 @@ describe('AUT-514/AUT-542 persisted authoring workbench', () => {
       selector: "brand = 'mcdonalds'",
       priority: 80,
       mode: 'linked',
+      ...selectorReview('stores', "brand = 'mcdonalds'"),
     }).workspace;
     executeCmsCommand(client, {
       kind: 'addPlacement',
@@ -830,6 +1142,7 @@ describe('AUT-514/AUT-542 persisted authoring workbench', () => {
       selector: "route_status = 'live'",
       priority: 90,
       mode: 'linked',
+      ...selectorReview('stores', "route_status = 'live'"),
     }).workspace;
     const revisionBefore = broad.variants.find(
       (variant) => variant.id === broad.scopeId
@@ -862,6 +1175,7 @@ describe('AUT-514/AUT-542 persisted authoring workbench', () => {
       selector: "brand = 'mcdonalds'",
       priority: 90,
       mode: 'linked',
+      ...selectorReview('stores', "brand = 'mcdonalds'"),
     }).workspace;
     executeCmsCommand(client, {
       kind: 'editPlacement',
@@ -912,6 +1226,7 @@ describe('AUT-514/AUT-542 persisted authoring workbench', () => {
       selector: "store_type = 'independent'",
       priority: 80,
       mode: 'linked',
+      ...selectorReview('stores', "store_type = 'independent'"),
     }).workspace;
     const second = executeCmsCommand(client, {
       kind: 'createVariant',
@@ -920,6 +1235,7 @@ describe('AUT-514/AUT-542 persisted authoring workbench', () => {
       selector: "store_type = 'independent'",
       priority: 80,
       mode: 'linked',
+      ...selectorReview('stores', "store_type = 'independent'"),
     }).workspace;
     executeCmsCommand(client, {
       kind: 'editPlacement',
@@ -983,6 +1299,9 @@ describe('AUT-514/AUT-542 persisted authoring workbench', () => {
       selector,
       priority: 60,
       mode: 'linked',
+      expectedNormalizedSelector: preview.normalizedSelector,
+      expectedMatchCount: preview.totalCount,
+      expectedMatchSetFingerprint: preview.matchSetFingerprint,
     }).workspace;
     expect(created).toMatchObject({
       canonicalUrl: '/es-US/eligible-vehicles/tx/delivery',
@@ -1066,6 +1385,7 @@ describe('AUT-514/AUT-542 persisted authoring workbench', () => {
       selector: "brand = 'mcdonalds'",
       priority: 80,
       mode: 'linked',
+      ...selectorReview('stores', "brand = 'mcdonalds'"),
     }).workspace;
     const authoredSource = executeCmsCommand(client, {
       kind: 'editPlacement',
@@ -1091,6 +1411,7 @@ describe('AUT-514/AUT-542 persisted authoring workbench', () => {
       priority: 81,
       mode: 'duplicate',
       duplicateSourceScopeId: source.scopeId,
+      ...selectorReview('stores', "brand = 'mcdonalds'"),
     }).workspace;
     expect(duplicated.scopeId).not.toBe(source.scopeId);
     expect(duplicated.variants.find((variant) => variant.id === duplicated.scopeId)?.selector).toBe(
@@ -1146,6 +1467,7 @@ describe('AUT-514/AUT-542 persisted authoring workbench', () => {
       selector: "brand = 'mcdonalds'",
       priority: 80,
       mode: 'linked',
+      ...selectorReview('stores', "brand = 'mcdonalds'"),
     }).workspace;
     const second = executeCmsCommand(client, {
       kind: 'createVariant',
@@ -1154,6 +1476,7 @@ describe('AUT-514/AUT-542 persisted authoring workbench', () => {
       selector: "brand = 'mcdonalds'",
       priority: 80,
       mode: 'linked',
+      ...selectorReview('stores', "brand = 'mcdonalds'"),
     }).workspace;
     executeCmsCommand(client, {
       kind: 'editPlacement',

@@ -76,6 +76,7 @@ export function SqliteAuthoringWorkbench({
 
   useEffect(() => {
     setSelector(selectedVariant?.selector ?? 'TRUE');
+    setSelectorPreview(null);
   }, [selectedVariant?.selector]);
 
   const mutation = useMutation({
@@ -579,16 +580,21 @@ export function SqliteAuthoringWorkbench({
             <Button
               className="mt-3 w-full"
               size="sm"
-              disabled={pending}
+              disabled={pending || !selectorPreview}
               onClick={() =>
-                run({
-                  kind: 'createVariant',
-                  scenarioId: scenario.id,
-                  name: newVariantName,
-                  selector,
-                  priority: newVariantPriority,
-                  mode: newVariantMode,
-                })
+                selectorPreview
+                  ? run({
+                      kind: 'createVariant',
+                      scenarioId: scenario.id,
+                      name: newVariantName,
+                      selector,
+                      priority: newVariantPriority,
+                      mode: newVariantMode,
+                      expectedNormalizedSelector: selectorPreview.normalizedSelector,
+                      expectedMatchCount: selectorPreview.totalCount,
+                      expectedMatchSetFingerprint: selectorPreview.matchSetFingerprint,
+                    })
+                  : undefined
               }
             >
               <GitBranch aria-hidden="true" className="size-3" /> Create persisted variant
@@ -602,7 +608,10 @@ export function SqliteAuthoringWorkbench({
             <textarea
               aria-label="Variant selector"
               value={selector}
-              onChange={(event) => setSelector(event.currentTarget.value)}
+              onChange={(event) => {
+                setSelector(event.currentTarget.value);
+                setSelectorPreview(null);
+              }}
               rows={5}
               spellCheck={false}
               className="mt-2 w-full rounded-md border border-line-strong bg-surface-subtle p-2 font-mono text-[9px] leading-4 text-ink outline-none focus-visible:ring-2 focus-visible:ring-focus"

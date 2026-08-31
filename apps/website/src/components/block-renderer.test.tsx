@@ -5,7 +5,7 @@ import { createPublicPageViewModel } from '@/data/public-page';
 import { PublishedBlock, UnknownBlock } from './block-renderer';
 import { PublishedPage } from './published-page';
 
-const knownBlockTypes = ['navigation', 'hero', 'hero_alt', 'promo', 'footer'];
+const knownBlockTypes = ['navigation', 'avatar', 'hero', 'hero_alt', 'promo', 'footer'];
 
 const document = PublishedDocumentSchema.parse({
   templateId: 'structural-marketing',
@@ -59,7 +59,7 @@ const page = createPublicPageViewModel({
 });
 
 describe('published block registry', () => {
-  test('covers every block type used by the three prototype patterns', () => {
+  test('covers every first-class block type available to published pages', () => {
     for (const blockType of knownBlockTypes) {
       const firstPlacement = page.placements.at(0);
       if (!firstPlacement) throw new Error('Expected a representative placement.');

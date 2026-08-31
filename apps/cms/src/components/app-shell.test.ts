@@ -50,11 +50,15 @@ describe('AUT-552 sidebar navigation tree', () => {
     expect(getContentExplorerNavigationSearch()).toEqual({
       view: 'tree',
       template: 'stores',
+      mode: 'browse',
+      createStep: 'identity',
       q: '',
     });
     expect(getContentExplorerNavigationSearch('structural-proof')).toEqual({
       view: 'tree',
       template: 'structural-proof',
+      mode: 'browse',
+      createStep: 'identity',
       q: '',
     });
   });

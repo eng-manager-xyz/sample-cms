@@ -2,7 +2,6 @@ import {
   AlertTriangle,
   Braces,
   CheckCircle2,
-  Copy,
   GitBranch,
   Layers3,
   Play,
@@ -16,7 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
-import type { ScenarioId } from '@/data/scenario-fixtures';
+import type { TemplateKey } from '@/data/scenario-fixtures';
 import {
   buildGuidedSelector,
   type SelectorBuilder,
@@ -37,15 +36,17 @@ export type SelectorWorkspacePreviewSelector = (
 ) => Promise<SelectorPreviewSnapshot>;
 
 export type SelectorWorkspaceProps = Readonly<{
-  scenarioId: ScenarioId;
+  scenarioId: TemplateKey;
   workspace: CmsWorkspaceSnapshot;
   pending: boolean;
+  mode?: 'inspect' | 'create';
   runCommand: SelectorWorkspaceRunCommand;
   previewSelector: SelectorWorkspacePreviewSelector;
 }>;
 
 type EditorMode = 'guided' | 'advanced';
-type CreationMode = 'linked' | 'empty' | 'duplicate';
+type CreationMode = 'linked' | 'empty';
+type CreationStep = 'identity' | 'predicate' | 'review';
 
 const textareaClassName =
   'min-h-28 w-full resize-y rounded-lg border border-line-strong bg-canvas px-3 py-2 font-mono text-xs leading-5 text-ink outline-none placeholder:text-ink-faint focus-visible:border-accent/50 focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-60';
@@ -266,6 +267,9 @@ function SelectorPreviewResults({ preview }: Readonly<{ preview: SelectorPreview
         <code className="block overflow-x-auto rounded-lg border border-line bg-ink px-3 py-2 font-mono text-[11px] leading-5 text-canvas">
           {preview.normalizedSelector}
         </code>
+        <p className="mt-1 break-all font-mono text-[10px] text-ink-faint">
+          exact match-set fingerprint: {preview.matchSetFingerprint}
+        </p>
       </div>
 
       <details className="rounded-lg border border-line bg-canvas" open>
@@ -512,131 +516,379 @@ function CascadeInspector({ workspace }: Readonly<{ workspace: CmsWorkspaceSnaps
 
 type LocalRunCommand = (command: CmsCommand | (() => CmsCommand)) => Promise<void>;
 
-function VariantCreationPanel({
+function selectorKeyForName(name: string): string {
+  return name
+    .normalize('NFKC')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 80);
+}
+
+function SelectorCreationWizard({
   scenarioId,
   workspace,
   pending,
-  priority,
-  currentSelector,
-  run,
+  runCommand,
+  previewSelector,
 }: Readonly<{
-  scenarioId: ScenarioId;
+  scenarioId: TemplateKey;
   workspace: CmsWorkspaceSnapshot;
   pending: boolean;
-  priority: number;
-  currentSelector: () => string;
-  run: LocalRunCommand;
+  runCommand: SelectorWorkspaceRunCommand;
+  previewSelector: SelectorWorkspacePreviewSelector;
 }>) {
-  const [newVariantName, setNewVariantName] = useState('New variation');
+  const [step, setStep] = useState<CreationStep>('identity');
+  const [newVariantName, setNewVariantName] = useState('');
+  const [newVariantKey, setNewVariantKey] = useState('');
+  const [keyEdited, setKeyEdited] = useState(false);
   const [creationMode, setCreationMode] = useState<CreationMode>('linked');
-  const duplicateCandidates = workspace.variants.filter(
-    (variant) => !variant.isDefault && variant.status !== 'archived'
-  );
-  const [duplicateSourceScopeId, setDuplicateSourceScopeId] = useState(
-    duplicateCandidates[0]?.id ?? ''
-  );
+  const [priority, setPriority] = useState(50);
+  const [editorMode, setEditorMode] = useState<EditorMode>('guided');
+  const [advancedSelector, setAdvancedSelector] = useState("route_status = 'live'");
+  const [builder, setBuilder] = useState<SelectorBuilder>({
+    combinator: 'AND',
+    clauses: [initialClause(workspace.selectorFields)],
+  });
+  const [preview, setPreview] = useState<{
+    readonly signature: string;
+    readonly snapshot: SelectorPreviewSnapshot;
+  } | null>(null);
+  const [previewing, setPreviewing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  let selector = '';
+  let selectorDraftError: string | null = null;
+  try {
+    selector = selectorForEditor(editorMode, advancedSelector, builder, workspace);
+  } catch (caught) {
+    selectorDraftError = errorMessage(caught);
+  }
+  const previewSignature = JSON.stringify([selector, priority]);
+  const currentPreview = preview?.signature === previewSignature ? preview.snapshot : null;
+  const identityValid =
+    newVariantName.trim().length > 0 &&
+    /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(newVariantKey) &&
+    priority >= 1 &&
+    priority <= 10_000;
+
+  const runPreview = async (): Promise<void> => {
+    setError(null);
+    if (selectorDraftError || selector.length === 0) {
+      setError(selectorDraftError ?? 'Write a selector before previewing its impact.');
+      return;
+    }
+    setPreviewing(true);
+    try {
+      const snapshot = await previewSelector({
+        scenarioId,
+        selector,
+        priority,
+        canonicalUrl: workspace.canonicalUrl,
+        sampleLimit: 10,
+      });
+      setPreview({ signature: previewSignature, snapshot });
+    } catch (caught) {
+      setError(errorMessage(caught));
+    } finally {
+      setPreviewing(false);
+    }
+  };
+
+  const createSelector = async (): Promise<void> => {
+    if (!currentPreview) {
+      setError('Run a fresh impact preview before creating this selector.');
+      setStep('predicate');
+      return;
+    }
+    setError(null);
+    try {
+      await runCommand({
+        kind: 'createVariant',
+        scenarioId,
+        name: newVariantName.trim(),
+        key: newVariantKey,
+        selector,
+        priority,
+        mode: creationMode,
+        expectedNormalizedSelector: currentPreview.normalizedSelector,
+        expectedMatchCount: currentPreview.totalCount,
+        expectedMatchSetFingerprint: currentPreview.matchSetFingerprint,
+      });
+    } catch (caught) {
+      setError(errorMessage(caught));
+    }
+  };
+
+  const steps = [
+    ['identity', '1', 'Identity'],
+    ['predicate', '2', 'Predicate'],
+    ['review', '3', 'Review'],
+  ] as const;
+
   return (
-    <Card>
-      <CardHeader className="border-b border-line">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-faint">
-          New variation
-        </p>
-        <h3 className="text-sm font-semibold text-ink">Create selector-scoped intent</h3>
-      </CardHeader>
-      <CardContent className="space-y-3 pt-4">
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-ink" htmlFor="new-variant-name">
-              Name
-            </label>
-            <Input
-              id="new-variant-name"
-              value={newVariantName}
-              disabled={pending}
-              onChange={(event) => setNewVariantName(event.currentTarget.value)}
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-ink" htmlFor="creation-mode">
-              Starting intent
-            </label>
-            <Select
-              id="creation-mode"
-              className="h-9 w-full"
-              value={creationMode}
-              disabled={pending}
-              onChange={(event) => {
-                const value = event.currentTarget.value;
-                setCreationMode(
-                  value === 'empty' ? 'empty' : value === 'duplicate' ? 'duplicate' : 'linked'
-                );
-              }}
-            >
-              <option value="linked">Linked sparse inheritance</option>
-              <option value="empty">Explicit blank result</option>
-              <option value="duplicate">Duplicate variation intent</option>
-            </Select>
-          </div>
-        </div>
-        {creationMode === 'duplicate' ? (
-          <div>
-            <label className="mb-1 block text-xs font-medium text-ink" htmlFor="duplicate-source">
-              Source variation
-            </label>
-            <Select
-              id="duplicate-source"
-              className="h-9 w-full"
-              value={duplicateSourceScopeId}
-              disabled={pending || duplicateCandidates.length === 0}
-              onChange={(event) => setDuplicateSourceScopeId(event.currentTarget.value)}
-            >
-              {duplicateCandidates.map((variant) => (
-                <option key={variant.id} value={variant.id}>
-                  P{variant.priority} · {variant.name}
-                </option>
-              ))}
-            </Select>
-          </div>
-        ) : null}
-        <p className="text-[11px] text-ink-muted">
-          {creationMode === 'linked'
-            ? 'Starts with zero local operations and inherits every lower placement.'
-            : creationMode === 'empty'
-              ? 'Records explicit tombstones so an empty document cannot be confused with an empty overlay.'
-              : 'Copies the source selector and operation pointers into a new immutable revision; later edits fork independently.'}
-        </p>
-        <Button
-          disabled={
-            pending ||
-            newVariantName.trim().length === 0 ||
-            (creationMode === 'duplicate' && duplicateSourceScopeId.length === 0)
-          }
-          onClick={() =>
-            run(() => ({
-              kind: 'createVariant',
-              scenarioId,
-              name: newVariantName,
-              selector:
-                creationMode === 'duplicate'
-                  ? (duplicateCandidates.find(
-                      (candidate) => candidate.id === duplicateSourceScopeId
-                    )?.selector ?? currentSelector())
-                  : currentSelector(),
-              priority,
-              mode: creationMode,
-              ...(creationMode === 'duplicate' ? { duplicateSourceScopeId } : {}),
-            }))
-          }
+    <div className="mx-auto w-full max-w-5xl space-y-3">
+      <ol className="grid grid-cols-3 gap-2" aria-label="Selector creation progress">
+        {steps.map(([value, number, label]) => (
+          <li
+            key={value}
+            aria-current={step === value ? 'step' : undefined}
+            className={cn(
+              'flex items-center gap-2 rounded-lg border px-3 py-2 text-xs',
+              step === value
+                ? 'border-accent/40 bg-accent-soft text-ink'
+                : 'border-line bg-canvas text-ink-muted'
+            )}
+          >
+            <span className="grid size-5 place-items-center rounded bg-ink text-[10px] font-semibold text-canvas">
+              {number}
+            </span>
+            <span className="font-semibold">{label}</span>
+          </li>
+        ))}
+      </ol>
+
+      {step === 'identity' ? (
+        <Card>
+          <CardHeader className="border-b border-line">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-faint">
+              Step 1 of 3
+            </p>
+            <h3 className="text-sm font-semibold text-ink">Name the template variation</h3>
+          </CardHeader>
+          <CardContent className="space-y-4 pt-4">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label
+                  className="mb-1 block text-xs font-medium text-ink"
+                  htmlFor="new-variant-name"
+                >
+                  Display name
+                </label>
+                <Input
+                  id="new-variant-name"
+                  value={newVariantName}
+                  disabled={pending}
+                  placeholder="California premium"
+                  onChange={(event) => {
+                    const value = event.currentTarget.value;
+                    setNewVariantName(value);
+                    if (!keyEdited) setNewVariantKey(selectorKeyForName(value));
+                  }}
+                />
+              </div>
+              <div>
+                <label
+                  className="mb-1 block text-xs font-medium text-ink"
+                  htmlFor="new-variant-key"
+                >
+                  Stable key
+                </label>
+                <Input
+                  id="new-variant-key"
+                  value={newVariantKey}
+                  disabled={pending}
+                  placeholder="california-premium"
+                  pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
+                  onChange={(event) => {
+                    setKeyEdited(true);
+                    setNewVariantKey(event.currentTarget.value);
+                  }}
+                />
+              </div>
+              <div>
+                <label
+                  className="mb-1 block text-xs font-medium text-ink"
+                  htmlFor="new-variant-priority"
+                >
+                  Priority
+                </label>
+                <Input
+                  id="new-variant-priority"
+                  type="number"
+                  min={1}
+                  max={10_000}
+                  value={priority}
+                  disabled={pending}
+                  onChange={(event) => setPriority(Number(event.currentTarget.value))}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-ink" htmlFor="creation-mode">
+                  Starting content
+                </label>
+                <Select
+                  id="creation-mode"
+                  className="h-9 w-full"
+                  value={creationMode}
+                  disabled={pending}
+                  onChange={(event) =>
+                    setCreationMode(event.currentTarget.value === 'empty' ? 'empty' : 'linked')
+                  }
+                >
+                  <option value="linked">Inherit the default blocks</option>
+                  <option value="empty">Start explicitly blank</option>
+                </Select>
+              </div>
+            </div>
+            <div className="rounded-lg border border-accent/25 bg-accent-soft/45 p-3 text-[11px] leading-5 text-ink-muted">
+              {creationMode === 'linked' ? (
+                <p>
+                  <strong className="text-ink">Sparse linked start:</strong> zero block versions are
+                  copied. Every placement stays inherited until an edit saves one new immutable
+                  version in this variation.
+                </p>
+              ) : (
+                <p>
+                  <strong className="text-ink">Explicit blank start:</strong> tombstones hide the
+                  inherited document for matching pages until blocks are added locally.
+                </p>
+              )}
+            </div>
+            <div className="flex justify-end">
+              <Button disabled={pending || !identityValid} onClick={() => setStep('predicate')}>
+                Continue to predicate
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {step === 'predicate' ? (
+        <Card>
+          <CardHeader className="border-b border-line">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-faint">
+              Step 2 of 3
+            </p>
+            <h3 className="text-sm font-semibold text-ink">Choose the matching route slice</h3>
+          </CardHeader>
+          <CardContent className="space-y-4 pt-4">
+            <div className="flex justify-end">
+              <div className="inline-flex rounded-lg border border-line bg-surface-muted p-0.5">
+                <Button
+                  size="sm"
+                  variant={editorMode === 'guided' ? 'default' : 'ghost'}
+                  aria-pressed={editorMode === 'guided'}
+                  onClick={() => setEditorMode('guided')}
+                >
+                  Guided
+                </Button>
+                <Button
+                  size="sm"
+                  variant={editorMode === 'advanced' ? 'default' : 'ghost'}
+                  aria-pressed={editorMode === 'advanced'}
+                  onClick={() => setEditorMode('advanced')}
+                >
+                  <Braces aria-hidden="true" className="size-3.5" /> Advanced SQL-like
+                </Button>
+              </div>
+            </div>
+            {editorMode === 'guided' ? (
+              <GuidedSelectorBuilder
+                builder={builder}
+                fields={workspace.selectorFields}
+                disabled={pending || previewing}
+                onChange={setBuilder}
+              />
+            ) : (
+              <div>
+                <label className="sr-only" htmlFor="new-advanced-selector">
+                  Constrained selector predicate
+                </label>
+                <textarea
+                  id="new-advanced-selector"
+                  className={textareaClassName}
+                  value={advancedSelector}
+                  disabled={pending || previewing}
+                  spellCheck={false}
+                  onChange={(event) => setAdvancedSelector(event.currentTarget.value)}
+                />
+                <p className="mt-1 text-[10px] text-ink-faint">
+                  Approved route slots and tags only. This runs during preview and publication,
+                  never on the public request path.
+                </p>
+              </div>
+            )}
+            {selectorDraftError ? (
+              <p className="text-xs text-danger-strong" role="alert">
+                {selectorDraftError}
+              </p>
+            ) : null}
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <Button variant="outline" disabled={pending} onClick={() => setStep('identity')}>
+                Back
+              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  disabled={pending || previewing || Boolean(selectorDraftError)}
+                  onClick={runPreview}
+                >
+                  <Play aria-hidden="true" className="size-3.5" />
+                  {previewing ? 'Checking…' : 'Preview exact impact'}
+                </Button>
+                <Button disabled={pending || !currentPreview} onClick={() => setStep('review')}>
+                  Review{' '}
+                  {currentPreview ? `${currentPreview.totalCount.toLocaleString()} pages` : ''}
+                </Button>
+              </div>
+            </div>
+            {preview && !currentPreview ? (
+              <p
+                className="rounded-lg border border-warning/25 bg-warning-soft p-3 text-xs text-warning-strong"
+                role="status"
+              >
+                The predicate or priority changed. Run the impact preview again to continue.
+              </p>
+            ) : null}
+            {currentPreview ? (
+              <div
+                className="rounded-lg border border-success/25 bg-success-soft p-3 text-xs text-success-strong"
+                role="status"
+              >
+                Preview is current: {currentPreview.totalCount.toLocaleString()} of{' '}
+                {currentPreview.templatePageCount.toLocaleString()} pages match.
+              </div>
+            ) : null}
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {step === 'review' && currentPreview ? (
+        <Card>
+          <CardHeader className="border-b border-line">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-faint">
+              Step 3 of 3
+            </p>
+            <h3 className="text-sm font-semibold text-ink">Review and create {newVariantName}</h3>
+            <p className="text-[11px] text-ink-muted">
+              <code>{newVariantKey}</code> · P{priority} ·{' '}
+              {creationMode === 'linked' ? 'inherits default placements' : 'explicitly blank'}
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4 pt-4">
+            <SelectorPreviewResults preview={currentPreview} />
+            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line pt-4">
+              <Button variant="outline" disabled={pending} onClick={() => setStep('predicate')}>
+                Back to predicate
+              </Button>
+              <Button disabled={pending || !identityValid} onClick={createSelector}>
+                <GitBranch aria-hidden="true" className="size-3.5" />
+                {pending ? 'Creating…' : 'Create selector variation'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {error ? (
+        <p
+          className="flex items-start gap-2 rounded-lg border border-danger/25 bg-danger-soft p-3 text-xs text-danger-strong"
+          role="alert"
         >
-          {creationMode === 'duplicate' ? (
-            <Copy aria-hidden="true" className="size-3.5" />
-          ) : (
-            <GitBranch aria-hidden="true" className="size-3.5" />
-          )}
-          Create persisted variation
-        </Button>
-      </CardContent>
-    </Card>
+          <AlertTriangle aria-hidden="true" className="mt-0.5 size-4 shrink-0" /> {error}
+        </p>
+      ) : null}
+    </div>
   );
 }
 
@@ -860,15 +1112,6 @@ function SelectorWorkspaceScope({
         </CardContent>
       </Card>
 
-      <VariantCreationPanel
-        scenarioId={scenarioId}
-        workspace={workspace}
-        pending={pending}
-        priority={priority}
-        currentSelector={currentSelector}
-        run={run}
-      />
-
       <CascadeInspector workspace={workspace} />
     </div>
   );
@@ -876,6 +1119,17 @@ function SelectorWorkspaceScope({
 
 /** Controlled selector surface: the parent studio remains the only owner of persisted workspace state. */
 export function SelectorWorkspace(props: SelectorWorkspaceProps) {
+  if (props.mode === 'create') {
+    return (
+      <SelectorCreationWizard
+        scenarioId={props.scenarioId}
+        workspace={props.workspace}
+        pending={props.pending}
+        runCommand={props.runCommand}
+        previewSelector={props.previewSelector}
+      />
+    );
+  }
   const selectedVariant = props.workspace.variants.find(
     (variant) => variant.id === props.workspace.scopeId
   );

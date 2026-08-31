@@ -9,7 +9,7 @@ import {
 } from '@/components/authoring/schema-block-form';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import type { ScenarioFixture } from '@/data/scenario-fixtures';
+import type { TemplateKey } from '@/data/scenario-fixtures';
 import type {
   CmsCommand,
   CmsWorkspaceFieldInspection,
@@ -30,7 +30,7 @@ export function AuthoringCanvasPane({
   onSelectPlacement,
   runPlacementCommand,
 }: Readonly<{
-  scenarioId: ScenarioFixture['id'];
+  scenarioId: TemplateKey;
   workspace: CmsWorkspaceSnapshot;
   selectedPlacementKey?: string;
   addingBlock: boolean;
@@ -477,6 +477,17 @@ export function AuthoringInspectorPane({
               >
                 This selector does not match <code>{workspace.canonicalUrl}</code>. Block changes
                 are disabled; use View selector to update it or choose a matching scope.
+              </p>
+            ) : null}
+            {selectedPlacement?.inherited &&
+            !workspace.variants.find((variant) => variant.id === workspace.scopeId)?.isDefault ? (
+              <p
+                role="status"
+                className="mb-4 rounded-lg border border-accent/25 bg-accent-soft/45 p-3 text-[11px] leading-4 text-ink-muted"
+              >
+                <strong className="text-ink">Linked from a lower layer.</strong> Saving this block
+                creates one local immutable version for this variation. Every untouched block stays
+                inherited.
               </p>
             ) : null}
             {addingBlock || selectedPlacement ? (
