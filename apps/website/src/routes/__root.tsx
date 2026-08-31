@@ -7,6 +7,7 @@ import {
   Scripts,
 } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
+import '@repo/cms-renderer/styles.css';
 import '@/styles/index.css';
 
 export const Route = createRootRoute({

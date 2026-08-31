@@ -7,6 +7,8 @@ import {
   type CmsCommandResult,
   CmsCommandSchema,
   CmsLifecycleErrorCodeSchema,
+  type CmsPublicationHistory,
+  CmsPublicationHistoryInputSchema,
   type CmsPublicationMutationResponse,
   type CmsPublicationPreflight,
   CmsPublicationPreflightInputSchema,
@@ -78,6 +80,21 @@ export const loadCmsWorkspace = createServerFn({ method: 'GET' })
     const client = createCmsDatabase();
     try {
       return readCmsWorkspace(client, data.scenarioId, data.scopeId, data.canonicalUrl);
+    } finally {
+      client.close();
+    }
+  });
+
+export const loadCmsPublicationHistory = createServerFn({ method: 'GET' })
+  .validator(CmsPublicationHistoryInputSchema)
+  .handler(async ({ data }): Promise<CmsPublicationHistory> => {
+    const [{ createCmsDatabase }, { readCmsPublicationHistory }] = await Promise.all([
+      import('@repo/cms-db'),
+      import('@/server/sqlite-authoring.server'),
+    ]);
+    const client = createCmsDatabase({ readonly: true, create: false });
+    try {
+      return readCmsPublicationHistory(client, data);
     } finally {
       client.close();
     }

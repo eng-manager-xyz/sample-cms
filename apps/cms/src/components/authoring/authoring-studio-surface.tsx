@@ -2,12 +2,22 @@ import { ArrowLeft } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/cn';
 
-export function AuthoringDocumentSurface({ children }: Readonly<{ children: ReactNode }>) {
+export function AuthoringDocumentSurface({
+  children,
+  inspectorCollapsed = false,
+}: Readonly<{ children: ReactNode; inspectorCollapsed?: boolean }>) {
   return (
     <div
-      className="grid min-h-[calc(100vh-8rem)] gap-3 bg-surface-muted/50 p-3 xl:grid-cols-[minmax(520px,1fr)_390px]"
+      className={cn(
+        'grid min-h-[calc(100vh-6rem)] gap-3 bg-surface-muted/50 p-3 transition-[grid-template-columns] duration-200 ease-out motion-reduce:transition-none sm:min-h-[calc(100vh-3.25rem)]',
+        inspectorCollapsed
+          ? 'xl:grid-cols-[minmax(520px,1fr)_44px] xl:gap-0'
+          : 'xl:grid-cols-[minmax(520px,1fr)_390px]'
+      )}
       data-authoring-mode="document"
+      data-inspector-collapsed={inspectorCollapsed ? 'true' : 'false'}
     >
       {children}
     </div>
@@ -25,7 +35,7 @@ export function AuthoringSelectorSurface({
 }>) {
   return (
     <section
-      className="min-h-[calc(100vh-8rem)] bg-surface-muted/50 p-3"
+      className="min-h-[calc(100vh-6rem)] bg-surface-muted/50 p-3 sm:min-h-[calc(100vh-3.25rem)]"
       data-authoring-mode="selector"
       aria-labelledby="selector-mode-heading"
     >

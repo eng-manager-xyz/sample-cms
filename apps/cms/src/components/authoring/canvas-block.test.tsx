@@ -41,10 +41,18 @@ const callbacks = {
   onRevert: () => undefined,
 };
 
+const page = {
+  scenarioId: 'stores' as const,
+  canonicalUrl: '/en-US/store/1001',
+  renderMode: 'preview' as const,
+  interactionMode: 'static' as const,
+};
+
 describe('CanvasBlock', () => {
   test('exposes the complete canvas-native structure controls without a trash affordance', () => {
     const markup = renderToStaticMarkup(
       <CanvasBlock
+        page={page}
         placement={placement(false)}
         selected={false}
         disabled={false}
@@ -56,6 +64,12 @@ describe('CanvasBlock', () => {
     );
 
     expect(markup).toContain('Local');
+    expect(markup).toContain('class="site-hero site-hero--stores"');
+    expect(markup).toContain('A local hero');
+    expect(markup).not.toContain('inert=""');
+    expect(markup).not.toContain('<a');
+    expect(markup).not.toContain('href=');
+    expect(markup).not.toContain('Evaluated for the selected canonical page context.');
     expect(markup).toContain('aria-label="Add block above primary-hero"');
     expect(markup).toContain('aria-label="Add block below primary-hero"');
     expect(markup).toContain('aria-label="Move primary-hero up"');
@@ -71,6 +85,7 @@ describe('CanvasBlock', () => {
   test('keeps inherited provenance visible and omits an invalid local revert action', () => {
     const markup = renderToStaticMarkup(
       <CanvasBlock
+        page={page}
         placement={placement(true)}
         selected
         disabled={false}
@@ -110,5 +125,6 @@ describe('CanvasBlock', () => {
     expect(markup).toContain('role="switch"');
     expect(markup).toContain('aria-checked="false"');
     expect(markup).toContain('aria-label="Show primary-hero"');
+    expect(markup).toContain('class="group relative z-30 h-9 overflow-visible"');
   });
 });

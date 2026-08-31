@@ -6,6 +6,7 @@ import {
   Database,
   FileCheck2,
   Gauge,
+  PanelRight,
   Route,
   ShieldCheck,
 } from 'lucide-react';
@@ -19,9 +20,11 @@ import {
 } from '@/components/tutorial/tutorial-semantic-figures';
 import { TutorialStudyDeck } from '@/components/tutorial/tutorial-study-deck';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { tutorialCurriculum } from '@/content/tutorial/tutorial-content';
 import type { TutorialChapter, TutorialSection } from '@/content/tutorial/tutorial-curriculum';
+import { cn } from '@/lib/cn';
 import type { CmsHealthSummary } from '@/server-functions/cms.functions';
 
 type ActiveVisualChange = (visualId: string | null) => void;
@@ -113,14 +116,54 @@ function HealthSummary({ health }: Readonly<{ health: CmsHealthSummary }>) {
   );
 }
 
-function TutorialContents({ chapters }: Readonly<{ chapters: TutorialChapter[] }>) {
+export function TutorialContents({
+  chapters,
+  collapsed,
+  onCollapsedChange,
+}: Readonly<{
+  chapters: TutorialChapter[];
+  collapsed: boolean;
+  onCollapsedChange: (collapsed: boolean) => void;
+}>) {
+  const collapseLabel = collapsed ? 'Expand tutorial contents' : 'Collapse tutorial contents';
+
   return (
-    <aside className="print:hidden">
-      <Card className="overflow-hidden xl:flex xl:max-h-[calc(100dvh-88px)] xl:flex-col">
-        <div className="shrink-0 border-b border-line p-4">
-          <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.11em] text-accent-strong">
+    <aside
+      aria-labelledby="tutorial-contents-heading"
+      className={cn('relative print:hidden', collapsed && 'xl:min-h-11 xl:border-l xl:border-line')}
+      data-tutorial-contents-collapsed={collapsed ? 'true' : 'false'}
+    >
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className={cn(
+          'absolute right-2 top-2 z-20 hidden size-8 text-ink-muted hover:bg-surface-muted hover:text-ink focus-visible:ring-2 focus-visible:ring-focus xl:inline-flex',
+          collapsed && 'right-1.5 !cursor-w-resize bg-canvas shadow-sm',
+          !collapsed && '!cursor-e-resize'
+        )}
+        aria-controls="tutorial-contents-panel"
+        aria-expanded={!collapsed}
+        aria-label={collapseLabel}
+        title={collapseLabel}
+        onClick={() => onCollapsedChange(!collapsed)}
+      >
+        <PanelRight aria-hidden="true" className="size-4" strokeWidth={1.8} />
+      </Button>
+      <Card
+        id="tutorial-contents-panel"
+        className={cn(
+          'overflow-hidden xl:flex xl:max-h-[calc(100dvh-88px)] xl:flex-col',
+          collapsed && 'xl:hidden'
+        )}
+      >
+        <div className="shrink-0 border-b border-line p-4 pr-12">
+          <h2
+            id="tutorial-contents-heading"
+            className="font-mono text-[10px] font-semibold uppercase tracking-[0.11em] text-accent-strong"
+          >
             Tutorial contents
-          </p>
+          </h2>
           <p className="mt-1 text-xs leading-5 text-ink-muted">
             Follow the dependency chain or jump to a review question.
           </p>
@@ -355,6 +398,7 @@ export function TutorialReport({ health }: Readonly<{ health: CmsHealthSummary }
   const { totals } = tutorialCurriculum;
   const continuousMinutes = totals.readingMinutes + totals.mediaMinutes;
   const [activeVisual, setActiveVisual] = useState<string | null>(null);
+  const [contentsCollapsed, setContentsCollapsed] = useState(false);
 
   return (
     <div
@@ -486,11 +530,25 @@ export function TutorialReport({ health }: Readonly<{ health: CmsHealthSummary }
         <TutorialMediaLegend />
       </div>
 
-      <div className="mt-6 grid items-start gap-6 xl:grid-cols-[280px_minmax(0,1fr)]">
-        <div id="tutorial-contents" className="scroll-mt-24 xl:sticky xl:top-[72px] xl:self-start">
-          <TutorialContents chapters={tutorialCurriculum.chapters} />
+      <div
+        className={cn(
+          'mt-6 grid items-start gap-6 transition-[grid-template-columns] duration-200 ease-out motion-reduce:transition-none',
+          contentsCollapsed
+            ? 'xl:grid-cols-[minmax(0,1fr)_44px] xl:gap-0'
+            : 'xl:grid-cols-[minmax(0,1fr)_280px]'
+        )}
+      >
+        <div
+          id="tutorial-contents"
+          className="scroll-mt-24 xl:order-2 xl:sticky xl:top-[72px] xl:self-start"
+        >
+          <TutorialContents
+            chapters={tutorialCurriculum.chapters}
+            collapsed={contentsCollapsed}
+            onCollapsedChange={setContentsCollapsed}
+          />
         </div>
-        <section className="min-w-0 space-y-8" aria-label="Architecture tutorial report">
+        <section className="min-w-0 space-y-8 xl:order-1" aria-label="Architecture tutorial report">
           {tutorialCurriculum.chapters.map((chapter) => (
             <TutorialChapterArticle
               key={chapter.id}

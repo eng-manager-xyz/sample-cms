@@ -7,7 +7,7 @@ import {
   ScenarioIdSchema,
   TemplateParamsSchema,
 } from '@/data/scenario-fixtures';
-import { loadCmsHealth, loadCmsWorkspace } from '@/server-functions/cms.functions';
+import { loadCmsWorkspace } from '@/server-functions/cms.functions';
 
 export const Route = createFileRoute('/templates/$templateId')({
   params: {
@@ -21,23 +21,17 @@ export const Route = createFileRoute('/templates/$templateId')({
     const workspace = await loadCmsWorkspace({
       data: { scenarioId: scenarioId.data, canonicalUrl: deps.canonicalUrl },
     });
-    return { health: await loadCmsHealth(), scenarioId: scenarioId.data, workspace };
+    return { scenarioId: scenarioId.data, workspace };
   },
   component: TemplateRoute,
 });
 
 function TemplateRoute() {
-  const { health, scenarioId, workspace } = Route.useLoaderData();
+  const { scenarioId, workspace } = Route.useLoaderData();
   const scenario = getScenarioFixture(scenarioId);
 
   return (
-    <AppShell
-      databaseHealthy={health.healthy}
-      schemaVersion={health.schemaVersion}
-      section="template"
-      breadcrumb={scenario.name}
-      templateId={scenario.id}
-    >
+    <AppShell section="template" breadcrumb={scenario.name} templateId={scenario.id}>
       <TemplateWorkspace
         key={`${scenario.id}:${workspace.pageId}`}
         scenario={scenario}

@@ -35,8 +35,8 @@ const callbacks = {
   onClearSelector: () => undefined,
 };
 
-describe('AUT-550 AuthoringScopeControl', () => {
-  test('keeps default scope free of redundant selector actions', () => {
+describe('AUT-555 AuthoringScopeControl', () => {
+  test('renders the default variation as a compact dropdown without redundant actions', () => {
     const markup = renderToStaticMarkup(
       <AuthoringScopeControl
         variants={variants}
@@ -47,12 +47,15 @@ describe('AUT-550 AuthoringScopeControl', () => {
     );
 
     expect(markup).toContain('data-scope-kind="default"');
+    expect(markup).toContain('class="sr-only" for="authoring-scope"');
+    expect(markup).toContain('h-7 px-2 text-[11px]');
+    expect(markup).toContain('w-24 shrink-0 font-medium sm:w-36 xl:w-44');
     expect(markup).toContain('template default');
-    expect(markup).not.toContain('View selector');
+    expect(markup).not.toContain('aria-label="View selector');
     expect(markup).not.toContain('Clear Default');
   });
 
-  test('groups a mini primary selector action and accessible clear action with a selected variant', () => {
+  test('groups icon-only selector and clear actions with a selected variant', () => {
     const markup = renderToStaticMarkup(
       <AuthoringScopeControl
         variants={variants}
@@ -63,8 +66,9 @@ describe('AUT-550 AuthoringScopeControl', () => {
     );
 
     expect(markup).toContain('data-scope-kind="selector"');
-    expect(markup).toContain('View selector');
+    expect(markup).toContain('aria-label="View selector for Fast food"');
     expect(markup).toContain('aria-label="Clear Fast food and return to template default"');
+    expect(markup).not.toContain('>View selector<');
     expect(markup).not.toContain('aria-pressed');
   });
 });

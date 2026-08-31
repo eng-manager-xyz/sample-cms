@@ -22,12 +22,7 @@ function TutorialRoute() {
   const health = Route.useLoaderData();
 
   return (
-    <AppShell
-      databaseHealthy={health.healthy}
-      schemaVersion={health.schemaVersion}
-      section="tutorial"
-      breadcrumb="Architecture tutorial"
-    >
+    <AppShell section="tutorial" breadcrumb="Architecture tutorial">
       <TutorialReport health={health} />
     </AppShell>
   );

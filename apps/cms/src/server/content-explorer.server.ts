@@ -483,10 +483,32 @@ function selectorSummaryRows(
 function readSelectorSummaries(
   client: CmsDatabaseClient,
   templateId: string,
-  selectedPageId: string | null
+  selectedPageId: string | null,
+  selectorMetricsFor: string | null
 ): readonly ContentSelectorSummary[] {
-  const surface = new CmsService(client).getApprovedReadSurface(templateId);
-  return selectorSummaryRows(client, templateId).map((row) => {
+  const rows = selectorSummaryRows(client, templateId);
+  return rows.map((row) => {
+    const summary = {
+      id: row.id,
+      activeRevisionId: row.activeRevisionId,
+      name: row.name,
+      isDefault: Boolean(row.isDefault),
+      priority: row.priority,
+      status: row.status,
+      selector: row.selector,
+      affectedPlacementCount: row.affectedPlacementCount,
+    };
+    if (row.id !== selectorMetricsFor) {
+      return {
+        ...summary,
+        metricsLoaded: false,
+        exactMatchCount: null,
+        selectedPageMatches: null,
+        sampleCanonicalUrls: [],
+        sampleUrlsTruncated: false,
+      };
+    }
+    const surface = new CmsService(client).getApprovedReadSurface(templateId);
     const compilation = row.isDefault
       ? null
       : compileApprovedSelector(adaptStoredSelector(row.normalizedSelector), surface.fields);
@@ -520,15 +542,9 @@ function readSelectorSummaries(
       .all(templateId, ...predicateParameters, CONTENT_EXPLORER_SELECTOR_SAMPLE_LIMIT)
       .map((sample) => sample.canonicalUrl);
     return {
-      id: row.id,
-      activeRevisionId: row.activeRevisionId,
-      name: row.name,
-      isDefault: Boolean(row.isDefault),
-      priority: row.priority,
-      status: row.status,
-      selector: row.selector,
+      ...summary,
+      metricsLoaded: true,
       exactMatchCount,
-      affectedPlacementCount: row.affectedPlacementCount,
       selectedPageMatches: selectedPageId === null ? null : Boolean(aggregate?.selectedPageMatches),
       sampleCanonicalUrls,
       sampleUrlsTruncated: exactMatchCount > sampleCanonicalUrls.length,
@@ -593,6 +609,47 @@ function pageRows(
     .all(...bindings);
 }
 
+function contentExplorerPage(row: PageRow): ContentExplorerPage {
+  return {
+    id: row.id,
+    templateId: row.templateId,
+    canonicalUrl: row.canonicalUrl,
+    routeStatus: row.routeStatus,
+    routeRevision: row.routeRevision,
+    updatedAt: row.updatedAt,
+    segments: [...canonicalUrlSegments(row.canonicalUrl)],
+    publicationState: row.documentHash ? 'published' : 'not_published',
+    documentHash: row.documentHash,
+  };
+}
+
+function readSelectedPageDetail(
+  client: CmsDatabaseClient,
+  templateId: string,
+  canonicalUrl: string | undefined
+): ContentExplorerPage | null {
+  if (!canonicalUrl) return null;
+  const row = client.sqlite
+    .query<PageRow, [string, string]>(
+      `SELECT pages.id,
+              pages.template_id AS templateId,
+              pages.canonical_url AS canonicalUrl,
+              pages.route_status AS routeStatus,
+              pages.route_revision AS routeRevision,
+              pages.updated_at AS updatedAt,
+              documents.document_hash AS documentHash
+       FROM page_instances AS pages
+       LEFT JOIN current_publications AS current ON current.template_id = pages.template_id
+       LEFT JOIN published_page_documents AS documents
+         ON documents.template_id = pages.template_id
+        AND documents.page_instance_id = pages.id
+        AND documents.publication_id = current.publication_id
+       WHERE pages.template_id = ? AND pages.canonical_url = ?`
+    )
+    .get(templateId, canonicalUrl);
+  return row ? contentExplorerPage(row) : null;
+}
+
 function readPages(
   client: CmsDatabaseClient,
   input: ContentExplorerInput,
@@ -605,17 +662,7 @@ function readPages(
   if (cursor?.[1] === 'before') boundedRows.reverse();
   const first = boundedRows.at(0);
   const last = boundedRows.at(-1);
-  const pages: ContentExplorerPage[] = boundedRows.map((row) => ({
-    id: row.id,
-    templateId: row.templateId,
-    canonicalUrl: row.canonicalUrl,
-    routeStatus: row.routeStatus,
-    routeRevision: row.routeRevision,
-    updatedAt: row.updatedAt,
-    segments: [...canonicalUrlSegments(row.canonicalUrl)],
-    publicationState: row.documentHash ? 'published' : 'not_published',
-    documentHash: row.documentHash,
-  }));
+  const pages = boundedRows.map(contentExplorerPage);
   const movingBackward = cursor?.[1] === 'before';
   return {
     pages,
@@ -651,14 +698,25 @@ export function readContentExplorer(
   );
   const selectors =
     rawInput.includeSelectors !== false
-      ? readSelectorSummaries(client, templateId, pageNavigation.selectedPage?.pageId ?? null)
+      ? readSelectorSummaries(
+          client,
+          templateId,
+          pageNavigation.selectedPage?.pageId ?? null,
+          rawInput.selectorMetricsFor ?? null
+        )
       : [];
+  const selectedPageDetail = readSelectedPageDetail(
+    client,
+    templateId,
+    pageNavigation.selectedPage?.canonicalUrl
+  );
   const pageData = readPages(client, rawInput, templateId, cursor);
   return ContentExplorerSnapshotSchema.parse({
     templates,
     selectedTemplate: rawInput.template,
     query: rawInput.q,
     pageNavigation,
+    selectedPageDetail,
     selectors,
     ...pageData,
   });

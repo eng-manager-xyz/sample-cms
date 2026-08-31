@@ -3,8 +3,6 @@ import type { LucideIcon } from 'lucide-react';
 import {
   BookOpen,
   ChevronDown,
-  ChevronRight,
-  Database,
   FileStack,
   FolderTree,
   Map as MapIcon,
@@ -15,19 +13,24 @@ import {
 import type { ReactNode } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import {
+  CompactTreeChildren,
+  CompactTreeDisclosure,
+  CompactTreeRow,
+  compactTreeRowClassName,
+} from '@/components/ui/compact-tree';
 import { Separator } from '@/components/ui/separator';
 import type { ScenarioId } from '@/data/scenario-fixtures';
 import { cn } from '@/lib/cn';
 
-type ShellSection = 'maps' | 'content' | 'tutorial' | 'template' | 'publications';
+type ShellSection = 'maps' | 'content' | 'tutorial' | 'template';
 
 interface AppShellProps {
   children: ReactNode;
-  databaseHealthy?: boolean;
-  schemaVersion?: number;
   section?: ShellSection;
   breadcrumb?: string;
   headerContent?: ReactNode;
+  headerActions?: ReactNode;
   sidebarCollapsed?: boolean;
   onSidebarCollapsedChange?: (collapsed: boolean) => void;
   templateId?: ScenarioId;
@@ -54,10 +57,7 @@ export const sidebarNavigation = [
     label: 'Content explorer',
     icon: FolderTree,
     section: 'content',
-    children: [
-      { label: 'Template workspace', icon: FileStack, section: 'template' },
-      { label: 'Publications', icon: Database, section: 'publications' },
-    ],
+    children: [{ label: 'Template workspace', icon: FileStack, section: 'template' }],
   },
 ] as const satisfies readonly NavigationBranch[];
 
@@ -81,11 +81,11 @@ export function isNavigationItemUnavailable(
   item: NavigationItem,
   templateId?: ScenarioId
 ): boolean {
-  return !templateId && (item.section === 'template' || item.section === 'publications');
+  return !templateId && item.section === 'template';
 }
 
 export function getContentExplorerNavigationSearch(templateId?: ScenarioId) {
-  return { view: 'tree' as const, template: templateId ?? 'stores', q: '' };
+  return { template: templateId ?? 'stores', view: 'tree' as const, q: '' };
 }
 
 const expandedBranches = {
@@ -94,9 +94,6 @@ const expandedBranches = {
 } satisfies Record<(typeof sidebarNavigation)[number]['section'], boolean>;
 
 type NavigationBranchSection = keyof typeof expandedBranches;
-
-const navigationRowClassName =
-  'flex h-8 min-w-0 items-center rounded-md text-[12px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus';
 
 const collapsedNavigation = flattenSidebarNavigation();
 
@@ -128,7 +125,8 @@ function SidebarLink({
   const active = item.section === activeSection;
   const unavailable = isNavigationItemUnavailable(item, templateId);
   const className = cn(
-    navigationRowClassName,
+    compactTreeRowClassName,
+    'focus-visible:ring-2 focus-visible:ring-focus',
     'w-full',
     collapsed ? 'justify-center px-2' : nested ? 'gap-2 px-2' : 'gap-2 px-1.5',
     active
@@ -210,21 +208,6 @@ function SidebarLink({
     );
   }
 
-  if (item.section === 'publications' && templateId) {
-    return (
-      <Link
-        to="/publications/$templateId"
-        params={{ templateId }}
-        aria-current={active ? 'page' : undefined}
-        onClick={onNavigate}
-        title={collapsed ? item.label : undefined}
-        className={className}
-      >
-        {contents}
-      </Link>
-    );
-  }
-
   return null;
 }
 
@@ -252,32 +235,18 @@ function NavigationTree({
 
         return (
           <li key={branch.section}>
-            <div
-              className={cn(
-                'group/branch flex min-w-0 items-center rounded-md',
-                branchActive && !branchSelfActive && 'bg-surface-muted/70'
-              )}
-              data-active-branch={branchActive || undefined}
-            >
-              <button
-                type="button"
-                aria-label={`${branchOpen ? 'Collapse' : 'Expand'} ${branch.label}`}
-                aria-expanded={branchOpen}
-                aria-controls={branchId}
+            <CompactTreeRow activeAncestor={branchActive && !branchSelfActive}>
+              <CompactTreeDisclosure
+                expanded={branchOpen}
+                label={branch.label}
+                controls={branchId}
                 onClick={() =>
                   setOpenBranches((current) => ({
                     ...current,
                     [branchSection]: !current[branchSection],
                   }))
                 }
-                className="grid size-8 shrink-0 place-items-center rounded-md text-ink-faint outline-none transition-colors hover:bg-canvas hover:text-ink focus-visible:ring-2 focus-visible:ring-focus"
-              >
-                <ChevronRight
-                  aria-hidden="true"
-                  strokeWidth={1.8}
-                  className={cn('size-3.5 transition-transform', branchOpen && 'rotate-90')}
-                />
-              </button>
+              />
               <SidebarLink
                 item={branch}
                 collapsed={false}
@@ -291,14 +260,10 @@ function NavigationTree({
                   className="mr-2 size-1.5 shrink-0 rounded-full bg-accent"
                 />
               ) : null}
-            </div>
+            </CompactTreeRow>
 
             {branchOpen ? (
-              <ul
-                id={branchId}
-                aria-label={`${branch.label} destinations`}
-                className="relative ml-4 mt-1 space-y-0.5 border-l border-line pl-3"
-              >
+              <CompactTreeChildren id={branchId} label={`${branch.label} destinations`}>
                 {branch.children.map((item) => (
                   <li key={item.section}>
                     <SidebarLink
@@ -311,7 +276,7 @@ function NavigationTree({
                     />
                   </li>
                 ))}
-              </ul>
+              </CompactTreeChildren>
             ) : null}
           </li>
         );
@@ -428,11 +393,10 @@ function SidebarContents({
 
 export function AppShell({
   children,
-  databaseHealthy = false,
-  schemaVersion,
   section = 'maps',
   breadcrumb = 'Wall of Maps',
   headerContent,
+  headerActions,
   sidebarCollapsed,
   onSidebarCollapsedChange,
   templateId,
@@ -543,8 +507,8 @@ export function AppShell({
       ) : null}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-[52px] shrink-0 items-center justify-between border-b border-line bg-canvas/92 px-3 backdrop-blur-md sm:px-4 lg:px-5">
-          <div className="flex h-full min-w-0 flex-1 items-center gap-2">
+        <header className="sticky top-0 z-30 flex min-h-[52px] shrink-0 flex-wrap items-center gap-x-2 overflow-x-clip border-b border-line bg-canvas/92 px-3 backdrop-blur-md sm:h-[52px] sm:flex-nowrap sm:px-4 lg:px-5">
+          <div className="flex h-[52px] min-w-0 flex-1 items-center gap-2">
             <Button
               ref={mobileOpenButtonRef}
               variant="ghost"
@@ -571,27 +535,11 @@ export function AppShell({
             )}
           </div>
 
-          <div className="flex items-center gap-1.5">
-            <div
-              className="ml-1 flex items-center gap-1.5 rounded-full border border-line bg-canvas py-1 pl-1 pr-2 text-[11px] font-medium text-ink-muted"
-              title={
-                databaseHealthy
-                  ? `SQLite schema v${schemaVersion ?? 'unknown'}`
-                  : 'SQLite unavailable'
-              }
-            >
-              <span
-                aria-hidden="true"
-                className={cn(
-                  'size-2 rounded-full',
-                  databaseHealthy
-                    ? 'bg-success shadow-[0_0_0_3px_var(--color-success-soft)]'
-                    : 'bg-danger shadow-[0_0_0_3px_var(--color-danger-soft)]'
-                )}
-              />
-              {databaseHealthy ? 'SQLite live' : 'SQLite offline'}
+          {headerActions ? (
+            <div className="flex h-11 w-full shrink-0 items-center justify-end border-t border-line bg-canvas/92 sm:ml-auto sm:h-full sm:w-auto sm:border-l sm:border-t-0 sm:pl-2">
+              {headerActions}
             </div>
-          </div>
+          ) : null}
         </header>
 
         <main className="min-w-0 flex-1">{children}</main>

@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@repo/cms-db": "workspace:*",
+    "@repo/cms-renderer": "workspace:*",
     "@repo/cms-scenarios": "workspace:*",
     "@repo/cms-service": "workspace:*",
     "@shadcn/react": "0.3.0",

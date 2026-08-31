@@ -1,10 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from '@tanstack/react-router';
-import { CheckCircle2, Eye, Rocket, Save } from 'lucide-react';
+import { Link, useNavigate } from '@tanstack/react-router';
+import { CheckCircle2, History } from 'lucide-react';
 import { useReducer, useRef, useState } from 'react';
 import { AppShell } from '@/components/app-shell';
 import { AuthoringContextNavigation } from '@/components/authoring/authoring-context-navigation';
-import { AuthoringScopeControl } from '@/components/authoring/authoring-scope-control';
 import {
   AuthoringCanvasPane,
   AuthoringInspectorPane,
@@ -14,19 +13,18 @@ import {
   AuthoringDocumentSurface,
   AuthoringSelectorSurface,
 } from '@/components/authoring/authoring-studio-surface';
+import { AuthoringToolbar } from '@/components/authoring/authoring-toolbar';
 import {
   type PublicationWorkflowOperation,
   PublicationWorkflowPanel,
 } from '@/components/authoring/publication-workflow-panel';
-import {
-  AUTHORING_BLOCK_FORM_ID,
-  type BlockFormInsertion,
-  type BlockFormSaveInput,
+import type {
+  BlockFormInsertion,
+  BlockFormSaveInput,
 } from '@/components/authoring/schema-block-form';
 import { SelectorWorkspace } from '@/components/selector-workspace';
-import { Button } from '@/components/ui/button';
+import { buttonClassName } from '@/components/ui/button-styles';
 import {
-  AUTHORING_LIFECYCLE_LIVE_REGION_PROPS,
   authoringLifecycleLabel,
   authoringLifecycleReducer,
   canReviewPublication,
@@ -86,20 +84,20 @@ export function AuthoringStudio({
   initialInspectorTab,
   pageNavigation,
   websiteOrigin,
-  databaseHealthy,
-  schemaVersion,
   sidebarCollapsed,
   onSidebarCollapsedChange,
+  inspectorCollapsed,
+  onInspectorCollapsedChange,
 }: Readonly<{
   scenario: ScenarioFixture;
   initialWorkspace: CmsWorkspaceSnapshot;
   initialInspectorTab: AuthoringInspectorTab;
   pageNavigation: ContentPageNavigation;
   websiteOrigin: WebsiteOriginState;
-  databaseHealthy: boolean;
-  schemaVersion: number;
   sidebarCollapsed: boolean;
   onSidebarCollapsedChange: (collapsed: boolean) => void;
+  inspectorCollapsed: boolean;
+  onInspectorCollapsedChange: (collapsed: boolean) => void;
 }>) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -536,11 +534,19 @@ export function AuthoringStudio({
         : lifecycle.status === 'published' || lifecycle.status === 'draft-saved'
           ? 'success'
           : 'neutral';
+  const saveTitle = !workspace.scopeMatchesSamplePage
+    ? 'The selected scope does not match this canonical page'
+    : !hasEditableForm
+      ? 'Select or add a block to save'
+      : documentInspectorTab === 'fields' && !selectorMode
+        ? 'Save the current block draft'
+        : 'Open Fields to save';
+  const reviewTitle = hasUnsavedForm
+    ? 'Save local form changes before running publication preflight'
+    : 'Compile a read-only preflight before confirming publication';
 
   return (
     <AppShell
-      databaseHealthy={databaseHealthy}
-      schemaVersion={schemaVersion}
       sidebarCollapsed={sidebarCollapsed}
       onSidebarCollapsedChange={onSidebarCollapsedChange}
       section="template"
@@ -560,81 +566,50 @@ export function AuthoringStudio({
           onPageChange={(page) => choosePage(page.canonicalUrl)}
         />
       }
+      headerActions={
+        <div className="flex items-center gap-1">
+          <AuthoringToolbar
+            variants={workspace.variants}
+            selectedScopeId={workspace.scopeId}
+            scopeDisabled={pending || hasUnsavedForm}
+            lifecycleAnnouncement={lifecycle.announcement}
+            saveDisabled={
+              formActionsDisabled ||
+              documentInspectorTab !== 'fields' ||
+              selectorMode ||
+              !hasEditableForm ||
+              !canSaveDraft(lifecycle)
+            }
+            savePending={mutation.isPending}
+            saveTitle={saveTitle}
+            {...(previewHref ? { previewHref } : {})}
+            previewUnavailableTitle={unavailableOriginMessage}
+            reviewDisabled={pending || !canReviewPublication(lifecycle)}
+            reviewPending={preflightMutation.isPending}
+            reviewTitle={reviewTitle}
+            publicationTriggerRef={publicationTriggerRef}
+            onSelectScope={chooseScope}
+            onViewSelector={viewSelector}
+            onClearSelector={() => {
+              if (defaultVariant) chooseScope(defaultVariant.id);
+            }}
+            onReviewPublication={reviewPublication}
+          />
+          <span aria-hidden="true" className="mx-0.5 h-4 w-px shrink-0 bg-line" />
+          <Link
+            to="/publications/$templateId"
+            params={{ templateId: scenario.id }}
+            search={{ canonicalUrl: workspace.canonicalUrl }}
+            aria-label="Open release history"
+            title="Open release history"
+            className={buttonClassName({ variant: 'outline', size: 'icon-sm' })}
+          >
+            <History aria-hidden="true" className="size-4" />
+          </Link>
+        </div>
+      }
     >
       <div className="min-h-0" aria-busy={pending}>
-        <header className="sticky top-[52px] z-20 border-b border-line bg-canvas/95 px-3 py-3 backdrop-blur sm:px-5">
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            <p {...AUTHORING_LIFECYCLE_LIVE_REGION_PROPS} className="sr-only">
-              {lifecycle.announcement}
-            </p>
-            <AuthoringScopeControl
-              variants={workspace.variants}
-              selectedScopeId={workspace.scopeId}
-              disabled={pending || hasUnsavedForm}
-              onSelectScope={chooseScope}
-              onViewSelector={viewSelector}
-              onClearSelector={() => {
-                if (defaultVariant) chooseScope(defaultVariant.id);
-              }}
-            />
-            <Button
-              variant="outline"
-              form={AUTHORING_BLOCK_FORM_ID}
-              type="submit"
-              disabled={
-                formActionsDisabled ||
-                documentInspectorTab !== 'fields' ||
-                selectorMode ||
-                !hasEditableForm ||
-                !canSaveDraft(lifecycle)
-              }
-              title={
-                !workspace.scopeMatchesSamplePage
-                  ? 'The selected scope does not match this canonical page'
-                  : !hasEditableForm
-                    ? 'Select or add a block to save'
-                    : documentInspectorTab === 'fields' && !selectorMode
-                      ? 'Save the current block draft'
-                      : 'Open Fields to save'
-              }
-            >
-              <Save aria-hidden="true" className="size-4" /> Save
-            </Button>
-            {previewHref ? (
-              <a
-                href={previewHref}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex h-9 items-center gap-2 rounded-lg border border-line-strong bg-canvas px-3.5 text-[13px] font-medium text-ink outline-none hover:bg-surface-subtle focus-visible:ring-2 focus-visible:ring-focus"
-                title="Open the persisted saved draft as the full active cascade; unsaved local form edits are excluded."
-              >
-                <Eye aria-hidden="true" className="size-4" /> Preview saved draft
-              </a>
-            ) : (
-              <span
-                aria-disabled="true"
-                className="inline-flex h-9 cursor-not-allowed items-center gap-2 rounded-lg border border-line bg-surface-muted px-3.5 text-[13px] font-medium text-ink-faint"
-                title={unavailableOriginMessage}
-              >
-                <Eye aria-hidden="true" className="size-4" /> Preview unavailable
-              </span>
-            )}
-            <Button
-              ref={publicationTriggerRef}
-              disabled={pending || !canReviewPublication(lifecycle)}
-              title={
-                hasUnsavedForm
-                  ? 'Save local form changes before running publication preflight'
-                  : 'Compile a read-only preflight before confirming publication'
-              }
-              onClick={reviewPublication}
-            >
-              <Rocket aria-hidden="true" className="size-4" />
-              {preflightMutation.isPending ? 'Checking…' : 'Review publish'}
-            </Button>
-          </div>
-        </header>
-
         {selectorMode ? (
           <AuthoringSelectorSurface
             disabled={pending}
@@ -649,11 +624,10 @@ export function AuthoringStudio({
             />
           </AuthoringSelectorSurface>
         ) : (
-          <AuthoringDocumentSurface>
+          <AuthoringDocumentSurface inspectorCollapsed={inspectorCollapsed}>
             <AuthoringCanvasPane
               scenarioId={scenario.id}
               workspace={workspace}
-              websiteOrigin={websiteOrigin}
               selectedPlacementKey={selectedPlacement?.placementKey}
               addingBlock={addingBlock}
               actionsDisabled={structureActionsDisabled}
@@ -668,6 +642,7 @@ export function AuthoringStudio({
               {...(addInsertion ? { addInsertion } : {})}
               inspectorTab={documentInspectorTab}
               inspectorNavigationDisabled={hasUnsavedForm}
+              collapsed={inspectorCollapsed}
               pending={pending}
               placementActionsDisabled={formActionsDisabled}
               serverError={serverError}
@@ -675,6 +650,7 @@ export function AuthoringStudio({
                 if (hasUnsavedForm && tab !== 'fields') return;
                 changeInspectorTab(tab);
               }}
+              onCollapsedChange={onInspectorCollapsedChange}
               onDiscardChanges={() => {
                 setAddInsertion(null);
                 setServerError(null);

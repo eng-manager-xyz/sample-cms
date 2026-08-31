@@ -19,12 +19,12 @@ describe('AUT-552 sidebar navigation tree', () => {
       { label: 'Tutorial', children: ['Wall of Maps'] },
       {
         label: 'Content explorer',
-        children: ['Template workspace', 'Publications'],
+        children: ['Template workspace'],
       },
     ]);
 
     const flattenedSections = flattenSidebarNavigation().map((item) => item.section);
-    expect(flattenedSections).toEqual(['tutorial', 'maps', 'content', 'template', 'publications']);
+    expect(flattenedSections).toEqual(['tutorial', 'maps', 'content', 'template']);
     expect(new Set(flattenedSections).size).toBe(flattenedSections.length);
   });
 
@@ -36,16 +36,14 @@ describe('AUT-552 sidebar navigation tree', () => {
     expect(isNavigationBranchActive(tutorial, 'content')).toBe(false);
     expect(isNavigationBranchActive(content, 'content')).toBe(true);
     expect(isNavigationBranchActive(content, 'template')).toBe(true);
-    expect(isNavigationBranchActive(content, 'publications')).toBe(true);
     expect(isNavigationBranchActive(content, 'maps')).toBe(false);
   });
 
   test('keeps template destinations unavailable without context and preserves context when present', () => {
     const [, content] = sidebarNavigation;
-    const [templateWorkspace, publications] = content.children;
+    const [templateWorkspace] = content.children;
 
     expect(isNavigationItemUnavailable(templateWorkspace)).toBe(true);
-    expect(isNavigationItemUnavailable(publications)).toBe(true);
     expect(isNavigationItemUnavailable(templateWorkspace, 'eligible-vehicles')).toBe(false);
     expect(isNavigationItemUnavailable(content, undefined)).toBe(false);
 

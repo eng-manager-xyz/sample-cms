@@ -4,12 +4,30 @@ import { CanonicalUrlSchema } from './content-explorer';
 
 const ScalarEnumValueSchema = z.union([z.string(), z.number(), z.boolean()]);
 
-const JsonSchemaPropertySchema = z.looseObject({
-  type: z.enum(['string', 'number', 'integer', 'boolean', 'object', 'array']).optional(),
-  title: z.string().min(1).optional(),
-  description: z.string().min(1).optional(),
-  enum: z.array(ScalarEnumValueSchema).min(1).optional(),
-});
+const FormFieldKindSchema = z.enum(['string', 'number', 'integer', 'boolean', 'object', 'array']);
+export type FormFieldKind = z.infer<typeof FormFieldKindSchema>;
+
+interface JsonSchemaProperty {
+  readonly type?: FormFieldKind;
+  readonly title?: string;
+  readonly description?: string;
+  readonly enum?: readonly (string | number | boolean)[];
+  readonly required?: readonly string[];
+  readonly properties?: Readonly<Record<string, JsonSchemaProperty>>;
+  readonly items?: JsonSchemaProperty;
+}
+
+const JsonSchemaPropertySchema: z.ZodType<JsonSchemaProperty> = z.lazy(() =>
+  z.looseObject({
+    type: FormFieldKindSchema.optional(),
+    title: z.string().min(1).optional(),
+    description: z.string().min(1).optional(),
+    enum: z.array(ScalarEnumValueSchema).min(1).optional(),
+    required: z.array(z.string().min(1)).optional(),
+    properties: z.record(z.string(), JsonSchemaPropertySchema).optional(),
+    items: JsonSchemaPropertySchema.optional(),
+  })
+);
 
 const RegisteredObjectSchema = z.looseObject({
   type: z.literal('object'),
@@ -49,14 +67,15 @@ export function authoringPanelSearch(input: {
   return AuthoringStudioSearchSchema.parse(input);
 }
 
-const FormFieldKindSchema = z.enum(['string', 'number', 'integer', 'boolean', 'object', 'array']);
-type FormFieldKind = z.infer<typeof FormFieldKindSchema>;
-
 export interface BlockFormField {
   readonly key: string;
+  readonly path: string;
+  readonly schemaOrder: number;
   readonly label: string;
   readonly description: string | null;
   readonly kind: FormFieldKind;
+  readonly itemKind: FormFieldKind | null;
+  readonly children: readonly BlockFormField[];
   readonly required: boolean;
   readonly enumValues: readonly (string | number | boolean)[];
   readonly celEligible: boolean;
@@ -87,6 +106,95 @@ function inferFieldKind(value: unknown): FormFieldKind {
   if (typeof value === 'boolean') return 'boolean';
   if (typeof value === 'number') return Number.isSafeInteger(value) ? 'integer' : 'number';
   return 'string';
+}
+
+function inferredSchemaKind(
+  property: JsonSchemaProperty | undefined,
+  currentValue: unknown,
+  exampleValue: unknown
+): FormFieldKind {
+  if (property?.type) return property.type;
+  if (property?.properties || property?.required) return 'object';
+  if (property?.items) return 'array';
+  return inferFieldKind(currentValue ?? exampleValue);
+}
+
+function orderedFieldKeys(input: {
+  readonly properties: Readonly<Record<string, JsonSchemaProperty>>;
+  readonly required: readonly string[];
+  readonly current: JsonObject;
+  readonly example: JsonObject;
+}): readonly string[] {
+  return [
+    ...Object.keys(input.properties),
+    ...input.required,
+    ...Object.keys(input.current),
+    ...Object.keys(input.example),
+  ].filter((key, index, allKeys) => allKeys.indexOf(key) === index);
+}
+
+function deriveFields(input: {
+  readonly properties: Readonly<Record<string, JsonSchemaProperty>>;
+  readonly required: readonly string[];
+  readonly current: JsonObject;
+  readonly example: JsonObject;
+  readonly parentPath?: string;
+}): { readonly fields: readonly BlockFormField[]; readonly usesLegacyAdapter: boolean } {
+  const required = new Set(input.required);
+  let usesLegacyAdapter = false;
+  const keys = orderedFieldKeys(input);
+  const fields = keys.map((key, schemaOrder): BlockFormField => {
+    const property = input.properties[key];
+    const currentValue = input.current[key];
+    const exampleValue = input.example[key];
+    const source = property ? 'registered-schema' : 'legacy-schema-adapter';
+    if (!property) usesLegacyAdapter = true;
+    const kind = inferredSchemaKind(property, currentValue, exampleValue);
+    const path = input.parentPath ? `${input.parentPath}.${key}` : key;
+    const nestedProperties = property?.properties ?? {};
+    const nestedRequired = property?.required ?? [];
+    const hasStructuredObjectSchema =
+      kind === 'object' && (Object.keys(nestedProperties).length > 0 || nestedRequired.length > 0);
+    const nested = hasStructuredObjectSchema
+      ? deriveFields({
+          properties: nestedProperties,
+          required: nestedRequired,
+          current: isJsonObject(currentValue) ? currentValue : {},
+          example: isJsonObject(exampleValue) ? exampleValue : {},
+          parentPath: path,
+        })
+      : { fields: [], usesLegacyAdapter: false };
+    if (nested.usesLegacyAdapter) usesLegacyAdapter = true;
+
+    const currentArray = Array.isArray(currentValue) ? currentValue : [];
+    const exampleArray = Array.isArray(exampleValue) ? exampleValue : [];
+    const itemSample = currentArray[0] ?? exampleArray[0];
+    const itemKind =
+      kind === 'array'
+        ? property?.items
+          ? inferredSchemaKind(property.items, itemSample, property.items.enum?.[0])
+          : itemSample !== undefined
+            ? inferFieldKind(itemSample)
+            : null
+        : null;
+
+    return {
+      key,
+      path,
+      schemaOrder,
+      label: property?.title ?? humanizeKey(key),
+      description: property?.description ?? null,
+      kind,
+      itemKind,
+      children: nested.fields,
+      required: required.has(key),
+      enumValues: property?.enum ?? [],
+      celEligible: kind === 'string' && nested.fields.length === 0,
+      source,
+    };
+  });
+
+  return { fields, usesLegacyAdapter };
 }
 
 export function parseContentJson(contentJson: string): JsonObject {
@@ -124,49 +232,40 @@ export function deriveBlockFormModel(input: {
     };
   }
 
-  const required = new Set(schemaResult.data.required);
-  const keys = [
-    ...Object.keys(schemaResult.data.properties),
-    ...schemaResult.data.required,
-    ...Object.keys(current),
-    ...Object.keys(example),
-  ].filter((key, index, allKeys) => allKeys.indexOf(key) === index);
-  let usesLegacyAdapter = false;
-  const fields = keys.map((key): BlockFormField => {
-    const property = schemaResult.data.properties[key];
-    const sample = current[key] ?? example[key];
-    const source = property ? 'registered-schema' : 'legacy-schema-adapter';
-    if (!property) usesLegacyAdapter = true;
-    const kind = property?.type ?? inferFieldKind(sample);
-    return {
-      key,
-      label: property?.title ?? humanizeKey(key),
-      description: property?.description ?? null,
-      kind,
-      required: required.has(key),
-      enumValues: property?.enum ?? [],
-      celEligible: kind === 'string',
-      source,
-    };
+  const model = deriveFields({
+    properties: schemaResult.data.properties,
+    required: schemaResult.data.required,
+    current,
+    example,
   });
 
-  return { fields, usesLegacyAdapter, schemaError: null };
+  return { ...model, schemaError: null };
 }
 
 export function draftValuesFromContent(
   fields: readonly BlockFormField[],
   content: JsonObject
 ): Readonly<Record<string, string>> {
-  return Object.fromEntries(
-    fields.map((field) => {
-      const value = content[field.key];
-      if (value === undefined || value === null) return [field.key, ''];
-      if (field.kind === 'object' || field.kind === 'array') {
-        return [field.key, JSON.stringify(value, null, 2)];
-      }
-      return [field.key, String(value)];
-    })
-  );
+  const entries: [string, string][] = [];
+  for (const field of fields) {
+    const value = content[field.key];
+    if (field.kind === 'object' && field.children.length > 0) {
+      entries.push(
+        ...Object.entries(draftValuesFromContent(field.children, isJsonObject(value) ? value : {}))
+      );
+      continue;
+    }
+    if (value === undefined || value === null) {
+      entries.push([field.path, '']);
+      continue;
+    }
+    if (field.kind === 'object' || field.kind === 'array') {
+      entries.push([field.path, JSON.stringify(value, null, 2)]);
+      continue;
+    }
+    entries.push([field.path, String(value)]);
+  }
+  return Object.fromEntries(entries);
 }
 
 function parseDraftValue(field: BlockFormField, rawValue: string): unknown {
@@ -207,28 +306,46 @@ export function contentFromDraft(
   fields: readonly BlockFormField[],
   values: Readonly<Record<string, string>>
 ): ContentDraftResult {
-  const content: JsonObject = {};
   const errors: Record<string, string> = {};
-  for (const field of fields) {
-    const rawValue = values[field.key] ?? '';
-    if (field.required && rawValue.trim() === '') {
-      errors[field.key] = 'This field is required.';
-      continue;
-    }
-    try {
-      const value = parseDraftValue(field, rawValue);
-      if (value !== undefined) content[field.key] = z.json().parse(value);
-      if (
-        value !== undefined &&
-        field.enumValues.length > 0 &&
-        !field.enumValues.some((candidate) => Object.is(candidate, value))
-      ) {
-        errors[field.key] = 'Choose one of the registered values.';
+  const hasDraftValue = (field: BlockFormField): boolean => {
+    if (field.children.length > 0) return field.children.some(hasDraftValue);
+    return (values[field.path] ?? '').trim() !== '';
+  };
+  const parseFields = (
+    currentFields: readonly BlockFormField[],
+    validateRequired: boolean
+  ): JsonObject => {
+    const content: JsonObject = {};
+    for (const field of currentFields) {
+      if (field.kind === 'object' && field.children.length > 0) {
+        const objectIsPresent = field.required || hasDraftValue(field);
+        if (!objectIsPresent) continue;
+        content[field.key] = parseFields(field.children, true);
+        continue;
       }
-    } catch (error) {
-      errors[field.key] = error instanceof Error ? error.message : 'Enter a valid value.';
+
+      const rawValue = values[field.path] ?? '';
+      if (validateRequired && field.required && rawValue.trim() === '') {
+        errors[field.path] = 'This field is required.';
+        continue;
+      }
+      try {
+        const value = parseDraftValue(field, rawValue);
+        if (value !== undefined) content[field.key] = z.json().parse(value);
+        if (
+          value !== undefined &&
+          field.enumValues.length > 0 &&
+          !field.enumValues.some((candidate) => Object.is(candidate, value))
+        ) {
+          errors[field.path] = 'Choose one of the registered values.';
+        }
+      } catch (error) {
+        errors[field.path] = error instanceof Error ? error.message : 'Enter a valid value.';
+      }
     }
-  }
+    return content;
+  };
+  const content = parseFields(fields, true);
   return Object.keys(errors).length > 0 ? { success: false, errors } : { success: true, content };
 }
 

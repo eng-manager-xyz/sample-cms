@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "@repo/cms-renderer/styles.css";
 
 @source "../**/*.{ts,tsx}";
 
@@ -311,5 +312,13 @@
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+  }
+}
+
+/* Hover-only chrome stays directly operable on touch and coarse-pointer devices. */
+@media (hover: none), (pointer: coarse) {
+  .authoring-hover-control {
+    pointer-events: auto;
+    opacity: 1;
   }
 }
